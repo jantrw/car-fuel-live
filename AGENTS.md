@@ -60,15 +60,13 @@ Browser (Vue 3 SPA)
 
 ---
 
-## Security
-Follow `Security.md` in full — no exceptions.
-
----
-
-## Coding Standards
-Follow `StyleGuides.MD` for all languages and frameworks in this project:
-- Vue 3 / TypeScript → see StyleGuides.MD
-- Java 21 / Spring Boot → see StyleGuides.MD
+## Security & Coding Standards
+Rules are scoped to each module:
+- Backend rules (Java, Spring Boot, Security): `car-fuel-live-backend/AGENTS.md`
+- Frontend rules (Vue, TypeScript, Tailwind): `car-fuel-live-frontend/AGENTS.md`
+- Never commit secrets, `.env` files, or production configs to the repository.
+- TLS and HSTS are enforced at the infrastructure/deployment level —
+  never ship a build that downgrades to HTTP.
 
 ---
 
