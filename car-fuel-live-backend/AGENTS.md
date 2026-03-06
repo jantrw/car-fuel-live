@@ -4,12 +4,12 @@
 ---
 
 ## Stack
-| Technology   | Version       |
-|--------------|---------------|
-| Java         | 21            |
-| Spring Boot  | 4.0.3         |
-| Gradle       | 8.x (latest stable wrapper) |
-| PostgreSQL   | 17-alpine     |
+| Technology   | Version                     |
+|--------------|-----------------------------|
+| Java         | 21                          |
+| Spring Boot  | 4.0.3                       |
+| Gradle       | 9.3.1 |
+| PostgreSQL   | 17-alpine                   |
 
 ---
 
@@ -20,22 +20,6 @@
 - Keep methods short and focused (single responsibility).
 - Meaningful class names (nouns), method names (verbs).
 - No abbreviations.
-
-### Spotless (build.gradle)
-```groovy
-plugins {
-    id 'com.diffplug.spotless' version '6.25.0'
-}
-
-spotless {
-    java {
-        googleJavaFormat('1.22.0')
-        removeUnusedImports()
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-}
-```
 
 ### Static Analysis
 - Checkstyle + SpotBugs run in CI. Both must pass before merge.
@@ -75,8 +59,6 @@ GET  /api/v1/gas-stations/{id}
 
 ### OpenAPI
 - Use Springdoc OpenAPI:
-```groovy
-implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
 ```
 - Swagger UI at `/swagger-ui.html` in dev only.
 - Annotate all public controller methods with `@Operation` and `@ApiResponse`.
