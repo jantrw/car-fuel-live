@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/car-fuel-live.iml" filepath="$PROJECT_DIR$/car-fuel-live.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/car-fuel-live-backend.main.iml" filepath="$PROJECT_DIR$/.idea/modules/car-fuel-live-backend.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/car-fuel-live-frontend/car-fuel-live-frontend.iml" filepath="$PROJECT_DIR$/car-fuel-live-frontend/car-fuel-live-frontend.iml" />
     </modules>
   </component>
