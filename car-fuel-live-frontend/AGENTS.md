@@ -4,11 +4,12 @@
 ---
 
 ## Stack
-| Technology   | Version             |
-|--------------|---------------------|
-| Vue.js       | 3.5.29              |
-| TypeScript   | 5.x (latest stable) |
-| Tailwind CSS | 4.0                 |
+| Technology   | Version              |
+|--------------|----------------------|
+| Vue.js       | 3.5.29               |
+| TypeScript   | 5.9.3 |
+| Tailwind CSS | 3.4.17               |
+| shadcn-vue   | 2.4.3                |
 
 ---
 
@@ -37,6 +38,14 @@
 ```
 
 ---
+## UI Components (shadcn-vue)
+
+- Use shadcn-vue as the primary component library.
+- Add components via CLI only: `npx shadcn-vue@latest add <component>`.
+- Never modify files inside `src/components/ui/` — these are auto-generated.
+- Custom logic goes into wrapper components in `src/components/`, not into ui/ files.
+- Use shadcn-vue components as building blocks — style via Tailwind utility classes on the wrapper, not by editing the component source.
+---
 
 ## Tailwind CSS v4.0
 
@@ -44,13 +53,6 @@
 - Design tokens (colors, spacing, typography) configured via `@theme` in the root CSS file — do not hardcode values inline.
 - No inline `style=""` attributes for anything Tailwind can express.
 - Class ordering enforced automatically by `prettier-plugin-tailwindcss`.
-
-```json
-// .prettierrc
-{
-  "plugins": ["prettier-plugin-tailwindcss"]
-}
-```
 
 ---
 
@@ -132,7 +134,7 @@ navigator.geolocation.getCurrentPosition(
 ---
 
 ## Commit Messages
-Follow `Skills/commit-message/SKILL.md`.
+Follow `skills/commit-message/SKILL.md`.
 
 ## Design
-Follow `Skills/frontend-design/SKILL.md`.
+Follow `skills/frontend-design/SKILL.md`.
