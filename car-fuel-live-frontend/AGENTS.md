@@ -7,9 +7,10 @@
 | Technology   | Version              |
 |--------------|----------------------|
 | Vue.js       | 3.5.29               |
-| TypeScript   | 5.9.3 |
+| TypeScript   | 5.9.3                |
 | Tailwind CSS | 3.4.17               |
 | shadcn-vue   | 2.4.3                |
+| pinia        | 3.0.4                |
 
 ---
 
@@ -22,20 +23,11 @@
 - Composables live in `src/composables/`, prefixed with `use` (e.g., `useGasPrices.ts`).
 - All fetch calls to the backend live in `src/api/` only. Components and composables never call `fetch` directly.
 - Explicit `props` validation on every component — no untyped props.
+- Use pinia stores.
 
 ### Tooling & Enforcement
 - ESLint + `eslint-plugin-vue` + `@typescript-eslint` + Prettier + Volar.
 - `eslint --fix` and Prettier run in CI and on pre-commit.
-
-```jsonc
-// package.json
-{
-  "scripts": {
-    "lint": "eslint --ext .js,.ts,.vue src/",
-    "format": "prettier --write \"src/**/*.{ts,js,vue,json,md}\""
-  }
-}
-```
 
 ---
 ## UI Components (shadcn-vue)
@@ -137,4 +129,4 @@ navigator.geolocation.getCurrentPosition(
 Follow `skills/commit-message/SKILL.md`.
 
 ## Design
-Follow `skills/frontend-design/SKILL.md`.
+Always follow `skills/frontend-design/SKILL.md` when implementing new features or creating UI.

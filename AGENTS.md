@@ -1,5 +1,3 @@
-# Agents.MD
-
 ## Application Overview
 
 **Name:** Car Fuel Live (working title)
@@ -46,9 +44,8 @@
 - Key endpoints:
   - `/json/list.php` — stations by radius around coordinates
   - `/json/detail.php` — single station detail
-- **API key:** stored exclusively in the `TANKERKOENIG_API_KEY` environment variable. Never sent to the client, never logged, never committed to the repository.
+- **API key:** stored exclusively in the `TANKERKOENIG_API_KEY` environment variable. Never sent to the client and is never logged.
 - **Proxying:** The backend proxies all Tankerkönig calls. The Vue frontend never contacts the Tankerkönig API directly.
-- **Rate limiting / caching:** Cache all Tankerkönig responses server-side for a minimum of 5 minutes. Deduplicate concurrent in-flight requests for the same region to avoid hammering the API when multiple users query the same area simultaneously.
 - **Error handling:** On API failure, return a structured error DTO to the client. Log the full error internally. Never expose API internals, keys, or raw error messages to the browser.
 
 ---
@@ -75,10 +72,29 @@ Browser (Vue 3 SPA)
 ```
 
 ## Code Changes
-- Always update `documentation.MD` after code changes.
-- Update `architecture.md` if the architecture changes.
+- Always update `docs/documentation.MD` after code changes.
+- Update `docs/architecture.md` if the architecture changes.
 - Do not modify unrelated files.
 - Always test the code after implementing new features or code changes.
+
+---
+
+## Git
+
+### .gitignore
+
+- Always ask if you want to adjust the .gitignore.
+- Add necessary files/folder to the .gitignore. Focus on the best-practise within the .gitignore and a public repo.
+
+---
+
+## Dev spinups
+
+- Start backend, DB, frontend
+- Make sure to be in root folder: `cd car-fuel-live`
+  --> backend: `.\car-fuel-live-backend\gradlew -p car-fuel-live-backend bootRun`
+  --> docker-db: `docker-compose -f .\car-fuel-live-backend\compose.yml up -d`
+  --> frontend: `npm --prefix .\car-fuel-live-frontend run dev`
 
 ---
 
@@ -90,6 +106,12 @@ When Docker is introduced, apply the following rules:
 - All containers must run as non-root users.
 - Scan images with Trivy before shipping.
 - Provide a `docker-compose.yml` covering the app and PostgreSQL for local development.
+
+---
+
+## Github Actions *(not yet in scope)*
+
+- Workflows live in `.github/workflows/`
 
 ---
 

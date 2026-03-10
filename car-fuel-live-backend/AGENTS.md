@@ -1,5 +1,6 @@
 # Backend Agent Instructions
 # Scope: car-fuel-live-backend/
+# Root package: io.github.jantrw.carfuellive
 
 ---
 
@@ -23,6 +24,12 @@
 
 ### Static Analysis
 - Checkstyle + SpotBugs run in CI. Both must pass before merge.
+
+---
+
+## DB
+
+- Use Flyway for DB migrations. Migration scripts live in src/main/resources/db/migration/, named V<n>__<description>.sql. Never edit an existing migration — always add a new one.
 
 ---
 
@@ -206,4 +213,4 @@ public class CorsConfig implements WebMvcConfigurer {
 ---
 
 ## Commit Messages
-Follow `Skills/commit-message/SKILL.md`.
+Follow `skills/commit-message/SKILL.md`.
