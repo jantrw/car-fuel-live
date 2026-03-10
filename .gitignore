@@ -4,8 +4,12 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
-../.env
-.env
+car-fuel-live-backend/.env
+package-lock.json
+package.json
+car-fuel-live.iml
+node_modules/*
+
 ### STS ###
 .apt_generated
 .classpath
