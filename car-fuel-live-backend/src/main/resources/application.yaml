@@ -1,3 +1,6 @@
 spring:
   application:
     name: backend
+  datasource:
+    hikari:
+      maximum-pool-size: 10
