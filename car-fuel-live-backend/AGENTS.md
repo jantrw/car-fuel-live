@@ -210,7 +210,3 @@ public class CorsConfig implements WebMvcConfigurer {
 ### Logging & Monitoring
 - Centralize logs; alert on traffic spikes, error rate increases, rate-limit events, and unusual Tankerkönig API call volumes.
 
----
-
-## Commit Messages
-Follow `skills/commit-message/SKILL.md`.
