@@ -125,8 +125,5 @@ navigator.geolocation.getCurrentPosition(
 
 ---
 
-## Commit Messages
-Follow `skills/commit-message/SKILL.md`.
-
 ## Design
 Always follow `skills/frontend-design/SKILL.md` when implementing new features or creating UI.

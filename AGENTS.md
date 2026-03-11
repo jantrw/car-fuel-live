@@ -41,6 +41,7 @@
 
 ### Tankerkönig API
 - Base URL: `https://creativecommons.tankerkoenig.de/?page=info` + `https://creativecommons.tankerkoenig.de/swagger/` + `https://creativecommons.tankerkoenig.de`
+- Example URL for gas stations within 5km at the center of berlin: `https://creativecommons.tankerkoenig.de/json/list.php?lat=52.521&lng=13.438&rad=5&sort=dist&type=all&apikey=00000000-0000-0000-0000-000000000002`
 - Key endpoints:
   - `/json/list.php` — stations by radius around coordinates
   - `/json/detail.php` — single station detail
@@ -80,6 +81,18 @@ Browser (Vue 3 SPA)
 ---
 
 ## Git
+
+## Commit Scopes
+`api` | `db` | `map` | `prices` | `auth` | `docker` | `config`
+
+**Examples:**
+feat(api): add Tankerkönig price polling endpoint
+fix(db): correct station coordinate mapping on insert
+refactor(map): extract marker logic into composable
+chore(docker): pin postgres image to 17.2
+
+## Issue Labels
+In addition to global labels: `map` | `polling`
 
 ### .gitignore
 
