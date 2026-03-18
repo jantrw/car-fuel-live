@@ -8,7 +8,7 @@
 |--------------|----------------------|
 | Vue.js       | 3.5.29               |
 | TypeScript   | 5.9.3                |
-| Tailwind CSS | 3.4.17               |
+| Tailwind CSS | 4.0.0                |
 | shadcn-vue   | 2.4.3                |
 | pinia        | 3.0.4                |
 
