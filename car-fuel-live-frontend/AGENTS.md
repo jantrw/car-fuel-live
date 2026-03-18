@@ -13,6 +13,9 @@
 | pinia        | 3.0.4                |
 
 ---
+## StyleGuides
+
+- Read `agents/StyleGuides.MD`
 
 ## Vue.js Style
 

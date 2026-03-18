@@ -20,7 +20,7 @@ This file defines the mandatory, team-enforced style rules for the project. Do n
 
 ## 1) Vue.js
 
-**Goals:** small components, explicit contracts, strong typing, fast lint/format enforcement.
+**Goals:** small components, explicit contracts, strong typing, fast lint/format enforcement, comments.
 
 ### Key Rules
 - Follow the official Vue Style Guide: single-responsibility components, explicit `props` validation, avoid documented anti-patterns.
@@ -33,21 +33,12 @@ This file defines the mandatory, team-enforced style rules for the project. Do n
 - ESLint + `eslint-plugin-vue` + `@typescript-eslint` + Prettier + Volar.
 - `eslint --fix` and Prettier run in CI and pre-commit hooks.
 
-### Scripts (package.json)
-```jsonc
-{
-  "scripts": {
-    "lint": "eslint --ext .js,.ts,.vue src/",
-    "format": "prettier --write \"src/**/*.{ts,js,vue,json,md}\""
-  }
-}
-```
 
 ---
 
 ## 2) Tailwind CSS v4.0
 
-**Goals:** utility-first styling, no custom CSS unless unavoidable, consistent design tokens.
+**Goals:** utility-first styling, no custom CSS unless unavoidable, consistent design tokens, comments.
 
 ### Key Rules
 - Use Tailwind utility classes exclusively. Do not write custom CSS unless a utility cannot cover the case.
@@ -69,7 +60,7 @@ This file defines the mandatory, team-enforced style rules for the project. Do n
 
 ## 3) TypeScript
 
-**Goals:** catch errors at compile time, keep types meaningful, validate all runtime input.
+**Goals:** catch errors at compile time, keep types meaningful, validate all runtime input, comments.
 
 ### Key Rules
 - `tsconfig.json` must enable strict mode.
@@ -98,7 +89,7 @@ This file defines the mandatory, team-enforced style rules for the project. Do n
 
 ## 4) Java
 
-**Goals:** consistent formatting, short methods, clear names, automated checks.
+**Goals:** consistent formatting, short methods, clear names, automated checks, comments.
 
 ### Key Rules
 - Follow Google Java Style, enforced by an automatic formatter — no manual formatting debates.
@@ -110,30 +101,13 @@ This file defines the mandatory, team-enforced style rules for the project. Do n
 - Formatter: **Spotless** with `google-java-format`.
 - Static analysis: **Checkstyle** + **SpotBugs** in CI.
 
-### Gradle Configuration
-```groovy
-// build.gradle
-plugins {
-    id 'com.diffplug.spotless' version '6.25.0'
-}
-
-spotless {
-    java {
-        googleJavaFormat('1.22.0')
-        removeUnusedImports()
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-}
-```
-
-> **Note:** Spotless `6.25.0` is the latest stable in the 6.x line with the most extensive community documentation. Verify against https://plugins.gradle.org/plugin/com.diffplug.spotless before starting.
+> Verify against https://plugins.gradle.org/plugin/com.diffplug.spotless before starting.
 
 ---
 
 ## 5) Spring Boot
 
-**Goals:** predictable structure, constructor injection, thin controllers, clear config.
+**Goals:** predictable structure, constructor injection, thin controllers, clear config, comments.
 
 ### Key Rules
 - Group by **feature/domain**, not by layer: `stations/controller`, `stations/service`, `stations/repository`.
@@ -160,9 +134,6 @@ GET  /api/v1/gas-stations/{id}
 ### OpenAPI / API Documentation
 - Use **Springdoc OpenAPI** for automatic API documentation.
 - Dependency:
-```groovy
-implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
-```
 - Docs available at `/swagger-ui.html` and `/v3/api-docs` in development.
 - Annotate all public controller methods with `@Operation` and `@ApiResponse`.
 - Disable Swagger UI in production via:
@@ -244,13 +215,6 @@ describe('useGasPrices', () => {
 - Test names must be self-documenting — a failing test name alone should identify the problem.
 - Arrange / Act / Assert structure inside every test body, separated by blank lines.
 
----
-
-## 7) Commit Messages
-Follow the convention defined in `Skills/commit_message.md`.
-
----
-
 ## CI & Repo-Wide Rules (Mandatory)
 
 - **Formatter-first:** Prettier (JS/TS/Vue) and Spotless (Java) run on commit and in CI. Formatting failures block merges.
@@ -265,6 +229,7 @@ Follow the convention defined in `Skills/commit_message.md`.
 npm run format
 npm run lint
 npm test
+-> type in the tested file
 
 # Java (Gradle)
 ./gradlew spotlessApply

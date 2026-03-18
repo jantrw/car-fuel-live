@@ -52,6 +52,10 @@
 ---
 
 ## Security & Coding Standards
+
+### Dependency scanning
+- Run npm audit --audit-level=high (frontend) and ./gradlew dependencyCheckAnalyze (backend) in CI on every push.
+
 Rules are scoped to each module:
 - Backend rules (Java, Spring Boot, Security): `car-fuel-live-backend/AGENTS.md`
 - Frontend rules (Vue, TypeScript, Tailwind): `car-fuel-live-frontend/AGENTS.md`
@@ -59,7 +63,6 @@ Rules are scoped to each module:
 - Never commit secrets, `.env` files, or production configs to the repository.
 - TLS and HSTS are enforced at the infrastructure/deployment level —
   never ship a build that downgrades to HTTP.
-- Follow the rules described in: `agents/Security.MD`
 
 ---
 
