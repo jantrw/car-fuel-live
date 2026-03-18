@@ -109,7 +109,7 @@ In addition to global labels: `map` | `polling`
 - Start backend, DB, frontend
 - Make sure to be in root folder: `cd car-fuel-live`
   --> backend: `.\car-fuel-live-backend\gradlew -p car-fuel-live-backend bootRun`
-  --> docker-db: `docker-compose -f .\car-fuel-live-backend\compose.yml up -d`
+  --> docker-db: `docker-compose -f .\car-fuel-live-backend\docker-compose.yml up -d`
   --> frontend: `npm --prefix .\car-fuel-live-frontend run dev`
 
 ---
