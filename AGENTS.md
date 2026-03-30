@@ -10,7 +10,7 @@
 - On first visit, the app requests browser geolocation and displays gas prices for the user's detected region.
 - Users can manually enter any city or region (city or region will be transferred to longitude and latitude) to view gas prices there.
 - Users can filter results by fuel type: **E5**, **E10**, **Diesel**.
-- Users can filter results by distance: 1km, 2km, 5km and so on.
+- Users can filter results by distance: 1km, 2km, 5km.
 - Users can order results via price.
 - Each Price/Gas station is clickable and refers to another site in which more detail is shown.
 - No login, no authentication, no user accounts — ever, by design.
@@ -85,7 +85,14 @@ Browser (Vue 3 SPA)
 
 ## Git
 
-## Commit Scopes
+### Branches
+
+- Every issue or feature must live in its own dedicated branch. Do not combine unrelated changes in one branch.
+- Branch names must follow this format: `<type>/<issue-id>-<short-description>` (e.g. `feature/123-user-auth`, `fix/456-login-bug`). Use lowercase, hyphens only, no spaces or special characters. The issue ID is mandatory.
+- All work branches must merge into `dev` first. `dev` may only merge into `main` after explicit approval.
+- Never open a pull request or merge a branch without asking first.
+
+### Commit Scopes
 `api` | `db` | `map` | `prices` | `auth` | `docker` | `config`
 
 **Examples:**
@@ -94,12 +101,12 @@ fix(db): correct station coordinate mapping on insert
 refactor(map): extract marker logic into composable
 chore(docker): pin postgres image to 17.2
 
-## Issue Labels
+### Issue Labels
 In addition to global labels: `map` | `polling`
 
 ### .gitignore
 
-- Always ask if you want to adjust the .gitignore.
+- Always ask if you want to remove something out of the .gitignore.
 - Add necessary files/folder to the .gitignore. Focus on the best-practise within the .gitignore and a public repo.
 
 ---
