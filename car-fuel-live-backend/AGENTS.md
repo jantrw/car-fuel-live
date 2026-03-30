@@ -118,6 +118,8 @@ CSRF is intentionally disabled — API is stateless, no cookies. If sessions are
 - Slice tests (`@WebMvcTest`, `@DataJpaTest`) for controllers and repositories.
 - `@SpringBootTest` only for full end-to-end scenarios — use sparingly.
 - Every new service method requires at least one unit test.
+- Always proof functionality.
+- Every task needs to be tested before finishing it.
 
 ### Test Naming Convention
 Pattern: `should_doX_when_Y`
