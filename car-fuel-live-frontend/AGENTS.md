@@ -12,11 +12,6 @@
 | shadcn-vue   | 2.4.3                |
 | pinia        | 3.0.4                |
 
----
-## StyleGuides
-
-- Read `agents/StyleGuides.MD`
-
 ## Vue.js Style
 
 - Single-responsibility components — one concern per file.

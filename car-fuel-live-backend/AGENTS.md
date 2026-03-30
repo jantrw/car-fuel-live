@@ -12,12 +12,6 @@
 | Gradle       | 9.3.1 |
 | PostgreSQL   | 17-alpine                   |
 
----
-
-## StyleGuides
-
-- Read `agents/StyleGuides.MD`
-
 ## Java Style
 
 - Follow Google Java Style — enforced by Spotless, no manual formatting debates.
