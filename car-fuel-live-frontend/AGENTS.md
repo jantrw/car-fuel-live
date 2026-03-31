@@ -118,6 +118,7 @@ navigator.geolocation.getCurrentPosition(
 
 ### API Communication
 - All backend calls go through `src/api/` — never call the backend directly from components.
+- Use shared `fetch` wrappers in `src/api/` for all backend communication.
 - Never expose or log any API keys. The Tankerkönig key lives on the backend only and must never appear in frontend code, network requests, or browser DevTools.
 - Handle API error responses with structured error handling — never display raw error messages from the backend to the user.
 
