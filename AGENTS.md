@@ -37,6 +37,12 @@
 ### Security Workflow
 - Add a GitHub issue as a TODO to review the application with Codex Security.
 
+## Functionality & Verification
+- Always prove functionality.
+- Every task needs to be tested before finishing it.
+- Never mark a task complete without proving it works.
+- Ask yourself: "Would a staff engineer approve this?"
+
 ## Cross-Module Rules
 ### Security & CI
 - Run `npm audit --audit-level=high` for frontend and `./gradlew dependencyCheckAnalyze` for backend in CI on every push.
