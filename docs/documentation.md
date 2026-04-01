@@ -69,4 +69,3 @@
 ### IntelliJ Project Structure
 - Open the repository root as the IntelliJ project.
 - Keep backend and frontend as separate modules inside the same IntelliJ project.
-- Do not use a root-level Node project. Frontend Node dependencies belong in `car-fuel-live-frontend/node_modules`.
