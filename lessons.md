@@ -1,2 +1,0 @@
-- Do not propose multi-minute shared fuel-price caching for near-real-time price features without explicitly validating the freshness tradeoff first.
-- For this project, prefer persisted geocoding cache plus in-flight request deduplication over long-lived fuel-price result caching.
