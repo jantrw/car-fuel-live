@@ -19,6 +19,7 @@
 - Keep methods short and focused (single responsibility).
 - Meaningful class names (nouns), method names (verbs).
 - No abbreviations.
+- Always apply `.codex/skills/java-best-practices/SKILL.md` when working on Java implementation details.
 
 ### Static Analysis
 - Checkstyle + SpotBugs run in CI. Both must pass before merge.
@@ -28,6 +29,9 @@
 ## DB
 
 - Use Flyway for DB migrations. Migration scripts live in src/main/resources/db/migration/, named V<n>__<description>.sql. Never edit an existing migration — always add a new one.
+- Apply `.codex/skills/spring-data-jpa/SKILL.md` for repository design, projections, query patterns, relationships, and persistence performance work.
+- Persist a geocoding cache for major cities in Germany and major cities in Europe so repeated manual searches avoid redundant geocoding lookups.
+- Keep the geocoding cache normalized and refreshable. Store canonical search name, country, coordinates, source, and cache metadata.
 
 ---
 
@@ -63,11 +67,10 @@ GET  /api/v1/gas-stations/{id}
 ```
 
 ### OpenAPI
-- Use Springdoc OpenAPI:
-```
-- Swagger UI at `/swagger-ui.html` in dev only.
+- Use Springdoc OpenAPI.
+- Swagger UI at `/swagger-ui.html` in development only.
 - Annotate all public controller methods with `@Operation` and `@ApiResponse`.
-- Disable in production:
+- Disable it in production:
 ```yaml
 # application-prod.yml
 springdoc:
@@ -112,8 +115,6 @@ CSRF is intentionally disabled — API is stateless, no cookies. If sessions are
 - Slice tests (`@WebMvcTest`, `@DataJpaTest`) for controllers and repositories.
 - `@SpringBootTest` only for full end-to-end scenarios — use sparingly.
 - Every new service method requires at least one unit test.
-- Always proof functionality.
-- Every task needs to be tested before finishing it.
 
 ### Test Naming Convention
 Pattern: `should_doX_when_Y`
@@ -160,31 +161,16 @@ Enforce via Spring Security config and/or reverse proxy:
 
 ### Tankerkönig API Proxy
 - The backend proxies **all** Tankerkönig API calls. The frontend never contacts Tankerkönig directly.
-- Cache all responses server-side: minimum **5-minute TTL** (Spring Cache + Caffeine or Redis).
-- Deduplicate concurrent in-flight requests for the same region.
+- Persist a geocoding cache so repeated manual searches avoid redundant geocoding lookups.
+- Deduplicate in-flight identical upstream requests so concurrent callers share one fresh Tankerkönig request.
+- Do not rely on long-lived fuel-price result caching by default. Freshness is more important than multi-minute response caching.
 - If a user spams searches, the cache absorbs it — never forward every request as a live API call.
 - On API failure: return structured error DTO to client; log full error internally; never expose API details, status codes, or the key to the browser.
 - Log API call counts to detect runaway consumption early.
 
 ### CORS
-```java
-@Configuration
-public class CorsConfig implements WebMvcConfigurer {
-    @Value("${app.cors.allowed-origin}")
-    private String allowedOrigin;
-
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-            .allowedOrigins(allowedOrigin)
-            .allowedMethods("GET")
-            .allowedHeaders("Content-Type")
-            .allowCredentials(false)
-            .maxAge(3600);
-    }
-}
-```
 - No wildcard (`*`). Exact frontend origin only.
+- Configure allowed origins via `@ConfigurationProperties`, not scattered `@Value`.
 - `app.cors.allowed-origin` set per environment in `application-prod.yml` — never hardcoded.
 
 ### Rate Limiting
@@ -204,7 +190,7 @@ public class CorsConfig implements WebMvcConfigurer {
 ### GDPR — Backend Rules
 - Do not store user coordinates persistently. Use for Tankerkönig query, then discard.
 - Do not log IP address + coordinates together. No join key between them.
-- Coordinates travel: Backend → Tankerkönig as a radius only, never as raw lat/lng in logs.
+- Coordinates travel from backend to Tankerkönig as a radius only, never as raw lat/lng in logs.
 - Tankerkönig responses contain station data only — never store personal data alongside them.
 
 ### Logging & Monitoring

@@ -17,6 +17,7 @@
 - Single-responsibility components — one concern per file.
 - Filenames / component names: **PascalCase** in code (`StationCard.vue`), **kebab-case** in templates (`<station-card />`).
 - Composition API for all components. Always use `<script setup lang="ts">`.
+- Always apply `.codex/skills/vue-best-practices/SKILL.md` for Vue work.
 - Keep templates simple — move all logic into `setup()` or composables.
 - Composables live in `src/composables/`, prefixed with `use` (e.g., `useGasPrices.ts`).
 - All fetch calls to the backend live in `src/api/` only. Components and composables never call `fetch` directly.
@@ -125,4 +126,5 @@ navigator.geolocation.getCurrentPosition(
 ---
 
 ## Design
-Always follow `skills/frontend-design/SKILL.md` when implementing new features or creating UI.
+- Every UI must be responsive and scalable.
+- Always follow `.codex/skills/frontend-design/SKILL.md` when implementing new features or creating UI.
