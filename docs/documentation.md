@@ -51,7 +51,30 @@
   - `https://creativecommons.tankerkoenig.de/json/list.php?lat=52.521&lng=13.438&rad=5&sort=dist&type=all&apikey=00000000-0000-0000-0000-000000000002`
 - Key endpoints:
   - `/json/list.php` for stations by radius around coordinates
+  - `/json/prices.php` for price refreshes of up to 10 known station IDs
   - `/json/detail.php` for single station detail
+- Request constraints:
+  - `list.php` requires `lat`, `lng`, `rad`, `type`, and `apikey`.
+  - `rad` must not exceed `25` km.
+  - `type` is `e5`, `e10`, `diesel`, or `all`.
+  - `sort` is `price` or `dist`.
+  - When `type=all`, Tankerkönig sorts by distance and `sort` is optional.
+- Response handling rules:
+  - Every Tankerkönig response must be checked via the upstream `ok` flag before reading payload fields.
+  - Upstream failures return `ok=false` and an error `message`; the backend must map this to a structured internal error DTO.
+  - `list.php` returns `e5`, `e10`, and `diesel` when `type=all`, but returns a single `price` field when only one fuel type is requested.
+  - Price fields are not guaranteed to be numeric. Missing fuel support can be encoded as `false`.
+  - `prices.php` station results can report `open`, `closed`, or `no prices`.
+- Detail behavior:
+  - `detail.php` is for selected station details, not regular price polling.
+  - Detail responses can include `openingTimes`, `overrides`, `wholeDay`, and `state`.
+  - `state` is often absent or `null`; detail fields must be treated as optional.
+- Usage and product constraints:
+  - Tankerkönig's free API is best-effort only; no SLA should be assumed.
+  - Price requests should be triggered on demand from user actions. Regular background polling should be avoided.
+  - Bulk or mass-data style live usage can lead to blocked requests or disabled API keys.
+  - Tankerkönig data is delivered under `CC BY 4.0`; the product must include attribution.
+  - MTS-K usage conditions apply and must be respected by the product.
 - `TANKERKOENIG_API_KEY` lives only in the backend environment.
 - The frontend never calls Tankerkönig directly.
 - On upstream failure, return a structured error DTO to the client and log full details internally.
