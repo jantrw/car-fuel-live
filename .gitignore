@@ -46,3 +46,7 @@ out/
 
 # Repo-local Codex stays private.
 .codex/
+
+# Local workflow scratch files
+todo.md
+lessons.md
