@@ -161,10 +161,22 @@ Enforce via Spring Security config and/or reverse proxy:
 
 ### Tankerkönig API Proxy
 - The backend proxies **all** Tankerkönig API calls. The frontend never contacts Tankerkönig directly.
+- Validate outbound `list.php` requests against Tankerkönig limits: `rad <= 25`, `type in {e5,e10,diesel,all}`, `sort in {price,dist}`.
+- When `type=all`, treat upstream sorting as distance-based and do not rely on `price` sorting.
+- Use `prices.php` for price refreshes of already-known stations. One upstream call can refresh at most 10 station IDs.
+- Use `detail.php` only for selected station details such as opening times. Never use it as a price-polling method.
+- Always inspect the upstream `ok` flag and `message`. Do not treat HTTP success alone as a valid Tankerkönig response.
+- Model upstream response quirks explicitly:
+  - `list.php` returns `price` for single-fuel queries but `e5`, `e10`, and `diesel` for `type=all`.
+  - Fuel values can be `false` when a station does not offer that fuel.
+  - `prices.php` can return station statuses `open`, `closed`, and `no prices`.
+  - `detail.php` fields such as `openingTimes`, `overrides`, `wholeDay`, and `state` are optional.
 - Persist a geocoding cache so repeated manual searches avoid redundant geocoding lookups.
 - Deduplicate in-flight identical upstream requests so concurrent callers share one fresh Tankerkönig request.
 - Do not rely on long-lived fuel-price result caching by default. Freshness is more important than multi-minute response caching.
 - If a user spams searches, the cache absorbs it — never forward every request as a live API call.
+- Only perform Tankerkönig requests on demand from user-driven flows. Avoid periodic background polling against the free API.
+- Never implement bulk or mass-data style live fetching through the free API; blocked requests and disabled keys are a stated upstream risk.
 - On API failure: return structured error DTO to client; log full error internally; never expose API details, status codes, or the key to the browser.
 - Log API call counts to detect runaway consumption early.
 
