@@ -61,6 +61,7 @@
 - Every issue or feature must live in its own dedicated branch. Do not combine unrelated changes in one branch.
 - Branch names must follow `<type>/<issue-id>-<short-description>` using lowercase and hyphens only.
 - All work branches must merge into `dev` first. `dev` may only merge into `main` after explicit approval.
+- After every merged `dev` -> `main` PR, sync `dev` back to the current `main` state immediately so `dev` never falls behind `main`.
 - Never open a pull request or merge a branch without asking first.
 
 #### Commit Scopes
