@@ -1,10 +1,9 @@
-<script setup>
-defineProps({
-  msg: {
-    type: String,
-    required: true,
-  },
-})
+<script setup lang="ts">
+interface HelloWorldProps {
+  msg: string
+}
+
+defineProps<HelloWorldProps>()
 </script>
 
 <template>
