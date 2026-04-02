@@ -88,6 +88,17 @@
 - Backend: `.\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend bootRun`
 - Database: `docker-compose -f .\car-fuel-live-backend\docker-compose.yml up -d`
 - Frontend: `npm --prefix .\car-fuel-live-frontend run dev`
+- Swagger UI: `http://localhost:8080/swagger-ui.html` in development, no authentication required
+
+### Frontend Foundation
+- The frontend foundation uses Vue 3 with TypeScript enabled.
+- `shadcn-vue` is installed for UI component scaffolding.
+
+### Verification Commands
+- Backend tests: `.\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend test`
+- Frontend lint: `npm --prefix .\car-fuel-live-frontend run lint`
+- Frontend build: `npm --prefix .\car-fuel-live-frontend run build`
+- Frontend tests: `npm --prefix .\car-fuel-live-frontend run test -- --run`
 
 ### IntelliJ Project Structure
 - Open the repository root as the IntelliJ project.
