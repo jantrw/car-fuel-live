@@ -53,6 +53,7 @@
 - Always update `docs/documentation.md` after code changes affecting behavior or requirements.
 - Update `docs/architecture.md` if architecture changes.
 - Don't write everything into `docs/documentation.md` and `docs/architecture.md`, fill it only with needed elements and best practises for documentations and architectures.
+- Add code comments only where they materially help: explain non-obvious intent, constraints, invariants, or tricky behavior. Do not narrate obvious code.
 - Do not modify unrelated files.
 - Always test the code after implementing new features or code changes.
 
