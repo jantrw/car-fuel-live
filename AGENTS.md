@@ -23,6 +23,16 @@
 5. **Document Results**: Add review section to `todo.md`.
 6. **Capture Lessons**: Update `lessons.md` after corrections.
 
+#### Todo Quality
+- For any larger task, expand the parent item in `todo.md` into concrete subtodos before implementation.
+- Write parent todos so a different agent can understand the goal and continue the work without prior chat context.
+- Use subtodos to capture the work breakdown, key constraints, and relevant open questions when they materially affect execution.
+- Do not leave large umbrella todos vague. If a task hides multiple meaningful steps, split it.
+- If a task grows during implementation, update `todo.md` and add subtodos immediately.
+- When a todo is finished and its result is proven, move it to a `Ready To Delete` section in `todo.md`.
+- Only mark items `Ready To Delete` after implementation is complete and verification is complete.
+- Keep unfinished, unverified, or partially verified items out of `Ready To Delete`.
+
 ### Self-Improvement
 - Review `lessons.md` at session start for this project.
 - After any correction from the user, update `lessons.md` with the pattern.
