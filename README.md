@@ -1,51 +1,84 @@
+<div align="center">
+
 # Car Fuel Live
 
-Car Fuel Live is a planned web application for finding live fuel prices around a user's current location or a searched region in Germany.
+Public web app in progress for finding live fuel prices around a user's location or searched region in Germany.
 
-The project is currently in the foundation stage. The repository already contains early frontend and backend scaffolding, but the first end-to-end user flow is still being built.
+[![Java 21](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](car-fuel-live-backend)
+[![Spring Boot 4](https://img.shields.io/badge/Spring%20Boot-4-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](car-fuel-live-backend)
+[![Vue 3](https://img.shields.io/badge/Vue-3-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](car-fuel-live-frontend)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](car-fuel-live-frontend)
+[![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](car-fuel-live-backend)
+[![Project Status](https://img.shields.io/badge/status-foundation%20stage-C97A00?style=for-the-badge)](#project-status)
 
-## Why This Project
+[![Open Issues](https://img.shields.io/github/issues/jantrw/car-fuel-live?style=flat-square)](https://github.com/jantrw/car-fuel-live/issues)
+[![Closed Issues](https://img.shields.io/github/issues-closed/jantrw/car-fuel-live?style=flat-square)](https://github.com/jantrw/car-fuel-live/issues?q=is%3Aissue+is%3Aclosed)
+[![Last Commit](https://img.shields.io/github/last-commit/jantrw/car-fuel-live/main?style=flat-square)](https://github.com/jantrw/car-fuel-live/commits/main)
+[![Stars](https://img.shields.io/github/stars/jantrw/car-fuel-live?style=flat-square)](https://github.com/jantrw/car-fuel-live/stargazers)
+[![Forks](https://img.shields.io/github/forks/jantrw/car-fuel-live?style=flat-square)](https://github.com/jantrw/car-fuel-live/network/members)
 
-Fuel price tools often hide the simplest question behind clutter: where is the cheapest nearby station for the fuel I need right now?
+[Overview](#overview) •
+[Stack](#stack) •
+[Architecture](#architecture-direction) •
+[Getting Started](#getting-started) •
+[Docs](#documentation) •
+[Roadmap](#roadmap)
 
-Car Fuel Live aims to stay focused:
+</div>
+
+## Overview
+
+Car Fuel Live is being built to answer one simple question fast: where is the cheapest nearby station for the fuel I need right now?
+
+The planned product focuses on:
+
+- browser geolocation on first visit
+- manual search for a city or region
+- live fuel prices for `E5`, `E10`, and `Diesel`
+- quick filtering by radius
+- sorting by price
+- clickable stations with more details
+- backend-only Tankerkonig integration
+
+## What Problem Does This Solve
+
+Finding a fuel station should be simple: check nearby prices, compare options quickly, and move on.
+
+Car Fuel Live is intended to keep that experience focused:
 
 - live fuel prices near the user or a searched location
 - fast filtering by fuel type and radius
 - clear sorting by price
 - no account, no login, no unnecessary friction
 
-## Planned Product Scope
+## Project Status
 
-The initial product direction is:
+This repository is not a finished application yet.
 
-- browser geolocation on first visit
-- manual search for a city or region
-- results for `E5`, `E10`, and `Diesel`
-- radius filters such as `1 km`, `2 km`, and `5 km`
-- sorting by price
-- clickable station entries with more details
-- backend-only integration with the Tankerkonig API
+What already exists:
 
-## Current Status
+- Vue 3 + TypeScript frontend foundation
+- Spring Boot 4 backend foundation
+- PostgreSQL + Flyway backend setup
+- product and architecture documentation
 
-Current repository state:
+What is still in progress:
 
-- frontend foundation exists with Vue 3, TypeScript, Vite, and `shadcn-vue`
-- backend foundation exists with Spring Boot 4, Java 21, Flyway, PostgreSQL, and OpenAPI
-- architecture and product documentation exist
-- production-ready feature flows do not exist yet
+- first end-to-end search-to-results flow
+- live Tankerkonig integration
+- geocoding persistence and request deduplication
+- frontend result views and filtering UX
 
-What is actively being worked on:
+## Stack
 
-- first usable vertical slice from search input to station results
-- backend integration and response handling for live fuel data
-- persistence for cached geocoding and related app data
-- frontend views for search, filters, and result rendering
+| Area | Technology |
+| --- | --- |
+| Frontend | Vue 3, TypeScript, Vite, shadcn-vue |
+| Backend | Spring Boot 4, Java 21, Flyway, OpenAPI |
+| Database | PostgreSQL 17 |
+| External data | Tankerkonig API |
 
 ## Architecture Direction
-
-The intended high-level flow is:
 
 ```text
 Browser (Vue 3 SPA)
@@ -54,19 +87,12 @@ Browser (Vue 3 SPA)
        -> PostgreSQL
 ```
 
-Key constraints:
+Core boundaries:
 
 - the frontend never talks to Tankerkonig directly
-- the API key stays in the backend only
-- freshness matters, so long-lived fuel-price caching is intentionally avoided
-- duplicate location searches should be deduplicated where sensible
-
-## Tech Stack
-
-- Frontend: Vue 3, TypeScript, Vite, shadcn-vue
-- Backend: Spring Boot 4, Java 21, Flyway
-- Database: PostgreSQL 17
-- API documentation: OpenAPI / Swagger UI
+- the Tankerkonig API key stays in the backend only
+- fuel-price freshness is prioritized over aggressive caching
+- identical searches should be deduplicated where it improves efficiency without harming freshness
 
 ## Repository Structure
 
@@ -79,19 +105,19 @@ Key constraints:
 
 ## Getting Started
 
-Repository setup is still being stabilized. Until the first vertical slice exists, local reproduction is best treated as work in progress.
+Local reproduction is still work in progress because the first full vertical slice is not complete yet.
 
-Current planned local commands:
+Current development entry points:
 
 ```powershell
 .\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend bootRun
 npm --prefix .\car-fuel-live-frontend run dev
 ```
 
-Planned local services and tooling:
+Expected supporting services during development:
 
-- PostgreSQL for backend persistence
-- Swagger UI for backend API inspection during development
+- PostgreSQL
+- Swagger UI for backend API inspection
 
 ## Documentation
 
@@ -103,10 +129,11 @@ Planned local services and tooling:
 Near-term priorities:
 
 1. implement the first search-to-results flow
-2. connect the backend to live fuel data
-3. store and reuse geocoding results safely
-4. add verification, security checks, and CI hardening
+2. integrate live fuel data in the backend
+3. persist and reuse geocoding results safely
+4. harden verification, security checks, and CI
 
-## Status Note
+## Notes
 
-If you are visiting this repository early: this is not a finished application yet. It is an actively shaped project with the product direction, stack, and boundaries already defined.
+- This README intentionally describes the actual current state, not the intended finished state.
+- Setup instructions will be expanded once the first usable end-to-end flow exists.
