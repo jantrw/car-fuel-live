@@ -2,7 +2,7 @@
 
 # Car Fuel Live
 
-Public web app in progress for finding live fuel prices around a user's location or searched region in Germany.
+Public web app in progress for finding live fuel prices around a user's city or country context in Germany and nearby Europe.
 
 [![Java 21](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](car-fuel-live-backend)
 [![Spring Boot 4](https://img.shields.io/badge/Spring%20Boot-4-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](car-fuel-live-backend)
@@ -32,8 +32,11 @@ Car Fuel Live is being built to answer one simple question fast: where is the ch
 
 The planned product focuses on:
 
-- browser geolocation on first visit
+- country fallback from browser locale and time zone on first visit
+- major-city price view when the user has not shared a city yet
+- explicit `Use my city` geolocation
 - manual search for a city or region
+- remembered country context across visits
 - live fuel prices for `E5`, `E10`, and `Diesel`
 - quick filtering by radius
 - sorting by price
@@ -46,7 +49,7 @@ Finding a fuel station should be simple: check nearby prices, compare options qu
 
 Car Fuel Live is intended to keep that experience focused:
 
-- live fuel prices near the user or a searched location
+- live fuel prices for the current country context or a searched location
 - fast filtering by fuel type and radius
 - clear sorting by price
 - no account, no login, no unnecessary friction
