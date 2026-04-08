@@ -54,6 +54,16 @@
 - Ask yourself: "Would a staff engineer approve this?"
 
 ## Cross-Module Rules
+### Localization
+- Frontend must support German (`de`) and English (`en`) for all user-facing text.
+- Backend-facing text, API docs, and server-managed messages remain English unless a task explicitly requires localization.
+
+### Location UX & Privacy
+- First-visit country fallback must use browser locale and `Intl.DateTimeFormat().resolvedOptions().timeZone`, not IP geolocation.
+- If browser locale has no region, default the fallback country to Germany.
+- Frontend may persist only the selected country in `localStorage` for later visits. Never persist raw coordinates unless the user explicitly asks for a feature that requires it and the policy is updated first.
+- Browser geolocation must be user-triggered through an explicit action such as `Use my city`. Never trigger geolocation automatically on page load.
+
 ### Security & CI
 - Run `npm audit --audit-level=high` for frontend and `./gradlew dependencyCheckAnalyze` for backend in CI on every push.
 - Never commit secrets, `.env` files, or production configs to the repository.
