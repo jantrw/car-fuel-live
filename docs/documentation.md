@@ -1,13 +1,17 @@
 ## Application Overview
 
 **Name:** Car Fuel Live (working title)
-**Purpose:** A public, no-auth web application that displays real-time fuel prices across Germany for a user's current location or any searched region.
+**Purpose:** A public, no-auth web application that displays real-time fuel prices across Germany and nearby European countries for a user's chosen city or country context.
 
 ---
 
 ## What the App Does
 
-- On first visit, the app requests browser geolocation and displays gas prices for the user's detected region.
+- On first visit, the app derives an initial country fallback from the browser locale and time zone.
+- If the browser locale does not include a region, the default country is Germany.
+- If the user does not share their city, the app displays gas prices for major cities in the selected country.
+- The selected country is stored in `localStorage` so later visits can immediately load country-based results.
+- Users can explicitly choose `Use my city`. Only then does the app request browser geolocation and display gas prices near the detected city.
 - Users can manually enter any city or region. The location is resolved to longitude and latitude.
 - Users can filter results by fuel type: **E5**, **E10**, **Diesel**.
 - Users can filter results by distance: `1km`, `2km`, `5km`.
@@ -34,9 +38,11 @@
 
 ## User Flows
 
-1. Auto-location: user visits, browser prompts for geolocation, frontend sends coordinates to backend, backend queries Tankerkönig, frontend renders station list with prices.
-2. Manual search: user enters city or region, frontend sends query to backend, backend resolves coordinates and queries Tankerkönig, frontend renders station list.
-3. Filter: user selects fuel type and distance, results update in place or via a new backend query depending on implementation.
+1. First visit fallback: frontend reads browser locale and time zone, derives a country if possible, falls back to Germany when locale has no region, and renders prices for major cities in that country.
+2. Remembered country: on later visits, frontend reads the previously selected country from `localStorage` and renders that country's default results without asking for geolocation.
+3. Use my city: user explicitly chooses `Use my city`, browser shows the geolocation permission prompt, frontend sends temporary coordinates to backend, backend queries Tankerkönig, frontend renders nearby station prices.
+4. Manual search: user enters city or region, frontend sends query to backend, backend resolves coordinates and queries Tankerkönig, frontend renders station list.
+5. Filter: user selects fuel type and distance, results update in place or via a new backend query depending on implementation.
 
 ---
 

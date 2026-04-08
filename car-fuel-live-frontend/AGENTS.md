@@ -72,6 +72,14 @@
 
 ---
 
+## Localization
+
+- Frontend must support German (`de`) and English (`en`) for all user-facing text.
+- Do not hardcode user-facing copy directly inside components when a shared translation layer or message source is available.
+- New features must ship both German and English copy together. Do not leave one language incomplete.
+
+---
+
 ## Testing
 
 ### Test Naming Convention
@@ -94,6 +102,8 @@ describe('useGasPrices', () => {
 ## Security
 
 ### Geolocation — Client-Side Rules
+- On first visit, derive the fallback country from `navigator.language` / `Accept-Language` plus `Intl.DateTimeFormat().resolvedOptions().timeZone`.
+- If the locale has no region, default the fallback country to Germany.
 - Request **low accuracy only** (`enableHighAccuracy: false`). City-level radius is sufficient — high accuracy is unnecessary and more invasive under GDPR.
 - Always use sensible timeout and `maximumAge`:
 ```typescript
@@ -109,12 +119,14 @@ navigator.geolocation.getCurrentPosition(
   - `TIMEOUT` → show manual search with retry option
 - Never store raw coordinates in component state longer than needed for the current request.
 - Never send coordinates to any third party. All geo queries go to the Spring Boot backend only.
-- Display a clear consent prompt **before** calling `navigator.geolocation.getCurrentPosition()`.
+- Display a clear in-app consent step before calling `navigator.geolocation.getCurrentPosition()`. Never trigger browser geolocation automatically on page load; call it only after the user actively chooses a location action.
+- The explicit location action should be phrased as `Use my city` or an equivalent user-facing label.
 - Fall back to manual city search gracefully when permission is denied — no silent IP-based fallback.
 
 ### GDPR — Frontend Rules
-- Do not persist coordinates in `localStorage`, `sessionStorage`, or any client-side store.
+- Do not persist raw coordinates in `localStorage`, `sessionStorage`, Pinia, or any other client-side store.
 - Coordinates are used only to trigger a backend request, then discarded.
+- Automatic persistence is limited to the selected country in `localStorage` so later visits can reuse the last country context. Never persist exact geolocation coordinates.
 - Display a minimal privacy notice stating what location data is used for and that it is not stored.
 
 ### API Communication
