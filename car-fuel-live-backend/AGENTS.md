@@ -60,6 +60,7 @@
 - Query parameters: camelCase (e.g., `?fuelType=E5&radius=5`)
 - JSON fields: camelCase (Jackson default — enforce via `spring.jackson.property-naming-strategy=LOWER_CAMEL_CASE`)
 - Never expose raw database IDs in URLs if a stable natural key exists
+- Public API text stays English only. Keep OpenAPI summaries, descriptions, validation messages, and error payload text in English unless a task explicitly requires localized backend responses.
 
 ```
 GET  /api/v1/gas-stations?lat=52.5&lng=13.4&radius=5&fuelType=E5
@@ -203,6 +204,7 @@ Enforce via Spring Security config and/or reverse proxy:
 - Do not store user coordinates persistently. Use for Tankerkönig query, then discard.
 - Do not log IP address + coordinates together. No join key between them.
 - Coordinates travel from backend to Tankerkönig as a radius only, never as raw lat/lng in logs.
+- Client-side persistence is limited to the selected country only. Never persist raw coordinates on behalf of the client.
 - Tankerkönig responses contain station data only — never store personal data alongside them.
 
 ### Logging & Monitoring
