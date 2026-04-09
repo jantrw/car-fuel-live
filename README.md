@@ -74,15 +74,6 @@ What is still in progress:
 - geocoding persistence and request deduplication
 - frontend result views and filtering UX
 
-## Stack
-
-| Area | Technology |
-| --- | --- |
-| Frontend | Vue 3, TypeScript, Vite, shadcn-vue |
-| Backend | Spring Boot 4, Java 21, Flyway, OpenAPI |
-| Database | PostgreSQL 17 |
-| External data | Tankerkonig API |
-
 ## Architecture Direction
 
 ```text
@@ -94,8 +85,6 @@ Browser (Vue 3 SPA)
 
 Core boundaries:
 
-- the frontend never talks to Tankerkonig directly
-- the Tankerkonig API key stays in the backend only
 - fuel-price freshness is prioritized over aggressive caching
 - identical searches should be deduplicated where it improves efficiency without harming freshness
 
@@ -109,8 +98,6 @@ Core boundaries:
 ```
 
 ## Getting Started
-
-Local reproduction is still work in progress because the first full vertical slice is not complete yet.
 
 Current development entry points:
 
