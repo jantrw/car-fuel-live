@@ -4,11 +4,13 @@
 
 Public web app in progress for finding live fuel prices around a user's city in Germany and nearby Europe.
 
-[![Java 21](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](car-fuel-live-backend)
-[![Spring Boot 4](https://img.shields.io/badge/Spring%20Boot-4-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](car-fuel-live-backend)
-[![Vue 3](https://img.shields.io/badge/Vue-3-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](car-fuel-live-frontend)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](car-fuel-live-frontend)
-[![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](car-fuel-live-backend)
+<sub><strong>Tech Stack</strong></sub>
+
+[![Frontend: Vue 3, TypeScript 5, Vite 7](https://img.shields.io/badge/Frontend-Vue%203%20%7C%20TypeScript%205%20%7C%20Vite%207-42B883?style=for-the-badge&logo=vuedotjs&logoColor=white)](car-fuel-live-frontend)
+[![UI: Tailwind CSS 4, shadcn-vue](https://img.shields.io/badge/UI-Tailwind%20CSS%204%20%7C%20shadcn--vue-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](car-fuel-live-frontend)
+[![Backend: Java 21, Spring Boot 4](https://img.shields.io/badge/Backend-Java%2021%20%7C%20Spring%20Boot%204-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](car-fuel-live-backend)
+[![Data: PostgreSQL 17, Flyway](https://img.shields.io/badge/Data-PostgreSQL%2017%20%7C%20Flyway-336791?style=for-the-badge&logo=postgresql&logoColor=white)](car-fuel-live-backend)
+[![API Spec: OpenAPI](https://img.shields.io/badge/API%20Spec-OpenAPI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](car-fuel-live-backend)
 [![Project Status](https://img.shields.io/badge/status-foundation%20stage-C97A00?style=for-the-badge)](#project-status)
 
 [![Open Issues](https://img.shields.io/github/issues/jantrw/car-fuel-live?style=flat-square)](https://github.com/jantrw/car-fuel-live/issues)
