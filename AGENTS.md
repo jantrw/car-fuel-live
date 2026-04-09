@@ -13,6 +13,7 @@
 - Use plan mode for verification steps, not just building.
 - Divide every plan into sequential phases. Each phase maps to exactly one GitHub issue.
 - Create all issues via the GitHub CLI before writing any code unless explicitly waived by the user.
+  - Keep issues simple, concrete, and easy to understand.
 - No project boards, milestones, or labels — issues only.
 
 ### Task Management
