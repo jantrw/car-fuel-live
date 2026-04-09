@@ -2,10 +2,11 @@
 
 **Name:** Car Fuel Live (working title)
 **Purpose:** A public, no-auth web application that displays real-time fuel prices across Germany and nearby European countries for a user's chosen city or country context.
+**Document role:** Agent-facing planning and product reference. This file captures intended behavior and durable requirements before implementation starts.
 
 ---
 
-## What the App Does
+## Planned Product Behavior
 
 - On first visit, the app derives an initial country fallback from the browser locale and time zone.
 - If the browser locale does not include a region, the default country is Germany.
@@ -43,6 +44,34 @@
 3. Use my city: user explicitly chooses `Use my city`, browser shows the geolocation permission prompt, frontend sends temporary coordinates to backend, backend queries Tankerkönig, frontend renders nearby station prices.
 4. Manual search: user enters city or region, frontend sends query to backend, backend resolves coordinates and queries Tankerkönig, frontend renders station list.
 5. Filter: user selects fuel type and distance, results update in place or via a new backend query depending on implementation.
+
+---
+
+## Cross-Module Requirements
+
+### Localization
+- Frontend user-facing text must support German (`de`) and English (`en`).
+- Backend-facing text, API docs, validation messages, and server-managed messages stay English unless a task explicitly requires backend localization.
+
+### Location, Privacy, and UX
+- First-visit country fallback must use browser locale plus `Intl.DateTimeFormat().resolvedOptions().timeZone`.
+- If browser locale has no region, default the fallback country to Germany.
+- Never use IP geolocation for the first-visit fallback.
+- Browser geolocation is opt-in only through an explicit user action such as `Use my city`.
+- Geolocation requests should use low accuracy only. City-level precision is enough.
+- The frontend may persist only the selected country in `localStorage` for later visits.
+- Raw coordinates must not be persisted in `localStorage`, `sessionStorage`, Pinia, or backend storage.
+- The UI should include a minimal privacy notice that explains location is used for the current request and not stored.
+
+### Caching and Freshness
+- Prefer a persisted geocoding cache for repeated manual searches.
+- Deduplicate identical in-flight upstream requests so concurrent searches share one fresh fetch.
+- Do not rely on long-lived fuel-price result caching by default. Price freshness is more important than multi-minute caching.
+
+### Public API Boundary
+- The backend is a public, stateless, no-auth API.
+- The frontend never calls Tankerkönig directly.
+- `TANKERKOENIG_API_KEY` lives only in the backend environment.
 
 ---
 
