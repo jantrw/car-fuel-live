@@ -21,7 +21,6 @@ Public web app in progress for finding live fuel prices around a user's city in 
 
 [Overview](#overview) •
 [Stack](#stack) •
-[Architecture](#architecture-direction) •
 [Getting Started](#getting-started) •
 [Docs](#documentation) •
 [Roadmap](#roadmap)
@@ -74,19 +73,18 @@ What is still in progress:
 - geocoding persistence and request deduplication
 - frontend result views and filtering UX
 
-## Architecture Direction
+## Location Data Model
 
-```text
-Browser (Vue 3 SPA)
-  -> Spring Boot REST API
-       -> Tankerkonig API
-       -> PostgreSQL
-```
+The backend stores a local PostgreSQL location dataset that turns country, place, and German postal-code searches into coordinates the app can use.
 
-Core boundaries:
+| Table | What it stores | Why the app needs it |
+| --- | --- | --- |
+| `location_countries` | Supported European countries with reference coordinates | Lets the app resolve country searches and switch country context cleanly |
+| `location_places` | Seeded European cities, towns, districts, and administrative places with coordinates | Lets the app resolve manual place searches to coordinates for later Tankerkonig requests |
+| `location_place_aliases` | Alternate names, spellings, and normalized search variants for places | Lets the app find places even when users type localized names or alternate spellings |
+| `german_postal_codes` | German postal codes mapped to place names and coordinates | Lets the app resolve German postal-code searches directly to coordinates |
 
-- fuel-price freshness is prioritized over aggressive caching
-- identical searches should be deduplicated where it improves efficiency without harming freshness
+This is an application-level overview, not the full SQL schema. The detailed implementation lives in the backend migrations and docs.
 
 ## Repository Structure
 
@@ -102,6 +100,7 @@ Core boundaries:
 Current development entry points:
 
 ```powershell
+\.\car-fuel-live-backend\scripts\import-location-data.ps1
 .\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend bootRun
 npm --prefix .\car-fuel-live-frontend run dev
 ```
@@ -109,6 +108,7 @@ npm --prefix .\car-fuel-live-frontend run dev
 Expected supporting services during development:
 
 - PostgreSQL
+- initial location seed import for a new or empty database
 - Swagger UI for backend API inspection
 
 ## Documentation
