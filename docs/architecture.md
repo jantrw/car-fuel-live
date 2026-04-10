@@ -6,10 +6,9 @@ Browser (Vue 3 SPA)
   -> localStorage (selected country only)
   -> Location search UI (manual query + autocomplete suggestions for cities, regions, countries)
   -> Spring Boot REST API (/api/v1/...)
-       -> PostgreSQL 17 (seeded location dataset, persisted geocoding cache, suggestion lookup)
+       -> PostgreSQL 17 (seeded Europe place dataset, German postal codes, suggestion lookup, persisted geocoding cache)
        -> Live geocoding provider (fallback only for locations missing from PostgreSQL)
        -> Tankerkönig API (server-side only, API key never leaves backend)
-       -> PostgreSQL 17 (seeded Europe place dataset, German postal codes, persisted geocoding cache)
 ```
 
 ## Boundary Rules

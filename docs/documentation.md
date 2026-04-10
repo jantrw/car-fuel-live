@@ -156,6 +156,7 @@
 
 ### Verification Commands
 - Backend tests: `.\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend test`
+- Backend seed verification includes a PostgreSQL integration test via Testcontainers, so Docker must be available for the full backend test suite.
 - Frontend lint: `npm --prefix .\car-fuel-live-frontend run lint`
 - Frontend build: `npm --prefix .\car-fuel-live-frontend run build`
 - Frontend tests: `npm --prefix .\car-fuel-live-frontend run test -- --run`
