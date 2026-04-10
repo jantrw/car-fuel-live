@@ -140,9 +140,15 @@
 - Start from repo root.
 - Backend: `.\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend bootRun`
 - Database: `docker-compose -f .\car-fuel-live-backend\docker-compose.yml up -d`
-- Location seed import: `.\car-fuel-live-backend\scripts\import-location-data.ps1`
+- Initial location seed: `.\car-fuel-live-backend\scripts\import-location-data.ps1`
 - Frontend: `npm --prefix .\car-fuel-live-frontend run dev`
 - Swagger UI: `http://localhost:8080/swagger-ui.html` in development, no authentication required
+
+### Location Dataset Setup
+- `import-location-data.ps1` is a setup and maintenance script, not part of the normal application runtime.
+- Run it once after provisioning a new or empty PostgreSQL database so the local location dataset is available.
+- Run it again only when the database was reset or when the location dataset should be refreshed deliberately.
+- The script downloads the source data, prepares staging files, and loads the target PostgreSQL tables for countries, places, aliases, and German postal codes.
 
 ### Frontend Foundation
 - The frontend foundation uses Vue 3 with TypeScript enabled.
