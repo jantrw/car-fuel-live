@@ -9,6 +9,7 @@ Browser (Vue 3 SPA)
        -> PostgreSQL 17 (seeded location dataset, persisted geocoding cache, suggestion lookup)
        -> Live geocoding provider (fallback only for locations missing from PostgreSQL)
        -> Tankerkönig API (server-side only, API key never leaves backend)
+       -> PostgreSQL 17 (seeded Europe place dataset, German postal codes, persisted geocoding cache)
 ```
 
 ## Boundary Rules
