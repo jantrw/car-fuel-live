@@ -1,3 +1,12 @@
+<#
+.SYNOPSIS
+Seeds the local PostgreSQL database with the initial location dataset.
+
+.DESCRIPTION
+Use this script after creating a new or empty database, or when the location dataset
+must be refreshed deliberately. It is not part of the normal application runtime.
+#>
+
 param(
     [string]$ContainerName = 'car-fuel-live-backend-postgres-1',
     [string]$BackendDirectory = (Split-Path -Parent $PSScriptRoot)
@@ -83,8 +92,16 @@ if ([string]::IsNullOrWhiteSpace($dbUser) -or [string]::IsNullOrWhiteSpace($dbPa
 }
 
 $migrationFile = Join-Path $BackendDirectory 'src\main\resources\db\migration\V1__create_location_seed_schema.sql'
+$seedStageSqlFile = Join-Path $BackendDirectory 'src\main\resources\db\seed\location_seed_stage_tables.sql'
+$seedTransformSqlFile = Join-Path $BackendDirectory 'src\main\resources\db\seed\location_seed_transform.sql'
 if (-not (Test-Path $migrationFile)) {
     throw "Missing migration file at $migrationFile"
+}
+if (-not (Test-Path $seedStageSqlFile)) {
+    throw "Missing seed stage SQL file at $seedStageSqlFile"
+}
+if (-not (Test-Path $seedTransformSqlFile)) {
+    throw "Missing seed transform SQL file at $seedTransformSqlFile"
 }
 
 $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("car-fuel-live-location-seed-" + [guid]::NewGuid())
@@ -309,178 +326,17 @@ finally {
     $postalWriter.Dispose()
 }
 
+$stageSql = Get-Content -Raw $seedStageSqlFile
+$transformSql = Get-Content -Raw $seedTransformSqlFile
+
 $loadSql = @"
-CREATE TEMP TABLE location_country_stage (
-    country_code TEXT,
-    iso3_code TEXT,
-    numeric_code TEXT,
-    name TEXT,
-    normalized_name TEXT,
-    capital_name TEXT,
-    population TEXT,
-    continent_code TEXT,
-    geoname_id TEXT
-);
-
-CREATE TEMP TABLE location_place_stage (
-    geoname_id TEXT,
-    country_code TEXT,
-    name TEXT,
-    ascii_name TEXT,
-    normalized_name TEXT,
-    normalized_ascii_name TEXT,
-    latitude TEXT,
-    longitude TEXT,
-    feature_class TEXT,
-    feature_code TEXT,
-    admin1_code TEXT,
-    admin2_code TEXT,
-    admin3_code TEXT,
-    admin4_code TEXT,
-    population TEXT,
-    timezone TEXT,
-    source_modified_on TEXT,
-    alternate_names TEXT
-);
-
-CREATE TEMP TABLE location_place_alias_stage (
-    place_geoname_id TEXT,
-    alias_name TEXT,
-    normalized_alias_name TEXT
-);
-
-CREATE TEMP TABLE german_postal_code_stage (
-    country_code TEXT,
-    postal_code TEXT,
-    place_name TEXT,
-    normalized_place_name TEXT,
-    admin1_name TEXT,
-    admin2_name TEXT,
-    admin3_name TEXT,
-    latitude TEXT,
-    longitude TEXT,
-    accuracy TEXT
-);
-
+$stageSql
 COPY location_country_stage FROM '/tmp/countries.tsv' WITH (FORMAT text, DELIMITER E'\t');
 COPY location_place_stage FROM '/tmp/places.tsv' WITH (FORMAT text, DELIMITER E'\t');
 COPY location_place_alias_stage FROM '/tmp/place_aliases.tsv' WITH (FORMAT text, DELIMITER E'\t');
 COPY german_postal_code_stage FROM '/tmp/de_postal_codes.tsv' WITH (FORMAT text, DELIMITER E'\t');
 
-TRUNCATE TABLE location_place_aliases, location_places, german_postal_codes, location_countries RESTART IDENTITY CASCADE;
-
-INSERT INTO location_countries (
-    country_code,
-    geoname_id,
-    name,
-    normalized_name,
-    iso3_code,
-    numeric_code,
-    capital_name,
-    continent_code,
-    latitude,
-    longitude,
-    population
-)
-SELECT
-    stage.country_code::CHAR(2),
-    stage.geoname_id::BIGINT,
-    stage.name,
-    stage.normalized_name,
-    NULLIF(stage.iso3_code, '')::CHAR(3),
-    NULLIF(stage.numeric_code, '')::INTEGER,
-    NULLIF(stage.capital_name, ''),
-    stage.continent_code::CHAR(2),
-    place.latitude::DOUBLE PRECISION,
-    place.longitude::DOUBLE PRECISION,
-    NULLIF(stage.population, '')::BIGINT
-FROM location_country_stage stage
-LEFT JOIN location_place_stage place
-    ON place.geoname_id = stage.geoname_id
-   AND place.feature_code = 'PCLI';
-
-INSERT INTO location_places (
-    geoname_id,
-    country_code,
-    name,
-    ascii_name,
-    normalized_name,
-    normalized_ascii_name,
-    latitude,
-    longitude,
-    feature_class,
-    feature_code,
-    admin1_code,
-    admin2_code,
-    admin3_code,
-    admin4_code,
-    population,
-    timezone,
-    source_modified_on,
-    alternate_names
-)
-SELECT
-    stage.geoname_id::BIGINT,
-    stage.country_code::CHAR(2),
-    stage.name,
-    stage.ascii_name,
-    stage.normalized_name,
-    stage.normalized_ascii_name,
-    stage.latitude::DOUBLE PRECISION,
-    stage.longitude::DOUBLE PRECISION,
-    stage.feature_class::CHAR(1),
-    stage.feature_code,
-    NULLIF(stage.admin1_code, ''),
-    NULLIF(stage.admin2_code, ''),
-    NULLIF(stage.admin3_code, ''),
-    NULLIF(stage.admin4_code, ''),
-    COALESCE(NULLIF(stage.population, ''), '0')::BIGINT,
-    NULLIF(stage.timezone, ''),
-    NULLIF(stage.source_modified_on, '')::DATE,
-    NULLIF(stage.alternate_names, '')
-FROM location_place_stage stage
-WHERE stage.feature_code <> 'PCLI';
-
-INSERT INTO location_place_aliases (
-    place_geoname_id,
-    alias_name,
-    normalized_alias_name
-)
-SELECT DISTINCT
-    stage.place_geoname_id::BIGINT,
-    stage.alias_name,
-    stage.normalized_alias_name
-FROM location_place_alias_stage stage
-JOIN location_places place
-    ON place.geoname_id = stage.place_geoname_id::BIGINT
-WHERE stage.alias_name <> ''
-  AND stage.normalized_alias_name <> '';
-
-INSERT INTO german_postal_codes (
-    country_code,
-    postal_code,
-    place_name,
-    normalized_place_name,
-    admin1_name,
-    admin2_name,
-    admin3_name,
-    latitude,
-    longitude,
-    accuracy
-)
-SELECT
-    'DE',
-    stage.postal_code,
-    stage.place_name,
-    stage.normalized_place_name,
-    NULLIF(stage.admin1_name, ''),
-    NULLIF(stage.admin2_name, ''),
-    NULLIF(stage.admin3_name, ''),
-    stage.latitude::DOUBLE PRECISION,
-    stage.longitude::DOUBLE PRECISION,
-    NULLIF(stage.accuracy, '')::SMALLINT
-FROM german_postal_code_stage stage
-WHERE stage.country_code = 'DE';
+$transformSql
 "@
 
 [System.IO.File]::WriteAllText($loadSqlFile, $loadSql, $utf8WithoutBom)

@@ -20,7 +20,7 @@
 - Each gas station entry is clickable and links to a site with more details.
 - No login, no authentication, no user accounts.
 - If the user searches the exact same location again, the app should avoid a duplicate upstream API call by using cached or stored data.
-- Manual location search should use a persisted geocoding cache for major cities in Germany and major cities in Europe.
+- Manual location search should use a persisted local location dataset for European countries and places plus German postal codes.
 - The backend should deduplicate identical in-flight search requests so concurrent users share one fresh upstream fetch.
 - The app should not rely on long-lived fuel-price result caching by default because price freshness matters.
 
@@ -122,8 +122,15 @@
 - Start from repo root.
 - Backend: `.\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend bootRun`
 - Database: `docker-compose -f .\car-fuel-live-backend\docker-compose.yml up -d`
+- Initial location seed: `.\car-fuel-live-backend\scripts\import-location-data.ps1`
 - Frontend: `npm --prefix .\car-fuel-live-frontend run dev`
 - Swagger UI: `http://localhost:8080/swagger-ui.html` in development, no authentication required
+
+### Location Dataset Setup
+- `import-location-data.ps1` is a setup and maintenance script, not part of the normal application runtime.
+- Run it once after provisioning a new or empty PostgreSQL database so the local location dataset is available.
+- Run it again only when the database was reset or when the location dataset should be refreshed deliberately.
+- The script downloads the source data, prepares staging files, and loads the target PostgreSQL tables for countries, places, aliases, and German postal codes.
 
 ### Frontend Foundation
 - The frontend foundation uses Vue 3 with TypeScript enabled.
