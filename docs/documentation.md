@@ -14,13 +14,16 @@
 - The selected country is stored in `localStorage` so later visits can immediately load country-based results.
 - Users can explicitly choose `Use my city`. Only then does the app request browser geolocation and display gas prices near the detected city.
 - Users can manually enter any city or region. The location is resolved to longitude and latitude.
+- Manual search must provide autocomplete suggestions while the user types and show matching cities, regions, and countries.
+- The manual search suggestion list should appear after short partial inputs such as `Be` and show matching results such as `Berlin`, `Bern`, and `Belgium`, then update as the user continues typing.
+- Selecting a city or region from manual search should use stored coordinates directly. Selecting a country should switch the country context and load that country's default major-city results instead of querying Tankerkönig with a country centroid.
 - Users can filter results by fuel type: **E5**, **E10**, **Diesel**.
 - Users can filter results by distance: `1km`, `2km`, `5km`.
 - Users can order results by price.
 - Each gas station entry is clickable and links to a site with more details.
 - No login, no authentication, no user accounts.
 - If the user searches the exact same location again, the app should avoid a duplicate upstream API call by using cached or stored data.
-- Manual location search should use a persisted geocoding cache for major cities in Germany and major cities in Europe.
+- Manual location search should use a persisted local location dataset for European countries and places plus German postal codes.
 - The backend should deduplicate identical in-flight search requests so concurrent users share one fresh upstream fetch.
 - The app should not rely on long-lived fuel-price result caching by default because price freshness matters.
 
@@ -42,7 +45,7 @@
 1. First visit fallback: frontend reads browser locale and time zone, derives a country if possible, falls back to Germany when locale has no region, and renders prices for major cities in that country.
 2. Remembered country: on later visits, frontend reads the previously selected country from `localStorage` and renders that country's default results without asking for geolocation.
 3. Use my city: user explicitly chooses `Use my city`, browser shows the geolocation permission prompt, frontend sends temporary coordinates to backend, backend queries Tankerkönig, frontend renders nearby station prices.
-4. Manual search: user enters city or region, frontend sends query to backend, backend resolves coordinates and queries Tankerkönig, frontend renders station list.
+4. Manual search: user enters part of a city, region, or country name, frontend shows matching suggestions, user selects one suggestion or completes the query, frontend sends the resolved query to backend, backend resolves coordinates and queries Tankerkönig, frontend renders station list.
 5. Filter: user selects fuel type and distance, results update in place or via a new backend query depending on implementation.
 
 ---
@@ -62,11 +65,26 @@
 - The frontend may persist only the selected country in `localStorage` for later visits.
 - Raw coordinates must not be persisted in `localStorage`, `sessionStorage`, Pinia, or backend storage.
 - The UI should include a minimal privacy notice that explains location is used for the current request and not stored.
+- Manual search should provide an accessible autocomplete dropdown for partial queries and support matching cities, regions, and countries.
 
 ### Caching and Freshness
 - Prefer a persisted geocoding cache for repeated manual searches.
+- Reuse the persisted geocoding cache to serve frequent autocomplete suggestions when possible.
 - Deduplicate identical in-flight upstream requests so concurrent searches share one fresh fetch.
 - Do not rely on long-lived fuel-price result caching by default. Price freshness is more important than multi-minute caching.
+
+### Location Search and Geocoding
+- PostgreSQL should hold a seeded GeoNames-based location dataset for European countries and places plus German postal codes.
+- The seeded dataset is the primary source for manual search suggestions and coordinate resolution. Live geocoding is a fallback path, not the default path.
+- Each stored location entry should include at least: location type (`country`, `region`, `city`), canonical display name, normalized search key, aliases, country code, optional admin region, latitude, longitude, source, ranking metadata, and cache freshness metadata.
+- Manual search should start suggestions after a short partial input and query the backend for ranked matches from PostgreSQL first.
+- Suggestion ranking should favor exact matches, then prefix matches, then alias matches, then popularity and country relevance.
+- For Germany, support local resolution of postal codes, cities, places, and the country itself from the seeded dataset without a live lookup.
+- When a selected or submitted city or region already exists in PostgreSQL, the backend should use the stored coordinates immediately and continue to Tankerkönig without a live geocoding call.
+- When a selected or submitted country already exists in PostgreSQL, the frontend should switch to that country context and render the major-city defaults for that country.
+- If a submitted location is not already stored, the backend should call a live geocoding provider, store the normalized result in PostgreSQL, and reuse it for later searches.
+- Live geocoding fallback must be optimized for low latency, use aggressive request timeouts, and deduplicate identical in-flight lookups so repeated misses do not stall the user experience.
+- Autocomplete must never depend on a slow live geocoding request before local PostgreSQL matches can be shown.
 
 ### Public API Boundary
 - The backend is a public, stateless, no-auth API.
@@ -122,6 +140,7 @@
 - Start from repo root.
 - Backend: `.\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend bootRun`
 - Database: `docker-compose -f .\car-fuel-live-backend\docker-compose.yml up -d`
+- Location seed import: `.\car-fuel-live-backend\scripts\import-location-data.ps1`
 - Frontend: `npm --prefix .\car-fuel-live-frontend run dev`
 - Swagger UI: `http://localhost:8080/swagger-ui.html` in development, no authentication required
 
