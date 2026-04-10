@@ -6,7 +6,7 @@ Browser (Vue 3 SPA)
   -> localStorage (selected country only)
   -> Spring Boot REST API (/api/v1/...)
        -> Tankerkönig API (server-side only, API key never leaves backend)
-       -> PostgreSQL 17 (persisted geocoding cache and supporting persistence)
+       -> PostgreSQL 17 (seeded Europe place dataset, German postal codes, persisted geocoding cache)
 ```
 
 ## Boundary Rules
