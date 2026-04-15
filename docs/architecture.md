@@ -13,12 +13,12 @@ Spring Boot backend
 PostgreSQL 17 location dataset
   -> Flyway schema for countries, places, place aliases, German postal codes
   -> import script loads GeoNames Europe data into PostgreSQL
-  -> intended as the only location resolution source for manual search
+  -> DB-only location source for manual search
 ```
 
 ## Current Module State
 
-- Frontend currently contains the default Vue app foundation plus base CSS and a small `shadcn-vue` button setup.
+- Frontend currently contains the default Vue app foundation, base CSS, and a small `shadcn-vue` button setup.
 - Backend currently contains the Spring Boot entrypoint and a stateless `permitAll` security configuration.
 - No backend controller, service, repository, or Tankerkönig client is implemented yet.
 - No frontend location search flow, geolocation flow, localization flow, or country persistence flow is implemented yet.
@@ -26,7 +26,7 @@ PostgreSQL 17 location dataset
 ## Current Data Layer
 
 - `V1__create_location_seed_schema.sql` creates `location_countries`, `location_places`, `location_place_aliases`, and `german_postal_codes`.
-- `import-location-data.ps1` downloads GeoNames source files, filters Europe rows, generates TSV staging files, and loads them into PostgreSQL.
+- `import-location-data.ps1` downloads GeoNames files, filters Europe rows, generates TSV staging files, and loads them into PostgreSQL.
 - The seeded dataset stores normalized search text plus latitude and longitude so manual search can resolve text locally from the database.
 - No live geocoding provider is part of the current architecture.
 
