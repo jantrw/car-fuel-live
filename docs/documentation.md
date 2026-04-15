@@ -22,8 +22,6 @@
 - Users can order results by price.
 - Each gas station entry is clickable and links to a site with more details.
 - No login, no authentication, no user accounts.
-- If the user searches the exact same location again, the app should avoid a duplicate upstream API call by reusing stored coordinates and deduplicating identical in-flight upstream requests.
-- Manual location search should use a seeded local PostgreSQL dataset for European countries, administrative/place rows, place aliases, and German postal codes.
 - The backend should deduplicate identical in-flight search requests so concurrent users share one fresh upstream fetch.
 - The app should not rely on long-lived fuel-price result caching by default because price freshness matters.
 
@@ -124,8 +122,6 @@
   - Bulk or mass-data style live usage can lead to blocked requests or disabled API keys.
   - Tankerkönig data is delivered under `CC BY 4.0`; the product must include attribution.
   - MTS-K usage conditions apply and must be respected by the product.
-- `TANKERKOENIG_API_KEY` lives only in the backend environment.
-- The frontend never calls Tankerkönig directly.
 - On upstream failure, return a structured error DTO to the client and log full details internally.
 
 ---

@@ -22,7 +22,6 @@ PostgreSQL 17 location dataset
 - Backend currently contains the Spring Boot entrypoint and a stateless `permitAll` security configuration.
 - No backend controller, service, repository, or Tankerkönig client is implemented yet.
 - No frontend location search flow, geolocation flow, localization flow, or country persistence flow is implemented yet.
-- The current repo already contains the PostgreSQL location schema and the import path for Europe location seed data.
 
 ## Current Data Layer
 
