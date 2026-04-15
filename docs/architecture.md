@@ -1,43 +1,52 @@
-## Architecture Direction
+## Current Architecture
 
 ```text
-Browser (Vue 3 SPA)
-  -> Locale/time zone bootstrap (browser locale + Intl time zone -> country fallback, default Germany)
-  -> localStorage (selected country only)
-  -> Location search UI (manual query + autocomplete suggestions for cities, regions, countries)
-  -> Spring Boot REST API (/api/v1/...)
-       -> PostgreSQL 17 (seeded Europe place dataset, German postal codes, suggestion lookup, persisted geocoding cache)
-       -> Live geocoding provider (fallback only for locations missing from PostgreSQL)
-       -> Tankerkönig API (server-side only, API key never leaves backend)
+Browser (Vue 3 + Vite starter frontend)
+  -> minimal SPA foundation in `car-fuel-live-frontend/src`
+  -> shared UI base with shadcn-vue button scaffold
+
+Spring Boot backend
+  -> `BackendApplication`
+  -> stateless public API security via `SecurityConfig`
+  -> no domain endpoints or Tankerkönig integration implemented yet
+
+PostgreSQL 17 location dataset
+  -> Flyway schema for countries, places, place aliases, German postal codes
+  -> import script loads GeoNames Europe data into PostgreSQL
+  -> intended as the only location resolution source for manual search
 ```
 
-## Boundary Rules
+## Current Module State
 
-- The backend is a public, stateless, no-auth API.
-- The frontend derives the first-visit country fallback from browser locale and time zone only. Do not use IP geolocation.
-- If browser locale has no region, default the first-visit country to Germany.
-- The frontend may persist only the selected country in `localStorage`. Never persist raw coordinates.
-- Browser geolocation is opt-in only through an explicit `Use my city` action. Never trigger geolocation automatically on page load.
-- Browser geolocation should use low accuracy only. City-level precision is sufficient.
-- The frontend should show a minimal privacy notice explaining that location is used for the current request and not stored.
-- Manual search should use a suggestion flow that returns matching cities, regions, and countries for partial inputs such as `Be`, including results such as `Berlin`, `Bern`, and `Belgium`.
-- The Vue frontend never contacts Tankerkönig directly.
-- The Spring Boot backend proxies all Tankerkönig access.
-- The Tankerkönig API key must never leave the backend.
-- Prefer a persisted geocoding cache for repeated manual searches.
-- Reuse the geocoding cache to support frequent location suggestion lookups before falling back to a live geocoding source.
-- Deduplicate identical in-flight upstream requests so concurrent requests share one fresh upstream fetch.
-- Do not rely on long-lived fuel-price result caching by default. Freshness is more important than multi-minute caching.
-- Frontend user-facing text must support German (`de`) and English (`en`).
-- Backend/API text, OpenAPI content, validation messages, and server-managed messages stay English unless a task explicitly requires backend localization.
+- Frontend currently contains the default Vue app foundation plus base CSS and a small `shadcn-vue` button setup.
+- Backend currently contains the Spring Boot entrypoint and a stateless `permitAll` security configuration.
+- No backend controller, service, repository, or Tankerkönig client is implemented yet.
+- No frontend location search flow, geolocation flow, localization flow, or country persistence flow is implemented yet.
+- The current repo already contains the PostgreSQL location schema and the import path for Europe location seed data.
 
-## Location Resolution Strategy
+## Current Data Layer
 
-1. The backend keeps PostgreSQL as the primary location lookup store for manual search.
-2. PostgreSQL is seeded from GeoNames with European countries, European administrative/place rows, and German postal codes so the normal search path stays local and fast.
-3. Stored location rows must contain normalized search text, aliases, country code, optional admin codes, coordinates, source metadata, and ranking fields.
-4. Manual search suggestions query PostgreSQL first and return ranked matches for short partial inputs. Use normalized prefix-friendly search and suitable indexes so autocomplete remains low latency.
-5. Selecting a cached city or region returns stored coordinates directly for the next Tankerkönig request.
-6. Selecting a cached country changes the frontend country context and loads that country's default major-city result set instead of querying Tankerkönig with a country centroid.
-7. If a submitted location is missing from PostgreSQL, the backend performs one live geocoding lookup, stores the normalized result, and reuses it for later searches.
-8. Live geocoding is fallback only. It must use short timeouts and in-flight deduplication so cache misses do not create long waits or duplicate upstream calls.
+- `V1__create_location_seed_schema.sql` creates `location_countries`, `location_places`, `location_place_aliases`, and `german_postal_codes`.
+- `import-location-data.ps1` downloads GeoNames source files, filters Europe rows, generates TSV staging files, and loads them into PostgreSQL.
+- The seeded dataset stores normalized search text plus latitude and longitude so manual search can resolve text locally from the database.
+- No live geocoding provider is part of the current architecture.
+
+## PostgreSQL Schema
+
+- `location_countries`
+  Holds one row per seeded European country. Primary key is `country_code`. Columns: `geoname_id`, `name`, `normalized_name`, `iso3_code`, `numeric_code`, `capital_name`, `continent_code`, optional `latitude`/`longitude`, optional `population`, and `created_at`.
+- `location_places`
+  Holds GeoNames administrative and populated place rows. Primary key is `geoname_id`. Foreign key `country_code -> location_countries.country_code`. Columns: `name`, `ascii_name`, `normalized_name`, `normalized_ascii_name`, `latitude`, `longitude`, `feature_class`, `feature_code`, optional `admin1_code` to `admin4_code`, `population`, optional `timezone`, optional `source_modified_on`, optional `alternate_names`, and `created_at`.
+- `location_place_aliases`
+  Holds searchable aliases for places. Composite primary key is `(place_geoname_id, alias_name)`. Foreign key `place_geoname_id -> location_places.geoname_id` with `ON DELETE CASCADE`. Columns: `alias_name`, `normalized_alias_name`, and `created_at`.
+- `german_postal_codes`
+  Holds German postal-code lookups only. Composite primary key is `(postal_code, place_name)`. `country_code` is constrained to `DE`. Columns: `place_name`, `normalized_place_name`, optional `admin1_name` to `admin3_name`, `latitude`, `longitude`, optional `accuracy`, and `created_at`.
+
+## Search-Relevant Indexes
+
+- `location_countries.normalized_name` for country-name lookup.
+- `location_places.country_code` for country-scoped place queries.
+- `location_places.normalized_name` and `location_places.normalized_ascii_name` for primary place search.
+- `location_places.feature_code` for filtering by GeoNames feature type.
+- `location_place_aliases.normalized_alias_name` for alias matches.
+- `german_postal_codes.normalized_place_name` for German postal-code place lookup.
