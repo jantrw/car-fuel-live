@@ -8,8 +8,8 @@ must be refreshed deliberately. It is not part of the normal application runtime
 #>
 
 param(
-    [string]$ContainerName = 'car-fuel-live-backend-postgres-1',
-    [string]$BackendDirectory = (Split-Path -Parent $PSScriptRoot)
+    [string]$BackendDirectory = (Split-Path -Parent $PSScriptRoot),
+    [string]$PostgresServiceName = 'postgres'
 )
 
 Set-StrictMode -Version Latest
@@ -66,9 +66,27 @@ function Get-TabField {
     return $Fields[$Index]
 }
 
+function Resolve-PostgresContainerId {
+    param(
+        [string]$ComposeFile,
+        [string]$EnvironmentFile,
+        [string]$ServiceName
+    )
+
+    $containerId = (& docker compose --env-file $EnvironmentFile -f $ComposeFile ps -q $ServiceName).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw "Resolving the docker compose service '$ServiceName' failed."
+    }
+    if ([string]::IsNullOrWhiteSpace($containerId)) {
+        throw "No running container found for docker compose service '$ServiceName'. Start the database first with 'docker compose -f $ComposeFile up -d'."
+    }
+
+    return $containerId
+}
+
 $environmentFile = Join-Path $BackendDirectory '.env'
 if (-not (Test-Path $environmentFile)) {
-    throw "Missing backend .env file at $environmentFile"
+    throw "Missing backend .env file at $environmentFile. Copy .env.example to .env first."
 }
 
 $environmentValues = @{}
@@ -90,6 +108,12 @@ $dbName = $environmentValues['DB_NAME']
 if ([string]::IsNullOrWhiteSpace($dbUser) -or [string]::IsNullOrWhiteSpace($dbPassword) -or [string]::IsNullOrWhiteSpace($dbName)) {
     throw 'DB_USER, DB_PASSWORD, and DB_NAME must be present in the backend .env file.'
 }
+
+$composeFile = Join-Path $BackendDirectory 'docker-compose.yml'
+if (-not (Test-Path $composeFile)) {
+    throw "Missing docker compose file at $composeFile"
+}
+$containerId = Resolve-PostgresContainerId -ComposeFile $composeFile -EnvironmentFile $environmentFile -ServiceName $PostgresServiceName
 
 $migrationFile = Join-Path $BackendDirectory 'src\main\resources\db\migration\V1__create_location_seed_schema.sql'
 $seedStageSqlFile = Join-Path $BackendDirectory 'src\main\resources\db\seed\location_seed_stage_tables.sql'
@@ -342,21 +366,21 @@ $transformSql
 [System.IO.File]::WriteAllText($loadSqlFile, $loadSql, $utf8WithoutBom)
 
 Write-Host 'Copying schema and generated files into PostgreSQL container...'
-docker cp $migrationFile "${ContainerName}:/tmp/V1__create_location_seed_schema.sql" | Out-Null
-docker cp $countriesOutput "${ContainerName}:/tmp/countries.tsv" | Out-Null
-docker cp $placesOutput "${ContainerName}:/tmp/places.tsv" | Out-Null
-docker cp $aliasesOutput "${ContainerName}:/tmp/place_aliases.tsv" | Out-Null
-docker cp $postalCodesOutput "${ContainerName}:/tmp/de_postal_codes.tsv" | Out-Null
-docker cp $loadSqlFile "${ContainerName}:/tmp/load-location-data.sql" | Out-Null
+docker cp $migrationFile "${containerId}:/tmp/V1__create_location_seed_schema.sql" | Out-Null
+docker cp $countriesOutput "${containerId}:/tmp/countries.tsv" | Out-Null
+docker cp $placesOutput "${containerId}:/tmp/places.tsv" | Out-Null
+docker cp $aliasesOutput "${containerId}:/tmp/place_aliases.tsv" | Out-Null
+docker cp $postalCodesOutput "${containerId}:/tmp/de_postal_codes.tsv" | Out-Null
+docker cp $loadSqlFile "${containerId}:/tmp/load-location-data.sql" | Out-Null
 
 Write-Host 'Applying schema...'
-docker exec -e PGPASSWORD=$dbPassword $ContainerName sh -lc "psql -v ON_ERROR_STOP=1 -U '$dbUser' -d '$dbName' -f /tmp/V1__create_location_seed_schema.sql" | Out-Null
+docker exec -e PGPASSWORD=$dbPassword $containerId sh -lc "psql -v ON_ERROR_STOP=1 -U '$dbUser' -d '$dbName' -f /tmp/V1__create_location_seed_schema.sql" | Out-Null
 if ($LASTEXITCODE -ne 0) {
     throw 'Applying the location schema failed.'
 }
 
 Write-Host 'Loading location dataset into PostgreSQL...'
-docker exec -e PGPASSWORD=$dbPassword $ContainerName sh -lc "psql -v ON_ERROR_STOP=1 -U '$dbUser' -d '$dbName' -f /tmp/load-location-data.sql" | Out-Null
+docker exec -e PGPASSWORD=$dbPassword $containerId sh -lc "psql -v ON_ERROR_STOP=1 -U '$dbUser' -d '$dbName' -f /tmp/load-location-data.sql" | Out-Null
 if ($LASTEXITCODE -ne 0) {
     throw 'Loading the location dataset failed.'
 }

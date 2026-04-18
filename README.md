@@ -97,9 +97,18 @@ This is an application-level overview, not the full SQL schema. The detailed imp
 
 ## Getting Started
 
+Backend setup before first start:
+
+```powershell
+Copy-Item .\car-fuel-live-backend\.env.example .\car-fuel-live-backend\.env
+```
+
+Set at least `DB_USER`, `DB_PASSWORD`, and `DB_NAME` in `car-fuel-live-backend/.env`. Keep `TANKERKOENIG_API_KEY` empty until you work on live fuel-price integration.
+
 Current development entry points:
 
 ```powershell
+docker compose -f .\car-fuel-live-backend\docker-compose.yml up -d
 \.\car-fuel-live-backend\scripts\import-location-data.ps1
 .\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend bootRun
 npm --prefix .\car-fuel-live-frontend run dev
