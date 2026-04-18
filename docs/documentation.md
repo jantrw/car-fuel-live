@@ -22,8 +22,10 @@
 - Users can order results by price.
 - Each gas station entry should link to more details.
 - No login, no authentication, no user accounts.
-- The backend should deduplicate identical in-flight search requests so concurrent users share one upstream fetch.
+- The backend should deduplicate identical in-flight location lookups and identical in-flight Tankerkönig requests so concurrent users share one active computation per application node.
+- The backend may keep a small in-memory coordinate cache for the largest European cities and the most common German cities so repeated known-city searches can skip unnecessary PostgreSQL lookups.
 - Do not rely on long-lived fuel-price result caching by default. Price freshness matters more.
+- Public search endpoints should enforce throttling and request limits so abusive traffic is rejected before it can spam the database or Tankerkönig.
 
 ---
 
@@ -68,6 +70,7 @@
 ### Location Search and Geocoding
 - PostgreSQL should hold seeded GeoNames data for European countries, administrative/place rows, place aliases, and German postal codes.
 - The seeded dataset is the only source for manual search suggestions and coordinate resolution.
+- Do not add a broad second geocoding source. If a cache exists, keep it limited to canonical coordinates for the largest European cities and the most common German cities and warm it from PostgreSQL.
 - `location_countries` should store `country_code`, `geoname_id`, `name`, `normalized_name`, `iso3_code`, `numeric_code`, `capital_name`, `continent_code`, optional `latitude`/`longitude`, optional `population`, and `created_at`.
 - `location_places` should store `geoname_id`, `country_code`, `name`, `ascii_name`, `normalized_name`, `normalized_ascii_name`, `latitude`, `longitude`, `feature_class`, `feature_code`, optional `admin1_code` to `admin4_code`, `population`, optional `timezone`, optional `source_modified_on`, optional `alternate_names`, and `created_at`.
 - `location_place_aliases` should store `place_geoname_id`, `alias_name`, `normalized_alias_name`, and `created_at`.
@@ -84,6 +87,7 @@
 - The backend is a public, stateless, no-auth API.
 - The frontend never calls Tankerkönig directly.
 - `TANKERKOENIG_API_KEY` lives only in the backend environment.
+- Public search and detail endpoints must enforce rate limits and bounded result sizes.
 
 ---
 

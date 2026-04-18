@@ -30,8 +30,9 @@
 
 - Use Flyway for DB migrations. Migration scripts live in src/main/resources/db/migration/, named V<n>__<description>.sql. Never edit an existing migration — always add a new one.
 - Apply `.codex/skills/spring-data-jpa/SKILL.md` for repository design, projections, query patterns, relationships, and persistence performance work.
-- Persist a geocoding cache for major cities in Germany and major cities in Europe so repeated manual searches avoid redundant geocoding lookups.
-- Keep the geocoding cache normalized and refreshable. Store canonical search name, country, coordinates, source, and cache metadata.
+- Treat the seeded PostgreSQL location dataset as the source of truth for manual location resolution.
+- A small in-memory coordinate cache is allowed only for the largest European cities and the most common German cities when it avoids repeated DB lookups for well-known locations. Warm it from PostgreSQL, keep it bounded and refreshable, and limit it to canonical city-to-coordinate mappings.
+- Deduplicate identical in-flight location lookups per application node so concurrent callers share one active DB lookup instead of opening duplicate queries.
 
 ---
 
@@ -172,10 +173,9 @@ Enforce via Spring Security config and/or reverse proxy:
   - Fuel values can be `false` when a station does not offer that fuel.
   - `prices.php` can return station statuses `open`, `closed`, and `no prices`.
   - `detail.php` fields such as `openingTimes`, `overrides`, `wholeDay`, and `state` are optional.
-- Persist a geocoding cache so repeated manual searches avoid redundant geocoding lookups.
-- Deduplicate in-flight identical upstream requests so concurrent callers share one fresh Tankerkönig request.
+- Deduplicate identical in-flight location lookups and identical in-flight Tankerkönig requests per application node so concurrent callers share one fresh DB or upstream request.
 - Do not rely on long-lived fuel-price result caching by default. Freshness is more important than multi-minute response caching.
-- If a user spams searches, the cache absorbs it — never forward every request as a live API call.
+- If a user spams searches, rate limiting and in-flight deduplication absorb it. Do not depend on the bounded city cache to hide abusive traffic.
 - Only perform Tankerkönig requests on demand from user-driven flows. Avoid periodic background polling against the free API.
 - Never implement bulk or mass-data style live fetching through the free API; blocked requests and disabled keys are a stated upstream risk.
 - On API failure: return structured error DTO to client; log full error internally; never expose API details, status codes, or the key to the browser.
@@ -189,6 +189,7 @@ Enforce via Spring Security config and/or reverse proxy:
 ### Rate Limiting
 - Per-IP throttling via Bucket4j on all public endpoints.
 - Stricter limits on the search endpoint than on static reads.
+- Apply the stricter limits before DB-heavy autocomplete/search work and before any Tankerkönig call.
 - Enforce max request-body size and max result-set size.
 
 ### Error Handling

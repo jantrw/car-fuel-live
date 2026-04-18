@@ -70,7 +70,7 @@ What is still in progress:
 
 - first end-to-end search-to-results flow
 - live Tankerkonig integration
-- geocoding persistence and request deduplication
+- DB-backed lookup deduplication, bounded in-memory hot-city cache, and request throttling
 - frontend result views and filtering UX
 
 ## Location Data Model
@@ -122,7 +122,7 @@ Near-term priorities:
 
 1. implement the first search-to-results flow
 2. integrate live fuel data in the backend
-3. persist and reuse geocoding results safely
+3. add bounded in-memory hot-city caching, deduplicate identical in-flight lookups, and throttle safely
 4. harden verification, security checks, and CI
 
 ## Notes
