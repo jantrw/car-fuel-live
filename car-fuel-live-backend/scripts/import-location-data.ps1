@@ -84,6 +84,57 @@ function Resolve-PostgresContainerId {
     return $containerId
 }
 
+function Invoke-PostgresScalar {
+    param(
+        [string]$ContainerId,
+        [string]$DatabaseUser,
+        [string]$DatabasePassword,
+        [string]$DatabaseName,
+        [string]$Query,
+        [string]$FailureMessage
+    )
+
+    $result = (& docker exec -e PGPASSWORD=$DatabasePassword $ContainerId sh -lc "psql -t -A -v ON_ERROR_STOP=1 -U '$DatabaseUser' -d '$DatabaseName' -c `"$Query`"").Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw $FailureMessage
+    }
+
+    return $result
+}
+
+function Assert-LocationSchemaMigrated {
+    param(
+        [string]$ContainerId,
+        [string]$DatabaseUser,
+        [string]$DatabasePassword,
+        [string]$DatabaseName
+    )
+
+    $historyTableExists = Invoke-PostgresScalar `
+        -ContainerId $ContainerId `
+        -DatabaseUser $DatabaseUser `
+        -DatabasePassword $DatabasePassword `
+        -DatabaseName $DatabaseName `
+        -Query "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'flyway_schema_history');" `
+        -FailureMessage 'Checking the Flyway schema history failed.'
+
+    if ($historyTableExists -ne 't') {
+        throw "Flyway has not created the location schema in this database. Start the backend first with '.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun', then run this seed script."
+    }
+
+    $locationSchemaMigrated = Invoke-PostgresScalar `
+        -ContainerId $ContainerId `
+        -DatabaseUser $DatabaseUser `
+        -DatabasePassword $DatabasePassword `
+        -DatabaseName $DatabaseName `
+        -Query "SELECT EXISTS (SELECT 1 FROM flyway_schema_history WHERE version = '1' AND success = true);" `
+        -FailureMessage 'Checking the location schema migration failed.'
+
+    if ($locationSchemaMigrated -ne 't') {
+        throw "Flyway migration V1 has not completed successfully in this database. Start the backend first with '.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun', then run this seed script."
+    }
+}
+
 $environmentFile = Join-Path $BackendDirectory '.env'
 if (-not (Test-Path $environmentFile)) {
     throw "Missing backend .env file at $environmentFile. Copy .env.example to .env first."
@@ -115,18 +166,16 @@ if (-not (Test-Path $composeFile)) {
 }
 $containerId = Resolve-PostgresContainerId -ComposeFile $composeFile -EnvironmentFile $environmentFile -ServiceName $PostgresServiceName
 
-$migrationFile = Join-Path $BackendDirectory 'src\main\resources\db\migration\V1__create_location_seed_schema.sql'
 $seedStageSqlFile = Join-Path $BackendDirectory 'src\main\resources\db\seed\location_seed_stage_tables.sql'
 $seedTransformSqlFile = Join-Path $BackendDirectory 'src\main\resources\db\seed\location_seed_transform.sql'
-if (-not (Test-Path $migrationFile)) {
-    throw "Missing migration file at $migrationFile"
-}
 if (-not (Test-Path $seedStageSqlFile)) {
     throw "Missing seed stage SQL file at $seedStageSqlFile"
 }
 if (-not (Test-Path $seedTransformSqlFile)) {
     throw "Missing seed transform SQL file at $seedTransformSqlFile"
 }
+
+Assert-LocationSchemaMigrated -ContainerId $containerId -DatabaseUser $dbUser -DatabasePassword $dbPassword -DatabaseName $dbName
 
 $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("car-fuel-live-location-seed-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $temporaryRoot | Out-Null
@@ -365,19 +414,12 @@ $transformSql
 
 [System.IO.File]::WriteAllText($loadSqlFile, $loadSql, $utf8WithoutBom)
 
-Write-Host 'Copying schema and generated files into PostgreSQL container...'
-docker cp $migrationFile "${containerId}:/tmp/V1__create_location_seed_schema.sql" | Out-Null
+Write-Host 'Copying generated files into PostgreSQL container...'
 docker cp $countriesOutput "${containerId}:/tmp/countries.tsv" | Out-Null
 docker cp $placesOutput "${containerId}:/tmp/places.tsv" | Out-Null
 docker cp $aliasesOutput "${containerId}:/tmp/place_aliases.tsv" | Out-Null
 docker cp $postalCodesOutput "${containerId}:/tmp/de_postal_codes.tsv" | Out-Null
 docker cp $loadSqlFile "${containerId}:/tmp/load-location-data.sql" | Out-Null
-
-Write-Host 'Applying schema...'
-docker exec -e PGPASSWORD=$dbPassword $containerId sh -lc "psql -v ON_ERROR_STOP=1 -U '$dbUser' -d '$dbName' -f /tmp/V1__create_location_seed_schema.sql" | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    throw 'Applying the location schema failed.'
-}
 
 Write-Host 'Loading location dataset into PostgreSQL...'
 docker exec -e PGPASSWORD=$dbPassword $containerId sh -lc "psql -v ON_ERROR_STOP=1 -U '$dbUser' -d '$dbName' -f /tmp/load-location-data.sql" | Out-Null

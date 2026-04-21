@@ -25,8 +25,8 @@ PostgreSQL 17 location dataset
 
 ## Current Data Layer
 
-- `V1__create_location_seed_schema.sql` creates `location_countries`, `location_places`, `location_place_aliases`, and `german_postal_codes`.
-- `import-location-data.ps1` downloads GeoNames files, filters Europe rows, generates TSV staging files, and loads them into PostgreSQL.
+- Flyway migration `V1__create_location_seed_schema.sql` creates `location_countries`, `location_places`, `location_place_aliases`, and `german_postal_codes`.
+- `import-location-data.ps1` downloads GeoNames files, filters Europe rows, generates TSV staging files, verifies that Flyway migration `V1` completed, and loads data into PostgreSQL.
 - The seeded dataset stores normalized search text plus latitude and longitude so manual search can resolve text locally from the database.
 - No live geocoding provider is part of the current architecture.
 

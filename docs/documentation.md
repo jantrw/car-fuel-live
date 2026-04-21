@@ -137,26 +137,28 @@
 - Create the backend env file once: `Copy-Item .\car-fuel-live-backend\.env.example .\car-fuel-live-backend\.env`
 - Set at least `DB_USER`, `DB_PASSWORD`, and `DB_NAME` in `car-fuel-live-backend/.env`.
 - Keep `TANKERKOENIG_API_KEY` empty until live fuel-price integration is being worked on.
-- Backend: `.\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend bootRun`
-- Database: `docker compose -f .\car-fuel-live-backend\docker-compose.yml up -d`
+- Database: `docker compose --env-file .\car-fuel-live-backend\.env -f .\car-fuel-live-backend\docker-compose.yml up -d`
+- Backend: `.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun`
 - The bundled PostgreSQL container binds to `127.0.0.1:5432` only for local development.
-- Initial location seed: `.\car-fuel-live-backend\scripts\import-location-data.ps1`
+- Initial location seed for a new or empty local database: `.\car-fuel-live-backend\scripts\import-location-data.ps1`
 - Frontend: `npm --prefix .\car-fuel-live-frontend run dev`
 - Swagger UI: `http://localhost:8080/swagger-ui.html` in development, no authentication required
 
 ### Location Dataset Setup
 - `import-location-data.ps1` is a setup and maintenance script, not part of the normal application runtime.
 - The script resolves the running PostgreSQL container from the docker compose `postgres` service instead of depending on a hard-coded container name.
+- Start the backend once before seeding so Flyway creates and records the location schema.
 - Run it once after provisioning a new or empty PostgreSQL database.
 - Run it again only after a database reset or a deliberate dataset refresh.
 - The script downloads the source data, prepares staging files, and loads the target PostgreSQL tables for countries, places, aliases, and German postal codes.
+- The script does not create target schema tables. It fails if Flyway migration `V1` has not completed successfully.
 
 ### Frontend Foundation
 - The frontend foundation uses Vue 3 with TypeScript enabled.
 - `shadcn-vue` is installed for UI component scaffolding.
 
 ### Verification Commands
-- Backend tests: `.\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend test`
+- Backend tests: `.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend test`
 - Backend seed verification includes a PostgreSQL integration test via Testcontainers, so Docker must be available for the full backend test suite.
 - Frontend lint: `npm --prefix .\car-fuel-live-frontend run lint`
 - Frontend build: `npm --prefix .\car-fuel-live-frontend run build`

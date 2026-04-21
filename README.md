@@ -105,14 +105,21 @@ Copy-Item .\car-fuel-live-backend\.env.example .\car-fuel-live-backend\.env
 
 Set at least `DB_USER`, `DB_PASSWORD`, and `DB_NAME` in `car-fuel-live-backend/.env`. Keep `TANKERKOENIG_API_KEY` empty until you work on live fuel-price integration.
 
-Current development entry points:
+Current development entry points from the repository root:
 
 ```powershell
-docker compose -f .\car-fuel-live-backend\docker-compose.yml up -d
-\.\car-fuel-live-backend\scripts\import-location-data.ps1
-.\car-fuel-live-backend\gradlew -p .\car-fuel-live-backend bootRun
+docker compose --env-file .\car-fuel-live-backend\.env -f .\car-fuel-live-backend\docker-compose.yml up -d
+.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun
 npm --prefix .\car-fuel-live-frontend run dev
 ```
+
+Seed location data only for a new or empty local database:
+
+```powershell
+.\car-fuel-live-backend\scripts\import-location-data.ps1
+```
+
+Run the backend once before seeding so Flyway creates and records the database schema. The seed script only loads data and fails fast if Flyway migration `V1` has not completed.
 
 Expected supporting services during development:
 
