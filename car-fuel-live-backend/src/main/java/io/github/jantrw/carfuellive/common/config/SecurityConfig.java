@@ -15,7 +15,8 @@ public class SecurityConfig {
 
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    // Keep development behavior aligned with the product contract: public, stateless, no login flow.
+    // Keep development behavior aligned with the product contract: public, stateless, no login
+    // flow.
     return http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
         .csrf(AbstractHttpConfigurer::disable)
         .formLogin(AbstractHttpConfigurer::disable)
