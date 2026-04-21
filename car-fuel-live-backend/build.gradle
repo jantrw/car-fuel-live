@@ -37,6 +37,8 @@ spotless {
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
 	compileOnly 'org.projectlombok:lombok'
@@ -46,6 +48,7 @@ dependencies {
 	runtimeOnly 'org.flywaydb:flyway-database-postgresql:11.14.1'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation platform('org.testcontainers:testcontainers-bom:2.0.4')
 	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
