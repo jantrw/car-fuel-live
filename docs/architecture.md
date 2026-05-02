@@ -33,7 +33,7 @@ PostgreSQL 17 location dataset
 - Flyway migration `V1__create_location_seed_schema.sql` creates `location_countries`, `location_places`, `location_place_aliases`, and `german_postal_codes`.
 - `import-location-data.ps1` downloads GeoNames files, filters Europe rows, generates TSV staging files, verifies that Flyway migration `V1` completed, and loads data into PostgreSQL.
 - The seeded dataset stores normalized search text plus latitude and longitude so manual search can resolve text locally from the database.
-- The location search repository uses JDBC read queries against the seeded tables. It runs separate searches for countries, places, aliases, and German postal codes, then the service de-duplicates, ranks, and limits the combined result list.
+- The location search repository uses JDBC read queries against the seeded tables. It runs separate searches for countries, places, aliases, and German postal codes, then the service overfetches a bounded candidate window, de-duplicates across query families, ranks, and applies the final visible limit.
 - Location search uses exact-match queries first so full city, country, alias, and postal-code inputs can use existing B-tree indexes. Prefix queries run only when exact matching returns no result.
 - No live geocoding provider is part of the current architecture.
 
