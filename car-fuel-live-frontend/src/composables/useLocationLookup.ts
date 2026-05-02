@@ -17,10 +17,10 @@ interface UseLocationLookupOptions {
   search?: (query: string, limit?: number) => Promise<LocationSearchResponse>
 }
 
+// Allow tests to inject the lookup dependency while production keeps the real API client. Keep
+// only raw source state here; trimmed input and canSearch stay derived.
 export function useLocationLookup(options: UseLocationLookupOptions = {}) {
-  // Tests can inject the lookup function while production keeps the real API client.
   const lookup = options.search ?? searchLocations
-  // Source state stays minimal; derived values such as trimmed query and canSearch stay computed.
   const query = shallowRef('')
   const results = shallowRef<LocationSearchResult[]>([])
   const selectedResult = shallowRef<LocationSearchResult | null>(null)
@@ -32,14 +32,13 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
     () => trimmedQuery.value.length > 0 && status.value !== 'loading',
   )
 
+  // Ignore blank or duplicate submits, then reset the previous selection before the next result
+  // set replaces it.
   async function search() {
-    // Ignore duplicate submits while loading and blank submits after trimming.
     if (!canSearch.value) {
       return
     }
 
-    // A new search invalidates the previous selection because coordinates belong to the old result
-    // set.
     status.value = 'loading'
     errorMessage.value = null
     selectedResult.value = null
@@ -56,8 +55,8 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
     }
   }
 
+  // Selection is view-local for this MVP; raw coordinates must not be persisted.
   function selectResult(result: LocationSearchResult) {
-    // Selection is view-local for this MVP; raw coordinates must not be persisted.
     selectedResult.value = result
   }
 

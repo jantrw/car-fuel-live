@@ -14,13 +14,13 @@ export interface LocationSearchResponse {
   items: LocationSearchResult[]
 }
 
+// Keep all backend communication behind this API boundary so components never call fetch
+// directly.
 export async function searchLocations(
   query: string,
   limit = 8,
   fetcher: typeof fetch = fetch,
 ): Promise<LocationSearchResponse> {
-  // Keep all backend communication behind this API boundary so components never call fetch
-  // directly.
   const params = new URLSearchParams({
     query,
     limit: limit.toString(),
@@ -36,8 +36,8 @@ export async function searchLocations(
   return parseLocationSearchResponse(await response.json())
 }
 
+// Backend responses are external input at runtime, even when the endpoint is owned by us.
 function parseLocationSearchResponse(value: unknown): LocationSearchResponse {
-  // Backend responses are external input at runtime, even when the endpoint is owned by us.
   if (!isRecord(value) || !Array.isArray(value.items)) {
     throw new Error('Invalid location lookup response.')
   }
@@ -47,9 +47,9 @@ function parseLocationSearchResponse(value: unknown): LocationSearchResponse {
   }
 }
 
+// Validate every result before UI state accepts it so malformed payloads cannot leak into
+// components as trusted TypeScript shapes.
 function parseLocationSearchResult(value: unknown): LocationSearchResult {
-  // Validate every result before UI state accepts it so malformed payloads cannot leak into
-  // components as trusted TypeScript shapes.
   if (!isRecord(value)) {
     throw new Error('Invalid location lookup result.')
   }
@@ -70,8 +70,8 @@ function parseLocationSearchResult(value: unknown): LocationSearchResult {
   }
 }
 
+// Result type drives UI copy and selection behavior, so unknown backend types must fail closed.
 function parseResultType(value: unknown): LocationSearchResultType {
-  // Result type drives UI copy and selection behavior, so unknown backend types must fail closed.
   if (value === 'country' || value === 'place' || value === 'postalCode') {
     return value
   }
@@ -79,8 +79,8 @@ function parseResultType(value: unknown): LocationSearchResultType {
   throw new Error('Invalid location lookup result type.')
 }
 
+// Empty identifiers and labels are unusable for selection, even if the JSON type is correct.
 function parseString(value: unknown, field: string): string {
-  // Empty identifiers and labels are unusable for selection, even if the JSON type is correct.
   if (typeof value === 'string' && value.length > 0) {
     return value
   }
@@ -96,9 +96,9 @@ function parseNullableString(value: unknown, field: string): string | null {
   throw new Error(`Invalid location lookup ${field}.`)
 }
 
+// Countries can have missing coordinates in the seed data, but invalid coordinate types should
+// still be rejected.
 function parseNullableNumber(value: unknown, field: string): number | null {
-  // Countries can have missing coordinates in the seed data, but invalid coordinate types should
-  // still be rejected.
   if (value === null || typeof value === 'number') {
     return value
   }

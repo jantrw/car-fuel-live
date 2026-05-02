@@ -32,10 +32,10 @@ public class LocationSearchController {
       description = "Search countries, places, and German postal codes.")
   @ApiResponse(responseCode = "200", description = "Search completed.")
   @ApiResponse(responseCode = "400", description = "Search request validation failed.")
+  // This MVP endpoint is request-driven. Later autocomplete APIs can add debounce and country
+  // context without changing this minimal lookup contract.
   @GetMapping("/search")
   LocationSearchResponse searchLocations(
-      // This MVP endpoint is request-driven. Later autocomplete APIs can add debounce and country
-      // context without changing this minimal lookup contract.
       @RequestParam("query")
           @NotBlank(message = "Query must not be blank.")
           @Size(max = 80, message = "Query must be at most 80 characters.")

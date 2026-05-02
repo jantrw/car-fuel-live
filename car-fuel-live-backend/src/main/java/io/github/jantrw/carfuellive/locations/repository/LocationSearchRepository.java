@@ -14,9 +14,9 @@ public class LocationSearchRepository {
     this.jdbcClient = jdbcClient;
   }
 
+  // Prefix search supports partial country input after exact lookup misses.
   public List<LocationSearchResult> searchCountries(
       String normalizedQuery, String likePrefix, int limit) {
-    // Prefix search supports partial country input after exact lookup misses.
     return jdbcClient
         .sql(
             """
@@ -51,8 +51,8 @@ public class LocationSearchRepository {
         .list();
   }
 
+  // Exact query stays separate so PostgreSQL can use the normalized-name index.
   public List<LocationSearchResult> searchCountriesExact(String normalizedQuery, int limit) {
-    // Exact query stays separate so PostgreSQL can use the normalized-name index.
     return jdbcClient
         .sql(
             """
@@ -82,10 +82,10 @@ public class LocationSearchRepository {
         .list();
   }
 
+  // Prefix query supports partial city/place input such as "Ber"; use only after exact lookup
+  // misses because it can scan the large GeoNames place table without pattern indexes.
   public List<LocationSearchResult> searchPlaces(
       String normalizedQuery, String likePrefix, int limit) {
-    // Prefix query supports partial city/place input such as "Ber"; use only after exact lookup
-    // misses because it can scan the large GeoNames place table without pattern indexes.
     return jdbcClient
         .sql(
             """
@@ -126,9 +126,9 @@ public class LocationSearchRepository {
         .list();
   }
 
+  // Full-name lookups should stay index-friendly and prefer populated places over same-label
+  // administrative rows.
   public List<LocationSearchResult> searchPlacesExact(String normalizedQuery, int limit) {
-    // Full-name lookups should stay index-friendly and prefer populated places over same-label
-    // administrative rows.
     return jdbcClient
         .sql(
             """
@@ -163,10 +163,10 @@ public class LocationSearchRepository {
         .list();
   }
 
+  // Alias prefix search is the most expensive lookup path because aliases are the largest table.
+  // Keep it as a fallback for partial alternate-name input.
   public List<LocationSearchResult> searchPlaceAliases(
       String normalizedQuery, String likePrefix, int limit) {
-    // Alias prefix search is the most expensive lookup path because aliases are the largest table.
-    // Keep it as a fallback for partial alternate-name input.
     return jdbcClient
         .sql(
             """
@@ -205,8 +205,8 @@ public class LocationSearchRepository {
         .list();
   }
 
+  // Exact alias lookup supports alternate names without paying the prefix-scan cost first.
   public List<LocationSearchResult> searchPlaceAliasesExact(String normalizedQuery, int limit) {
-    // Exact alias lookup supports alternate names without paying the prefix-scan cost first.
     return jdbcClient
         .sql(
             """
@@ -241,11 +241,10 @@ public class LocationSearchRepository {
         .list();
   }
 
+  // Broad postal-code prefix search remains available for future partial postal-code
+  // autocomplete. Full text place lookup should not use this path.
   public List<LocationSearchResult> searchGermanPostalCodes(
       String normalizedQuery, String likePrefix, int limit) {
-    // Broad postal-code prefix search remains available for future partial postal-code
-    // autocomplete.
-    // Full text place lookup should not use this path.
     return jdbcClient
         .sql(
             """
@@ -284,9 +283,9 @@ public class LocationSearchRepository {
         .list();
   }
 
+  // Concrete PLZ lookup maps directly to stored coordinates; do not broaden it to place-name
+  // search.
   public List<LocationSearchResult> searchGermanPostalCodesExact(String postalCode, int limit) {
-    // Concrete PLZ lookup maps directly to stored coordinates; do not broaden it to place-name
-    // search.
     return jdbcClient
         .sql(
             """

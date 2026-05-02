@@ -9,8 +9,8 @@ const props = defineProps<{
   messages: LocationLookupMessages
 }>()
 
+// Five decimals are precise enough for display while avoiding noisy raw seed-data precision.
 function formatCoordinate(value: number | null) {
-  // Five decimals are precise enough for display while avoiding noisy raw seed-data precision.
   return value === null ? null : value.toFixed(5)
 }
 </script>

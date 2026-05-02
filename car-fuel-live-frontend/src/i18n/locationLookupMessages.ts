@@ -75,10 +75,10 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
   },
 }
 
+// The MVP only needs app chrome localization; GeoNames labels stay canonical from the database.
 export function resolveLocationLookupMessages(
   languages: readonly string[] = getBrowserLanguages(),
 ): LocationLookupMessages {
-  // The MVP only needs app chrome localization; GeoNames labels stay canonical from the database.
   const primaryLanguage = languages
     .map((language) => language.toLowerCase())
     .find((language) => language.startsWith('de') || language.startsWith('en'))
@@ -86,8 +86,8 @@ export function resolveLocationLookupMessages(
   return primaryLanguage?.startsWith('de') ? messages.de : messages.en
 }
 
+// Tests and server-side tooling may not provide navigator, so keep message resolution browser-safe.
 function getBrowserLanguages(): readonly string[] {
-  // Tests and server-side tooling may not provide navigator, so keep message resolution browser-safe.
   if (typeof navigator === 'undefined') {
     return ['en']
   }

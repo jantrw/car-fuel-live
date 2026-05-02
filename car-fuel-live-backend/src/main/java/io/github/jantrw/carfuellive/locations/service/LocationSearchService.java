@@ -30,6 +30,8 @@ public class LocationSearchService {
     this.locationSearchRepository = locationSearchRepository;
   }
 
+  // Prefer exact postal-code matches when input contains digits, then use exact name lookups
+  // before prefix fallback so indexed queries win whenever the user provides a full name.
   @Transactional(readOnly = true)
   public LocationSearchResponse search(String query, int limit) {
     final String normalizedQuery = normalize(query);
@@ -39,8 +41,6 @@ public class LocationSearchService {
 
     final Optional<String> postalCodeQuery = firstDigitSequence(normalizedQuery);
     if (postalCodeQuery.isPresent()) {
-      // Postal-code input is more specific than a same-name city. If a concrete PLZ exists,
-      // return only postal-code coordinates instead of mixing place and postal-code results.
       final String postalCode = postalCodeQuery.get();
       final List<LocationSearchResult> postalCodeResults =
           locationSearchRepository.searchGermanPostalCodesExact(postalCode, limit);
@@ -50,8 +50,6 @@ public class LocationSearchService {
       }
     }
 
-    // Full-name searches should hit B-tree indexes first. Prefix fallback exists for partial input,
-    // but can scan large GeoNames tables until pattern indexes are added.
     addExactResults(uniqueResults, normalizedQuery, candidateLimit);
     if (uniqueResults.isEmpty()) {
       addPrefixResults(uniqueResults, normalizedQuery, likePrefix, candidateLimit);
@@ -62,12 +60,12 @@ public class LocationSearchService {
             uniqueResults.values().stream().sorted(resultComparator()).toList(), limit));
   }
 
+  // Query families stay separate because each table has different ranking rules. Place rows use
+  // geoname id identity first so same-name towns stay selectable before semantic duplicate
+  // filtering collapses same-place admin/place overlaps. Each query overfetches a bounded
+  // candidate window so the user-facing limit is enforced only after cross-query dedupe.
   private void addExactResults(
       Map<String, LocationSearchResult> uniqueResults, String normalizedQuery, int candidateLimit) {
-    // Query families stay separate because each table has different ranking rules. Place rows use
-    // geoname id identity first so same-name towns stay selectable before semantic duplicate
-    // filtering collapses same-place admin/place overlaps. Each query overfetches a bounded
-    // candidate window so the user-facing limit is enforced only after cross-query dedupe.
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlacesExact(normalizedQuery, candidateLimit),
@@ -82,12 +80,12 @@ public class LocationSearchService {
         LocationSearchService::idKey);
   }
 
+  // Prefix fallback keeps short input useful while preserving fast exact lookups for full names.
   private void addPrefixResults(
       Map<String, LocationSearchResult> uniqueResults,
       String normalizedQuery,
       String likePrefix,
       int candidateLimit) {
-    // Prefix fallback keeps short input useful while preserving fast exact lookups for full names.
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaces(normalizedQuery, likePrefix, candidateLimit),
@@ -111,16 +109,16 @@ public class LocationSearchService {
     }
   }
 
+  // The same visible location can arrive through primary names and aliases. Keep the best ranked
+  // candidate after semantic dedupe.
   private static LocationSearchResult best(
       LocationSearchResult current, LocationSearchResult candidate) {
-    // The same visible location can arrive through primary names and aliases. Keep the best ranked
-    // candidate after semantic dedupe.
     return resultComparator().compare(candidate, current) < 0 ? candidate : current;
   }
 
+  // SQL assigns matchRank by match quality. Java applies shared tie-breakers so results from
+  // place, alias, country, and postal-code queries are ranked consistently.
   private static Comparator<LocationSearchResult> resultComparator() {
-    // SQL assigns matchRank by match quality. Java applies shared tie-breakers so results from
-    // place, alias, country, and postal-code queries are ranked consistently.
     return Comparator.comparingInt(LocationSearchResult::matchRank)
         .thenComparing(LocationSearchService::featureClassRank)
         .thenComparing(Comparator.comparingLong(LocationSearchResult::popularity).reversed())
@@ -196,6 +194,8 @@ public class LocationSearchService {
     return false;
   }
 
+  // GeoNames can emit the same municipality as both a populated place and an administrative row.
+  // Collapse only that mixed P/non-P pair; distinct same-name places keep separate ids.
   private static boolean isAdministrativePlaceDuplicate(
       LocationSearchResult current, LocationSearchResult candidate) {
     if (!"place".equals(current.type()) || !"place".equals(candidate.type())) {
@@ -214,8 +214,6 @@ public class LocationSearchService {
       return false;
     }
 
-    // GeoNames can emit the same municipality as both a populated place and an administrative row.
-    // Collapse only that mixed P/non-P pair; distinct same-name places keep separate ids.
     return !Objects.equals(current.featureClass(), candidate.featureClass())
         && ("P".equals(current.featureClass()) || "P".equals(candidate.featureClass()));
   }
@@ -239,9 +237,9 @@ public class LocationSearchService {
     return "P".equals(result.featureClass()) ? 0 : 1;
   }
 
+  // German postal codes are numeric. The first digit run captures input such as
+  // "Sankt Augustin 53757" without treating free text as a postal-code lookup.
   private static Optional<String> firstDigitSequence(String value) {
-    // German postal codes are numeric. The first digit run captures input such as
-    // "Sankt Augustin 53757" without treating free text as a postal-code lookup.
     final StringBuilder digits = new StringBuilder();
     for (int index = 0; index < value.length(); index++) {
       final char character = value.charAt(index);
