@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class LocationSearchService {
 
   private static final Map<String, String> GERMAN_ADMIN1_NAMES = germanAdmin1Names();
+  private static final int SEARCH_CANDIDATE_MULTIPLIER = 8;
+  private static final int MAX_SEARCH_CANDIDATES = 64;
 
   private final LocationSearchRepository locationSearchRepository;
 
@@ -32,6 +34,7 @@ public class LocationSearchService {
   public LocationSearchResponse search(String query, int limit) {
     final String normalizedQuery = normalize(query);
     final String likePrefix = escapeLikePattern(normalizedQuery) + "%";
+    final int candidateLimit = searchCandidateLimit(limit);
     final Map<String, LocationSearchResult> uniqueResults = new LinkedHashMap<>();
 
     final Optional<String> postalCodeQuery = firstDigitSequence(normalizedQuery);
@@ -49,9 +52,9 @@ public class LocationSearchService {
 
     // Full-name searches should hit B-tree indexes first. Prefix fallback exists for partial input,
     // but can scan large GeoNames tables until pattern indexes are added.
-    addExactResults(uniqueResults, normalizedQuery, limit);
+    addExactResults(uniqueResults, normalizedQuery, candidateLimit);
     if (uniqueResults.isEmpty()) {
-      addPrefixResults(uniqueResults, normalizedQuery, likePrefix, limit);
+      addPrefixResults(uniqueResults, normalizedQuery, likePrefix, candidateLimit);
     }
 
     return toSearchResponse(
@@ -60,21 +63,22 @@ public class LocationSearchService {
   }
 
   private void addExactResults(
-      Map<String, LocationSearchResult> uniqueResults, String normalizedQuery, int limit) {
+      Map<String, LocationSearchResult> uniqueResults, String normalizedQuery, int candidateLimit) {
     // Query families stay separate because each table has different ranking rules. Place rows use
     // geoname id identity first so same-name towns stay selectable before semantic duplicate
-    // filtering collapses same-place admin/place overlaps.
+    // filtering collapses same-place admin/place overlaps. Each query overfetches a bounded
+    // candidate window so the user-facing limit is enforced only after cross-query dedupe.
     addBestResults(
         uniqueResults,
-        locationSearchRepository.searchPlacesExact(normalizedQuery, limit),
+        locationSearchRepository.searchPlacesExact(normalizedQuery, candidateLimit),
         LocationSearchService::idKey);
     addBestResults(
         uniqueResults,
-        locationSearchRepository.searchPlaceAliasesExact(normalizedQuery, limit),
+        locationSearchRepository.searchPlaceAliasesExact(normalizedQuery, candidateLimit),
         LocationSearchService::idKey);
     addBestResults(
         uniqueResults,
-        locationSearchRepository.searchCountriesExact(normalizedQuery, limit),
+        locationSearchRepository.searchCountriesExact(normalizedQuery, candidateLimit),
         LocationSearchService::idKey);
   }
 
@@ -82,19 +86,19 @@ public class LocationSearchService {
       Map<String, LocationSearchResult> uniqueResults,
       String normalizedQuery,
       String likePrefix,
-      int limit) {
+      int candidateLimit) {
     // Prefix fallback keeps short input useful while preserving fast exact lookups for full names.
     addBestResults(
         uniqueResults,
-        locationSearchRepository.searchPlaces(normalizedQuery, likePrefix, limit),
+        locationSearchRepository.searchPlaces(normalizedQuery, likePrefix, candidateLimit),
         LocationSearchService::idKey);
     addBestResults(
         uniqueResults,
-        locationSearchRepository.searchPlaceAliases(normalizedQuery, likePrefix, limit),
+        locationSearchRepository.searchPlaceAliases(normalizedQuery, likePrefix, candidateLimit),
         LocationSearchService::idKey);
     addBestResults(
         uniqueResults,
-        locationSearchRepository.searchCountries(normalizedQuery, likePrefix, limit),
+        locationSearchRepository.searchCountries(normalizedQuery, likePrefix, candidateLimit),
         LocationSearchService::idKey);
   }
 
@@ -159,6 +163,11 @@ public class LocationSearchService {
 
   private static String idKey(LocationSearchResult result) {
     return result.type() + ":" + result.id();
+  }
+
+  private static int searchCandidateLimit(int visibleLimit) {
+    return Math.min(
+        MAX_SEARCH_CANDIDATES, Math.max(visibleLimit, visibleLimit * SEARCH_CANDIDATE_MULTIPLIER));
   }
 
   private static List<LocationSearchResult> limitVisibleResults(
