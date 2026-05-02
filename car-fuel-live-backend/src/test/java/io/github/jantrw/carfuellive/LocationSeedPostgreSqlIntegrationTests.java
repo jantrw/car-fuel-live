@@ -58,8 +58,7 @@ class LocationSeedPostgreSqlIntegrationTests {
       assertThat(selectCount(connection, "SELECT COUNT(*) FROM location_places")).isEqualTo(2);
       assertThat(selectCount(connection, "SELECT COUNT(*) FROM location_place_aliases"))
           .isEqualTo(2);
-      assertThat(selectCount(connection, "SELECT COUNT(*) FROM german_postal_codes"))
-          .isEqualTo(1);
+      assertThat(selectCount(connection, "SELECT COUNT(*) FROM german_postal_codes")).isEqualTo(1);
 
       try (PreparedStatement statement =
           connection.prepareStatement(
@@ -160,11 +159,18 @@ class LocationSeedPostgreSqlIntegrationTests {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """)) {
       insertCountryStageRow(
-          statement, "DE", "DEU", "276", "Germany", "germany", "Berlin", "84000000", "EU",
+          statement,
+          "DE",
+          "DEU",
+          "276",
+          "Germany",
+          "germany",
+          "Berlin",
+          "84000000",
+          "EU",
           "2921044");
       insertCountryStageRow(
-          statement, "FR", "FRA", "250", "France", "france", "Paris", "68000000", "EU",
-          "3017382");
+          statement, "FR", "FRA", "250", "France", "france", "Paris", "68000000", "EU", "3017382");
     }
   }
 
