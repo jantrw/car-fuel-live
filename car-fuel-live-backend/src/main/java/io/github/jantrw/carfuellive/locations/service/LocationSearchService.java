@@ -5,17 +5,22 @@ import io.github.jantrw.carfuellive.locations.dto.LocationSearchResultResponse;
 import io.github.jantrw.carfuellive.locations.model.LocationSearchResult;
 import io.github.jantrw.carfuellive.locations.repository.LocationSearchRepository;
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LocationSearchService {
+
+  private static final Map<String, String> GERMAN_ADMIN1_NAMES = germanAdmin1Names();
 
   private final LocationSearchRepository locationSearchRepository;
 
@@ -50,20 +55,23 @@ public class LocationSearchService {
     }
 
     return toSearchResponse(
-        uniqueResults.values().stream().sorted(resultComparator()).limit(limit).toList());
+        limitVisibleResults(
+            uniqueResults.values().stream().sorted(resultComparator()).toList(), limit));
   }
 
   private void addExactResults(
       Map<String, LocationSearchResult> uniqueResults, String normalizedQuery, int limit) {
-    // Query families stay separate because each table has different ranking and dedupe rules.
+    // Query families stay separate because each table has different ranking rules. Place rows use
+    // geoname id identity first so same-name towns stay selectable before semantic duplicate
+    // filtering collapses same-place admin/place overlaps.
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlacesExact(normalizedQuery, limit),
-        LocationSearchService::dedupeKey);
+        LocationSearchService::idKey);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaceAliasesExact(normalizedQuery, limit),
-        LocationSearchService::dedupeKey);
+        LocationSearchService::idKey);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchCountriesExact(normalizedQuery, limit),
@@ -79,11 +87,11 @@ public class LocationSearchService {
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaces(normalizedQuery, likePrefix, limit),
-        LocationSearchService::dedupeKey);
+        LocationSearchService::idKey);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaceAliases(normalizedQuery, likePrefix, limit),
-        LocationSearchService::dedupeKey);
+        LocationSearchService::idKey);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchCountries(normalizedQuery, likePrefix, limit),
@@ -117,20 +125,105 @@ public class LocationSearchService {
   }
 
   private static LocationSearchResponse toSearchResponse(List<LocationSearchResult> results) {
+    final Map<String, Long> visibleGermanPlaceCounts = visibleGermanPlaceCounts(results);
     final List<LocationSearchResultResponse> items =
-        results.stream().map(LocationSearchService::toResponse).toList();
+        results.stream()
+            .map(
+                result ->
+                    toResponse(result, visibleGermanPlaceCounts.getOrDefault(result.id(), 0L) > 1))
+            .toList();
 
     return new LocationSearchResponse(items);
+  }
+
+  private static Map<String, Long> visibleGermanPlaceCounts(List<LocationSearchResult> results) {
+    final Map<String, Long> duplicateCountsByLabel = new HashMap<>();
+    for (LocationSearchResult result : results) {
+      if (!isGermanPlace(result)) {
+        continue;
+      }
+
+      duplicateCountsByLabel.merge(result.label(), 1L, Long::sum);
+    }
+
+    final Map<String, Long> countsById = new HashMap<>();
+    for (LocationSearchResult result : results) {
+      if (!isGermanPlace(result)) {
+        continue;
+      }
+
+      countsById.put(result.id(), duplicateCountsByLabel.getOrDefault(result.label(), 0L));
+    }
+    return countsById;
   }
 
   private static String idKey(LocationSearchResult result) {
     return result.type() + ":" + result.id();
   }
 
-  private static String dedupeKey(LocationSearchResult result) {
-    // GeoNames can store the same visible place as both a populated place and an admin area.
-    // Dedupe by displayed identity so users do not see duplicates.
-    return result.type() + ":" + result.countryCode() + ":" + normalize(result.label());
+  private static List<LocationSearchResult> limitVisibleResults(
+      List<LocationSearchResult> sortedResults, int limit) {
+    final List<LocationSearchResult> visibleResults = new ArrayList<>();
+    for (LocationSearchResult candidate : sortedResults) {
+      if (isSemanticPlaceDuplicateOfAny(visibleResults, candidate)) {
+        continue;
+      }
+
+      visibleResults.add(candidate);
+      if (visibleResults.size() == limit) {
+        return visibleResults;
+      }
+    }
+    return visibleResults;
+  }
+
+  private static boolean isSemanticPlaceDuplicateOfAny(
+      List<LocationSearchResult> visibleResults, LocationSearchResult candidate) {
+    for (LocationSearchResult visibleResult : visibleResults) {
+      if (isAdministrativePlaceDuplicate(visibleResult, candidate)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isAdministrativePlaceDuplicate(
+      LocationSearchResult current, LocationSearchResult candidate) {
+    if (!"place".equals(current.type()) || !"place".equals(candidate.type())) {
+      return false;
+    }
+    if (!Objects.equals(current.countryCode(), candidate.countryCode())) {
+      return false;
+    }
+    if (!normalize(current.label()).equals(normalize(candidate.label()))) {
+      return false;
+    }
+    if (!hasAdministrativePath(current) || !hasAdministrativePath(candidate)) {
+      return false;
+    }
+    if (!hasSameAdministrativePath(current, candidate)) {
+      return false;
+    }
+
+    // GeoNames can emit the same municipality as both a populated place and an administrative row.
+    // Collapse only that mixed P/non-P pair; distinct same-name places keep separate ids.
+    return !Objects.equals(current.featureClass(), candidate.featureClass())
+        && ("P".equals(current.featureClass()) || "P".equals(candidate.featureClass()));
+  }
+
+  private static boolean hasAdministrativePath(LocationSearchResult result) {
+    return result.admin1Code() != null
+        || result.admin2Code() != null
+        || result.admin3Code() != null
+        || result.admin4Code() != null;
+  }
+
+  private static boolean hasSameAdministrativePath(
+      LocationSearchResult current, LocationSearchResult candidate) {
+    return Objects.equals(current.admin1Code(), candidate.admin1Code())
+        && Objects.equals(current.admin2Code(), candidate.admin2Code())
+        && Objects.equals(current.admin3Code(), candidate.admin3Code())
+        && Objects.equals(current.admin4Code(), candidate.admin4Code());
   }
 
   private static int featureClassRank(LocationSearchResult result) {
@@ -153,14 +246,64 @@ public class LocationSearchService {
   }
 
   private static LocationSearchResultResponse toResponse(LocationSearchResult result) {
+    return toResponse(result, false);
+  }
+
+  private static LocationSearchResultResponse toResponse(
+      LocationSearchResult result, boolean includeGermanAdmin1Name) {
     return new LocationSearchResultResponse(
         result.type(),
         result.id(),
-        result.label(),
+        displayLabel(result, includeGermanAdmin1Name),
         result.countryCode(),
         result.latitude(),
         result.longitude(),
         result.postalCode());
+  }
+
+  private static String displayLabel(LocationSearchResult result, boolean includeGermanAdmin1Name) {
+    if (!includeGermanAdmin1Name || !isGermanPlace(result)) {
+      return result.label();
+    }
+
+    final String admin1Name = GERMAN_ADMIN1_NAMES.get(result.admin1Code());
+    if (admin1Name == null) {
+      return result.label();
+    }
+
+    final int separatorIndex = result.label().lastIndexOf(", ");
+    if (separatorIndex < 0) {
+      return result.label();
+    }
+
+    final String placeName = result.label().substring(0, separatorIndex);
+    final String countryName = result.label().substring(separatorIndex + 2);
+    return placeName + ", " + admin1Name + ", " + countryName;
+  }
+
+  private static boolean isGermanPlace(LocationSearchResult result) {
+    return "place".equals(result.type()) && "DE".equals(result.countryCode());
+  }
+
+  private static Map<String, String> germanAdmin1Names() {
+    final Map<String, String> admin1Names = new HashMap<>();
+    admin1Names.put("01", "Baden-Württemberg");
+    admin1Names.put("02", "Bayern");
+    admin1Names.put("03", "Bremen");
+    admin1Names.put("04", "Hamburg");
+    admin1Names.put("05", "Hessen");
+    admin1Names.put("06", "Niedersachsen");
+    admin1Names.put("07", "Nordrhein-Westfalen");
+    admin1Names.put("08", "Rheinland-Pfalz");
+    admin1Names.put("09", "Saarland");
+    admin1Names.put("10", "Schleswig-Holstein");
+    admin1Names.put("11", "Brandenburg");
+    admin1Names.put("12", "Mecklenburg-Vorpommern");
+    admin1Names.put("13", "Sachsen");
+    admin1Names.put("14", "Sachsen-Anhalt");
+    admin1Names.put("15", "Thüringen");
+    admin1Names.put("16", "Berlin");
+    return Map.copyOf(admin1Names);
   }
 
   private static String normalize(String value) {

@@ -29,6 +29,10 @@ public class LocationSearchRepository {
                 longitude,
                 NULL AS postal_code,
                 NULL AS feature_class,
+                NULL AS admin1_code,
+                NULL AS admin2_code,
+                NULL AS admin3_code,
+                NULL AS admin4_code,
                 CASE
                     WHEN normalized_name = :query THEN 0
                     ELSE 1
@@ -61,6 +65,10 @@ public class LocationSearchRepository {
                 longitude,
                 NULL AS postal_code,
                 NULL AS feature_class,
+                NULL AS admin1_code,
+                NULL AS admin2_code,
+                NULL AS admin3_code,
+                NULL AS admin4_code,
                 0 AS match_rank,
                 COALESCE(population, 0) AS popularity
             FROM location_countries
@@ -90,6 +98,10 @@ public class LocationSearchRepository {
                 p.longitude,
                 NULL AS postal_code,
                 p.feature_class,
+                p.admin1_code,
+                p.admin2_code,
+                p.admin3_code,
+                p.admin4_code,
                 CASE
                     WHEN (p.normalized_name = :query OR p.normalized_ascii_name = :query)
                         AND p.feature_class = 'P' THEN 0
@@ -129,6 +141,10 @@ public class LocationSearchRepository {
                 p.longitude,
                 NULL AS postal_code,
                 p.feature_class,
+                p.admin1_code,
+                p.admin2_code,
+                p.admin3_code,
+                p.admin4_code,
                 CASE
                     WHEN p.feature_class = 'P' THEN 0
                     ELSE 1
@@ -163,6 +179,10 @@ public class LocationSearchRepository {
                 p.longitude,
                 NULL AS postal_code,
                 p.feature_class,
+                p.admin1_code,
+                p.admin2_code,
+                p.admin3_code,
+                p.admin4_code,
                 CASE
                     WHEN a.normalized_alias_name = :query AND p.feature_class = 'P' THEN 2
                     WHEN a.normalized_alias_name = :query THEN 3
@@ -199,6 +219,10 @@ public class LocationSearchRepository {
                 p.longitude,
                 NULL AS postal_code,
                 p.feature_class,
+                p.admin1_code,
+                p.admin2_code,
+                p.admin3_code,
+                p.admin4_code,
                 CASE
                     WHEN p.feature_class = 'P' THEN 2
                     ELSE 3
@@ -234,6 +258,10 @@ public class LocationSearchRepository {
                 longitude,
                 postal_code,
                 NULL AS feature_class,
+                NULL AS admin1_code,
+                NULL AS admin2_code,
+                NULL AS admin3_code,
+                NULL AS admin4_code,
                 CASE
                     WHEN postal_code = :query THEN 0
                     WHEN postal_code LIKE :prefix ESCAPE '\\' THEN 1
@@ -271,6 +299,10 @@ public class LocationSearchRepository {
                 longitude,
                 postal_code,
                 NULL AS feature_class,
+                NULL AS admin1_code,
+                NULL AS admin2_code,
+                NULL AS admin3_code,
+                NULL AS admin4_code,
                 0 AS match_rank,
                 COALESCE(accuracy, 0) AS popularity
             FROM german_postal_codes
@@ -295,6 +327,10 @@ public class LocationSearchRepository {
         resultSet.getObject("longitude", Double.class),
         resultSet.getString("postal_code"),
         resultSet.getString("feature_class"),
+        resultSet.getString("admin1_code"),
+        resultSet.getString("admin2_code"),
+        resultSet.getString("admin3_code"),
+        resultSet.getString("admin4_code"),
         resultSet.getInt("match_rank"),
         resultSet.getLong("popularity"));
   }

@@ -63,12 +63,18 @@ class LocationSearchControllerTests {
                 longitude,
                 feature_class,
                 feature_code,
+                admin1_code,
+                admin2_code,
+                admin3_code,
+                admin4_code,
                 population
             ) VALUES
-                (2950159, 'DE', 'Berlin', 'Berlin', 'berlin', 'berlin', 52.52437, 13.41053, 'P', 'PPLC', 3426354),
-                (3169070, 'DE', 'Bernau bei Berlin', 'Bernau bei Berlin', 'bernau bei berlin', 'bernau bei berlin', 52.67982, 13.58708, 'P', 'PPL', 40000),
-                (2841648, 'DE', 'Sankt Augustin', 'Sankt Augustin', 'sankt augustin', 'sankt augustin', 50.77538, 7.197, 'P', 'PPLA4', 56094),
-                (6557568, 'DE', 'Sankt Augustin', 'Sankt Augustin', 'sankt augustin', 'sankt augustin', 50.77935, 7.18682, 'A', 'ADM4', 56521)
+                (2950159, 'DE', 'Berlin', 'Berlin', 'berlin', 'berlin', 52.52437, 13.41053, 'P', 'PPLC', '16', '11000', NULL, NULL, 3426354),
+                (3169070, 'DE', 'Bernau bei Berlin', 'Bernau bei Berlin', 'bernau bei berlin', 'bernau bei berlin', 52.67982, 13.58708, 'P', 'PPL', '11', '12060', NULL, NULL, 40000),
+                (2841648, 'DE', 'Sankt Augustin', 'Sankt Augustin', 'sankt augustin', 'sankt augustin', 50.77538, 7.197, 'P', 'PPLA4', '05', '05382', '05382056', '053820056056', 56094),
+                (6557568, 'DE', 'Sankt Augustin', 'Sankt Augustin', 'sankt augustin', 'sankt augustin', 50.77935, 7.18682, 'A', 'ADM4', '05', '05382', '05382056', '053820056056', 56521),
+                (2864067, 'DE', 'Neustadt', 'Neustadt', 'neustadt', 'neustadt', 53.55196, 9.98558, 'P', 'PPL', '03', '03359', '03359038', NULL, 12689),
+                (8379207, 'DE', 'Neustadt', 'Neustadt', 'neustadt', 'neustadt', 52.26799, 10.52001, 'P', 'PPL', '06', '03158', '03158037', NULL, 2386)
             """)
         .update();
 
@@ -159,6 +165,23 @@ class LocationSearchControllerTests {
         .andExpect(jsonPath("$.items[0].type").value("place"))
         .andExpect(jsonPath("$.items[0].id").value("2841648"))
         .andExpect(jsonPath("$.items[0].label").value("Sankt Augustin, Germany"));
+  }
+
+  @Test
+  void should_returnDistinctSameNamePlaces_when_queryMatchesMultiplePlacesInSameCountry()
+      throws Exception {
+    mockMvc
+        .perform(get("/api/v1/locations/search").param("query", "Neustadt"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items", hasSize(2)))
+        .andExpect(jsonPath("$.items[0].type").value("place"))
+        .andExpect(jsonPath("$.items[0].id").value("2864067"))
+        .andExpect(jsonPath("$.items[0].label").value("Neustadt, Bremen, Germany"))
+        .andExpect(jsonPath("$.items[0].latitude").value(53.55196))
+        .andExpect(jsonPath("$.items[1].type").value("place"))
+        .andExpect(jsonPath("$.items[1].id").value("8379207"))
+        .andExpect(jsonPath("$.items[1].label").value("Neustadt, Niedersachsen, Germany"))
+        .andExpect(jsonPath("$.items[1].latitude").value(52.26799));
   }
 
   @Test

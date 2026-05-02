@@ -73,7 +73,7 @@
 - The seeded dataset is the only source for manual search suggestions and coordinate resolution.
 - The current MVP exposes `GET /api/v1/locations/search?query=...&limit=...` for local lookup. It returns a flat `items` list with explicit result types: `country`, `place`, and `postalCode`.
 - If a query contains a German postal code and PostgreSQL has a matching postal-code row, the MVP returns only postal-code results for that query.
-- Text-only place searches suppress postal-code-by-place-name matches and de-duplicate same-label place/admin rows, preferring populated places over administrative rows.
+- Text-only place searches suppress postal-code-by-place-name matches and collapse only same-place place/admin duplicates that share the same administrative hierarchy, preferring populated places over administrative rows while keeping distinct same-name towns selectable. When multiple German place results would otherwise share the same visible label, the backend appends the Bundesland name from `admin1_code` to those labels so users can distinguish them.
 - MVP no-match behavior is `200 OK` with `items: []`; the frontend shows an empty state instead of an error.
 - Do not add a broad second geocoding source. If a cache exists, keep it limited to canonical coordinates for the largest European cities and the most common German cities and warm it from PostgreSQL.
 - `location_countries` should store `country_code`, `geoname_id`, `name`, `normalized_name`, `iso3_code`, `numeric_code`, `capital_name`, `continent_code`, optional `latitude`/`longitude`, optional `population`, and `created_at`.
@@ -144,7 +144,7 @@
 - Keep `TANKERKOENIG_API_KEY` empty until live fuel-price integration is being worked on.
 - Database: `docker compose --env-file .\car-fuel-live-backend\.env -f .\car-fuel-live-backend\docker-compose.yml up -d`
 - Backend: `.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun`
-- The bundled PostgreSQL container binds to `127.0.0.1:5432` only for local development.
+- The bundled PostgreSQL container binds to `127.0.0.1:3307` only for local development.
 - Initial location seed for a new or empty local database: `.\car-fuel-live-backend\scripts\import-location-data.ps1`
 - Frontend: `npm --prefix .\car-fuel-live-frontend run dev`
 - Swagger UI: `http://localhost:8080/swagger-ui.html` in development, no authentication required

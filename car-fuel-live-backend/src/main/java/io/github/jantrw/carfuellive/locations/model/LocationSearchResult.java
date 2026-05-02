@@ -9,5 +9,9 @@ public record LocationSearchResult(
     Double longitude,
     String postalCode,
     String featureClass,
+    String admin1Code,
+    String admin2Code,
+    String admin3Code,
+    String admin4Code,
     int matchRank,
     long popularity) {}

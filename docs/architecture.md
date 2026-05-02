@@ -48,7 +48,7 @@ PostgreSQL 17 location dataset
   - `items`: flat list of typed results.
   - `type`: `country`, `place`, or `postalCode`.
   - `id`, `label`, `countryCode`, `latitude`, `longitude`, and optional `postalCode`.
-  Place results are semantically de-duplicated by type, country, and label. If the user query contains a postal code and a matching postal-code row exists, only postal-code results are returned.
+  Place results are first merged by place identity, then same-place populated/admin duplicates with the same administrative hierarchy are collapsed so distinct same-name towns remain selectable. If multiple German place results still share one visible label, the service injects a German Bundesland name from `admin1_code` into those labels without adding another database join. If the user query contains a postal code and a matching postal-code row exists, only postal-code results are returned.
   No-match responses return `200 OK` with an empty `items` list.
 
 ## PostgreSQL Schema
