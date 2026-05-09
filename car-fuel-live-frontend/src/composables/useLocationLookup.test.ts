@@ -102,6 +102,73 @@ describe('useLocationLookup', () => {
     expect(lookup.canSearch.value).toBe(true)
   })
 
+  it('should clear visible results and selection when the query changes after a successful search', async () => {
+    const berlin = {
+      type: 'place' as const,
+      id: '2950159',
+      label: 'Berlin, Germany',
+      countryCode: 'DE',
+      latitude: 52.52437,
+      longitude: 13.41053,
+      postalCode: null,
+    }
+    const search = vi.fn(async () => ({ items: [berlin] }))
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('Berlin')
+    await lookup.search()
+    lookup.selectResult(berlin)
+
+    lookup.updateQuery('Bern')
+
+    expect(lookup.results.value).toEqual([])
+    expect(lookup.selectedResult.value).toBeNull()
+    expect(lookup.status.value).toBe('idle')
+    expect(lookup.errorMessage.value).toBeNull()
+  })
+
+  it('should ignore an in-flight response after the query changes before a new submit', async () => {
+    const response = createDeferredResponse({
+      items: [
+        {
+          type: 'place' as const,
+          id: '2950159',
+          label: 'Berlin, Germany',
+          countryCode: 'DE',
+          latitude: 52.52437,
+          longitude: 13.41053,
+          postalCode: null,
+        },
+      ],
+    })
+    const search = vi.fn(() => response.promise)
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('Berlin')
+    const pendingSearch = lookup.search()
+
+    lookup.updateQuery('Bern')
+    response.resolve({
+      items: [
+        {
+          type: 'place',
+          id: '2950159',
+          label: 'Berlin, Germany',
+          countryCode: 'DE',
+          latitude: 52.52437,
+          longitude: 13.41053,
+          postalCode: null,
+        },
+      ],
+    })
+    await pendingSearch
+
+    expect(search).toHaveBeenCalledTimes(1)
+    expect(lookup.results.value).toEqual([])
+    expect(lookup.selectedResult.value).toBeNull()
+    expect(lookup.status.value).toBe('idle')
+  })
+
   it('should ignore stale search responses when a newer request finishes first', async () => {
     const firstResponse = createDeferredResponse({
       items: [
@@ -181,6 +248,59 @@ describe('useLocationLookup', () => {
         countryCode: 'CH',
         latitude: 46.94809,
         longitude: 7.44744,
+        postalCode: null,
+      },
+    ])
+  })
+
+  it('should ignore duplicate submits while a search is already loading', async () => {
+    const response = createDeferredResponse({
+      items: [
+        {
+          type: 'place' as const,
+          id: '2950159',
+          label: 'Berlin, Germany',
+          countryCode: 'DE',
+          latitude: 52.52437,
+          longitude: 13.41053,
+          postalCode: null,
+        },
+      ],
+    })
+    const search = vi.fn(() => response.promise)
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('Berlin')
+    const firstSearch = lookup.search()
+    const secondSearch = lookup.search()
+
+    expect(search).toHaveBeenCalledTimes(1)
+    expect(lookup.status.value).toBe('loading')
+
+    response.resolve({
+      items: [
+        {
+          type: 'place',
+          id: '2950159',
+          label: 'Berlin, Germany',
+          countryCode: 'DE',
+          latitude: 52.52437,
+          longitude: 13.41053,
+          postalCode: null,
+        },
+      ],
+    })
+    await Promise.all([firstSearch, secondSearch])
+
+    expect(lookup.status.value).toBe('results')
+    expect(lookup.results.value).toEqual([
+      {
+        type: 'place',
+        id: '2950159',
+        label: 'Berlin, Germany',
+        countryCode: 'DE',
+        latitude: 52.52437,
+        longitude: 13.41053,
         postalCode: null,
       },
     ])

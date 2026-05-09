@@ -51,7 +51,9 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
   // Ignore blank or duplicate submits, then reset the previous selection before the next result
   // set replaces it.
   async function search() {
-    const requestId = ++latestSearchRequestId
+    if (status.value === 'loading') {
+      return
+    }
 
     if (trimmedQuery.value.length === 0) {
       return
@@ -66,7 +68,9 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
       return
     }
 
+    const requestId = ++latestSearchRequestId
     hasSubmittedTooShortQuery.value = false
+    results.value = []
     status.value = 'loading'
     errorMessage.value = null
     selectedResult.value = null
@@ -98,10 +102,12 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
 
   function updateQuery(value: string) {
     query.value = value
+    latestSearchRequestId += 1
+    results.value = []
+    selectedResult.value = null
+    status.value = 'idle'
+    errorMessage.value = null
     hasSubmittedTooShortQuery.value = false
-    if (errorMessage.value === QUERY_TOO_SHORT_ERROR) {
-      errorMessage.value = null
-    }
   }
 
   return {
