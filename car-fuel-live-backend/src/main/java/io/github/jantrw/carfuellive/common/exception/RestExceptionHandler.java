@@ -8,6 +8,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class RestExceptionHandler {
@@ -33,7 +34,8 @@ public class RestExceptionHandler {
             .map(
                 violation ->
                     new FieldErrorResponse(
-                        violation.getPropertyPath().toString(), violation.getMessage()))
+                        lastPropertySegment(violation.getPropertyPath().toString()),
+                        violation.getMessage()))
             .toList();
     return validationError(details);
   }
@@ -55,6 +57,14 @@ public class RestExceptionHandler {
     return validationError(details);
   }
 
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  ResponseEntity<ApiErrorResponse> handleMethodArgumentTypeMismatch(
+      MethodArgumentTypeMismatchException exception) {
+    return validationError(
+        new FieldErrorResponse(
+            exception.getName(), "Request parameter must use the expected type."));
+  }
+
   private ResponseEntity<ApiErrorResponse> validationError(FieldErrorResponse detail) {
     return validationError(List.of(detail));
   }
@@ -62,5 +72,10 @@ public class RestExceptionHandler {
   private ResponseEntity<ApiErrorResponse> validationError(List<FieldErrorResponse> details) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(new ApiErrorResponse("VALIDATION_ERROR", "Request validation failed.", details));
+  }
+
+  private static String lastPropertySegment(String propertyPath) {
+    final int separatorIndex = propertyPath.lastIndexOf('.');
+    return separatorIndex >= 0 ? propertyPath.substring(separatorIndex + 1) : propertyPath;
   }
 }

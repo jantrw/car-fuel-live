@@ -8,6 +8,7 @@ const props = defineProps<{
   query: string
   canSearch: boolean
   isLoading: boolean
+  validationMessage: string | null
   messages: LocationLookupMessages
 }>()
 
@@ -34,7 +35,11 @@ function onInput(event: Event) {
         id="location-query"
         :value="props.query"
         :placeholder="props.messages.searchPlaceholder"
-        class="min-h-11 flex-1 rounded-md border border-slate-300 bg-white px-3 text-base text-slate-950 transition outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-100"
+        :aria-invalid="props.validationMessage !== null"
+        :aria-describedby="
+          props.validationMessage !== null ? 'location-query-validation' : undefined
+        "
+        class="min-h-11 flex-1 rounded-md border border-slate-300 bg-white px-3 text-base text-slate-950 transition outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-100 aria-[invalid=true]:border-red-500 aria-[invalid=true]:focus:border-red-600 aria-[invalid=true]:focus:ring-red-100"
         type="search"
         @input="onInput"
       />
@@ -50,5 +55,12 @@ function onInput(event: Event) {
         }}
       </Button>
     </div>
+    <p
+      v-if="props.validationMessage !== null"
+      id="location-query-validation"
+      class="text-sm font-medium text-red-700"
+    >
+      {{ props.validationMessage }}
+    </p>
   </form>
 </template>

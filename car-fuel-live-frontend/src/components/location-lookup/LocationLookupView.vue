@@ -11,6 +11,11 @@ import SelectedLocationPanel from './SelectedLocationPanel.vue'
 const messages = resolveLocationLookupMessages()
 const lookup = useLocationLookup()
 const isLoading = computed(() => lookup.status.value === 'loading')
+const validationMessage = computed(() =>
+  lookup.queryValidationMessage.value === 'LOCATION_LOOKUP_QUERY_TOO_SHORT'
+    ? messages.searchTooShort
+    : null,
+)
 </script>
 
 <template>
@@ -44,8 +49,9 @@ const isLoading = computed(() => lookup.status.value === 'loading')
           :query="lookup.query.value"
           :can-search="lookup.canSearch.value"
           :is-loading="isLoading"
+          :validation-message="validationMessage"
           :messages="messages"
-          @update-query="lookup.query.value = $event"
+          @update-query="lookup.updateQuery"
           @search="lookup.search"
         />
         <LocationResultList

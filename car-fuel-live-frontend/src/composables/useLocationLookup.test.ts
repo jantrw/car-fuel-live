@@ -36,4 +36,53 @@ describe('useLocationLookup', () => {
     expect(lookup.results.value).toEqual([])
     expect(lookup.errorMessage.value).toBeNull()
   })
+
+  it('should allow submit attempt and expose validation message only after a too-short query is searched', async () => {
+    const search = vi.fn(async () => ({ items: [] }))
+    const lookup = useLocationLookup({ search })
+
+    lookup.query.value = '1'
+
+    expect(lookup.canSearch.value).toBe(true)
+    expect(lookup.queryValidationMessage.value).toBeNull()
+
+    await lookup.search()
+
+    expect(search).not.toHaveBeenCalled()
+    expect(lookup.queryValidationMessage.value).toBe(
+      'LOCATION_LOOKUP_QUERY_TOO_SHORT',
+    )
+    expect(lookup.errorMessage.value).toBe('LOCATION_LOOKUP_QUERY_TOO_SHORT')
+    expect(lookup.status.value).toBe('idle')
+  })
+
+  it('should clear the short-query validation once the input becomes valid', async () => {
+    const search = vi.fn(async () => ({ items: [] }))
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('B')
+    await lookup.search()
+    lookup.updateQuery('Be')
+
+    expect(lookup.queryValidationMessage.value).toBeNull()
+    expect(lookup.canSearch.value).toBe(true)
+  })
+
+  it('should hide the short-query validation again while the user continues typing after a failed submit', async () => {
+    const search = vi.fn(async () => ({ items: [] }))
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('B')
+    await lookup.search()
+
+    expect(lookup.queryValidationMessage.value).toBe(
+      'LOCATION_LOOKUP_QUERY_TOO_SHORT',
+    )
+
+    lookup.updateQuery('Be')
+
+    expect(lookup.queryValidationMessage.value).toBeNull()
+    expect(lookup.errorMessage.value).toBeNull()
+    expect(lookup.canSearch.value).toBe(true)
+  })
 })

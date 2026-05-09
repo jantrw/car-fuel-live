@@ -22,6 +22,7 @@ PostgreSQL 17 location dataset
 ## Current Module State
 
 - Frontend currently contains a temporary manual location lookup MVP. It lets the user enter a term, request matches, select a typed result, and view the selected label and coordinates.
+- The lookup form enforces the backend minimum query length locally and renders an inline validation hint only after the user submits a one-character text or numeric query, before any request is sent.
 - Frontend backend access is isolated in `src/api/locationSearch.ts`; components do not call `fetch` directly.
 - Frontend user-facing MVP copy is available in English and German through `src/i18n/locationLookupMessages.ts`.
 - Backend currently contains the Spring Boot entrypoint, stateless `permitAll` security configuration, structured validation error handling, and the local location search feature.
@@ -42,8 +43,9 @@ PostgreSQL 17 location dataset
 - `GET /api/v1/locations/search`
   Searches the local seeded PostgreSQL dataset only.
   Query parameters:
-  - `query`: required non-blank text, max 80 characters.
+  - `query`: required non-blank text, length `2..80`.
   - `limit`: optional, defaults to `8`, max `8`.
+  Invalid request parameters, including malformed numeric values such as `limit=foo`, are normalized into the shared `ApiErrorResponse` validation contract.
   Response:
   - `items`: flat list of typed results.
   - `type`: `country`, `place`, or `postalCode`.

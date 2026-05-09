@@ -4,6 +4,7 @@ export interface LocationLookupMessages {
   intro: string
   searchLabel: string
   searchPlaceholder: string
+  searchTooShort: string
   searchButton: string
   loading: string
   resultsTitle: string
@@ -27,6 +28,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
       'Search the local PostgreSQL dataset for countries, places, and German postal codes.',
     searchLabel: 'Search term',
     searchPlaceholder: 'Berlin, Belgium, 10115',
+    searchTooShort: 'Enter at least 2 characters or digits.',
     searchButton: 'Search',
     loading: 'Searching...',
     resultsTitle: 'Matches',
@@ -52,7 +54,8 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     intro:
       'Durchsuche den lokalen PostgreSQL-Datensatz nach Ländern, Orten und deutschen Postleitzahlen.',
     searchLabel: 'Suchbegriff',
-    searchPlaceholder: 'Berlin, Belgien, 10115',
+    searchPlaceholder: 'Berlin, Bernau bei Berlin, 10115',
+    searchTooShort: 'Gib mindestens 2 Buchstaben oder Ziffern ein.',
     searchButton: 'Suchen',
     loading: 'Suche laeuft...',
     resultsTitle: 'Treffer',
