@@ -30,6 +30,7 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
   const status = shallowRef<LocationLookupStatus>('idle')
   const errorMessage = shallowRef<string | null>(null)
   const hasSubmittedTooShortQuery = shallowRef(false)
+  let latestSearchRequestId = 0
 
   const trimmedQuery = computed(() => query.value.trim())
   const queryValidationMessage = computed(() => {
@@ -50,6 +51,8 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
   // Ignore blank or duplicate submits, then reset the previous selection before the next result
   // set replaces it.
   async function search() {
+    const requestId = ++latestSearchRequestId
+
     if (trimmedQuery.value.length === 0) {
       return
     }
@@ -70,9 +73,17 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
 
     try {
       const response = await lookup(trimmedQuery.value, 8)
+      if (requestId !== latestSearchRequestId) {
+        return
+      }
+
       results.value = response.items
       status.value = response.items.length > 0 ? 'results' : 'noResults'
     } catch {
+      if (requestId !== latestSearchRequestId) {
+        return
+      }
+
       // UI copy is localized by state, not by raw backend or network error text.
       results.value = []
       status.value = 'error'

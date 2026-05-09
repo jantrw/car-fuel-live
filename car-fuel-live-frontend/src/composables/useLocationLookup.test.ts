@@ -1,6 +1,22 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import type { LocationSearchResponse } from '@/api/locationSearch'
+
 import { useLocationLookup } from './useLocationLookup'
+
+function createDeferredResponse<T>() {
+  let resolvePromise: (value: T) => void = () => {}
+  const promise = new Promise<T>((resolve) => {
+    resolvePromise = resolve
+  })
+
+  return {
+    promise,
+    resolve(value: T) {
+      resolvePromise(value)
+    },
+  }
+}
 
 describe('useLocationLookup', () => {
   it('should select result when search returns a matching location', async () => {
@@ -84,5 +100,89 @@ describe('useLocationLookup', () => {
     expect(lookup.queryValidationMessage.value).toBeNull()
     expect(lookup.errorMessage.value).toBeNull()
     expect(lookup.canSearch.value).toBe(true)
+  })
+
+  it('should ignore stale search responses when a newer request finishes first', async () => {
+    const firstResponse = createDeferredResponse({
+      items: [
+        {
+          type: 'place' as const,
+          id: '2950159',
+          label: 'Berlin, Germany',
+          countryCode: 'DE',
+          latitude: 52.52437,
+          longitude: 13.41053,
+          postalCode: null,
+        },
+      ],
+    })
+    const secondResponse = createDeferredResponse({
+      items: [
+        {
+          type: 'place' as const,
+          id: '2950150',
+          label: 'Bern, Switzerland',
+          countryCode: 'CH',
+          latitude: 46.94809,
+          longitude: 7.44744,
+          postalCode: null,
+        },
+      ],
+    })
+    const search = vi
+      .fn<(query: string, limit?: number) => Promise<LocationSearchResponse>>()
+      .mockImplementationOnce(() => firstResponse.promise)
+      .mockImplementationOnce(() => secondResponse.promise)
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('Berlin')
+    const firstSearch = lookup.search()
+    lookup.updateQuery('Bern')
+    const secondSearch = lookup.search()
+
+    secondResponse.resolve({
+      items: [
+        {
+          type: 'place',
+          id: '2950150',
+          label: 'Bern, Switzerland',
+          countryCode: 'CH',
+          latitude: 46.94809,
+          longitude: 7.44744,
+          postalCode: null,
+        },
+      ],
+    })
+    await secondSearch
+
+    firstResponse.resolve({
+      items: [
+        {
+          type: 'place',
+          id: '2950159',
+          label: 'Berlin, Germany',
+          countryCode: 'DE',
+          latitude: 52.52437,
+          longitude: 13.41053,
+          postalCode: null,
+        },
+      ],
+    })
+    await firstSearch
+
+    expect(search).toHaveBeenNthCalledWith(1, 'Berlin', 8)
+    expect(search).toHaveBeenNthCalledWith(2, 'Bern', 8)
+    expect(lookup.status.value).toBe('results')
+    expect(lookup.results.value).toEqual([
+      {
+        type: 'place',
+        id: '2950150',
+        label: 'Bern, Switzerland',
+        countryCode: 'CH',
+        latitude: 46.94809,
+        longitude: 7.44744,
+        postalCode: null,
+      },
+    ])
   })
 })

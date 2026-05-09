@@ -1,5 +1,6 @@
 package io.github.jantrw.carfuellive.locations.controller;
 
+import io.github.jantrw.carfuellive.common.validation.TrimmedSize;
 import io.github.jantrw.carfuellive.locations.dto.LocationSearchResponse;
 import io.github.jantrw.carfuellive.locations.service.LocationSearchService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -7,7 +8,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,7 +38,10 @@ public class LocationSearchController {
   LocationSearchResponse searchLocations(
       @RequestParam("query")
           @NotBlank(message = "Query must not be blank.")
-          @Size(min = 2, max = 80, message = "Query must be between 2 and 80 characters.")
+          @TrimmedSize(
+              min = 2,
+              max = 80,
+              message = "Query must be between 2 and 80 characters.")
           String query,
       @RequestParam(name = "limit", defaultValue = "" + DEFAULT_LIMIT)
           @Min(value = 1, message = "Limit must be at least 1.")
