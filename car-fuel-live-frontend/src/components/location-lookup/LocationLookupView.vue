@@ -14,7 +14,9 @@ const isLoading = computed(() => lookup.status.value === 'loading')
 const validationMessage = computed(() =>
   lookup.queryValidationMessage.value === 'LOCATION_LOOKUP_QUERY_TOO_SHORT'
     ? messages.searchTooShort
-    : null,
+    : lookup.queryValidationMessage.value === 'LOCATION_LOOKUP_QUERY_TOO_LONG'
+      ? messages.searchTooLong
+      : null,
 )
 </script>
 

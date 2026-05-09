@@ -18,7 +18,9 @@ interface UseLocationLookupOptions {
 }
 
 const MIN_QUERY_LENGTH = 2
+const MAX_QUERY_LENGTH = 80
 const QUERY_TOO_SHORT_ERROR = 'LOCATION_LOOKUP_QUERY_TOO_SHORT'
+const QUERY_TOO_LONG_ERROR = 'LOCATION_LOOKUP_QUERY_TOO_LONG'
 
 // Allow tests to inject the lookup dependency while production keeps the real API client. Keep
 // only raw source state here; trimmed input and canSearch stay derived.
@@ -29,20 +31,16 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
   const selectedResult = shallowRef<LocationSearchResult | null>(null)
   const status = shallowRef<LocationLookupStatus>('idle')
   const errorMessage = shallowRef<string | null>(null)
-  const hasSubmittedTooShortQuery = shallowRef(false)
+  const hasSubmittedInvalidQuery = shallowRef(false)
   let latestSearchRequestId = 0
 
   const trimmedQuery = computed(() => query.value.trim())
   const queryValidationMessage = computed(() => {
-    if (
-      !hasSubmittedTooShortQuery.value ||
-      trimmedQuery.value.length === 0 ||
-      trimmedQuery.value.length >= MIN_QUERY_LENGTH
-    ) {
+    if (!hasSubmittedInvalidQuery.value || trimmedQuery.value.length === 0) {
       return null
     }
 
-    return QUERY_TOO_SHORT_ERROR
+    return validateQuery(trimmedQuery.value)
   })
   const canSearch = computed(
     () => trimmedQuery.value.length > 0 && status.value !== 'loading',
@@ -59,17 +57,18 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
       return
     }
 
-    if (trimmedQuery.value.length < MIN_QUERY_LENGTH) {
-      hasSubmittedTooShortQuery.value = true
+    const validationError = validateQuery(trimmedQuery.value)
+    if (validationError !== null) {
+      hasSubmittedInvalidQuery.value = true
       results.value = []
       selectedResult.value = null
       status.value = 'idle'
-      errorMessage.value = QUERY_TOO_SHORT_ERROR
+      errorMessage.value = validationError
       return
     }
 
     const requestId = ++latestSearchRequestId
-    hasSubmittedTooShortQuery.value = false
+    hasSubmittedInvalidQuery.value = false
     results.value = []
     status.value = 'loading'
     errorMessage.value = null
@@ -107,7 +106,7 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
     selectedResult.value = null
     status.value = 'idle'
     errorMessage.value = null
-    hasSubmittedTooShortQuery.value = false
+    hasSubmittedInvalidQuery.value = false
   }
 
   return {
@@ -122,4 +121,16 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
     selectResult,
     updateQuery,
   }
+}
+
+function validateQuery(query: string): string | null {
+  if (query.length < MIN_QUERY_LENGTH) {
+    return QUERY_TOO_SHORT_ERROR
+  }
+
+  if (query.length > MAX_QUERY_LENGTH) {
+    return QUERY_TOO_LONG_ERROR
+  }
+
+  return null
 }

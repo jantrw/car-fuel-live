@@ -156,6 +156,17 @@ class LocationSearchControllerTests {
   }
 
   @Test
+  void should_returnPostalCodeResult_when_queryMatchesGermanPostalCodePrefix() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/locations/search").param("query", "5375"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].type").value("postalCode"))
+        .andExpect(jsonPath("$.items[0].postalCode").value("53757"))
+        .andExpect(jsonPath("$.items[0].label").value("53757 Sankt Augustin, Germany"));
+  }
+
+  @Test
   void should_returnSinglePlace_when_textQueryMatchesPlaceAndAdministrativeDuplicate()
       throws Exception {
     mockMvc
@@ -218,6 +229,20 @@ class LocationSearchControllerTests {
   void should_returnValidationError_when_trimmedQueryIsTooShort() throws Exception {
     mockMvc
         .perform(get("/api/v1/locations/search").param("query", " b "))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.details", hasSize(1)))
+        .andExpect(jsonPath("$.details[0].field").value("query"))
+        .andExpect(
+            jsonPath("$.details[0].message").value("Query must be between 2 and 80 characters."));
+  }
+
+  @Test
+  void should_returnValidationError_when_trimmedQueryIsTooLong() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/locations/search")
+                .param("query", " " + "a".repeat(81) + " "))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         .andExpect(jsonPath("$.details", hasSize(1)))

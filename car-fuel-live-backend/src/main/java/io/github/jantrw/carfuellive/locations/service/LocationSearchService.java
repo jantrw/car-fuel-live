@@ -39,15 +39,10 @@ public class LocationSearchService {
     final int candidateLimit = searchCandidateLimit(limit);
     final Map<String, LocationSearchResult> uniqueResults = new LinkedHashMap<>();
 
-    final Optional<String> postalCodeQuery = firstDigitSequence(normalizedQuery);
-    if (postalCodeQuery.isPresent()) {
-      final String postalCode = postalCodeQuery.get();
-      final List<LocationSearchResult> postalCodeResults =
-          locationSearchRepository.searchGermanPostalCodesExact(postalCode, limit);
-      if (!postalCodeResults.isEmpty()) {
-        return toSearchResponse(
-            postalCodeResults.stream().sorted(resultComparator()).limit(limit).toList());
-      }
+    final Optional<List<LocationSearchResult>> postalCodeResults =
+        searchGermanPostalCodeResults(normalizedQuery, limit);
+    if (postalCodeResults.isPresent()) {
+      return toSearchResponse(postalCodeResults.get());
     }
 
     addExactResults(uniqueResults, normalizedQuery, candidateLimit);
@@ -58,6 +53,27 @@ public class LocationSearchService {
     return toSearchResponse(
         limitVisibleResults(
             uniqueResults.values().stream().sorted(resultComparator()).toList(), limit));
+  }
+
+  // Numeric input should prefer German PLZ matches before generic GeoNames prefix lookup so
+  // prefixes such as "101" or embedded fragments such as "Sankt Augustin 5375" stay on the
+  // postal-code path instead of surfacing unrelated European place names.
+  private Optional<List<LocationSearchResult>> searchGermanPostalCodeResults(
+      String normalizedQuery, int limit) {
+    return firstDigitSequence(normalizedQuery)
+        .map(
+            postalCodeQuery -> {
+              final List<LocationSearchResult> exactMatches =
+                  locationSearchRepository.searchGermanPostalCodesExact(postalCodeQuery, limit);
+              if (!exactMatches.isEmpty()) {
+                return exactMatches;
+              }
+
+              return locationSearchRepository.searchGermanPostalCodes(
+                  postalCodeQuery, escapeLikePattern(postalCodeQuery) + "%", limit);
+            })
+        .filter(results -> !results.isEmpty())
+        .map(results -> results.stream().sorted(resultComparator()).limit(limit).toList());
   }
 
   // Query families stay separate because each table has different ranking rules. Place rows use

@@ -5,6 +5,7 @@ export interface LocationLookupMessages {
   searchLabel: string
   searchPlaceholder: string
   searchTooShort: string
+  searchTooLong: string
   searchButton: string
   loading: string
   resultsTitle: string
@@ -29,6 +30,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     searchLabel: 'Search term',
     searchPlaceholder: 'Berlin, Belgium, 10115',
     searchTooShort: 'Enter at least 2 characters or digits.',
+    searchTooLong: 'Enter at most 80 characters or digits.',
     searchButton: 'Search',
     loading: 'Searching...',
     resultsTitle: 'Matches',
@@ -56,6 +58,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     searchLabel: 'Suchbegriff',
     searchPlaceholder: 'Berlin, Bernau bei Berlin, 10115',
     searchTooShort: 'Gib mindestens 2 Buchstaben oder Ziffern ein.',
+    searchTooLong: 'Gib hoechstens 80 Buchstaben oder Ziffern ein.',
     searchButton: 'Suchen',
     loading: 'Suche laeuft...',
     resultsTitle: 'Treffer',

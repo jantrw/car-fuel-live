@@ -102,6 +102,42 @@ describe('useLocationLookup', () => {
     expect(lookup.canSearch.value).toBe(true)
   })
 
+  it('should reject an overlong query locally and expose the max-length validation message only after submit', async () => {
+    const search = vi.fn(async () => ({ items: [] }))
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery(` ${'a'.repeat(81)} `)
+
+    expect(lookup.queryValidationMessage.value).toBeNull()
+
+    await lookup.search()
+
+    expect(search).not.toHaveBeenCalled()
+    expect(lookup.queryValidationMessage.value).toBe(
+      'LOCATION_LOOKUP_QUERY_TOO_LONG',
+    )
+    expect(lookup.errorMessage.value).toBe('LOCATION_LOOKUP_QUERY_TOO_LONG')
+    expect(lookup.status.value).toBe('idle')
+  })
+
+  it('should clear the max-length validation after the user edits the query again', async () => {
+    const search = vi.fn(async () => ({ items: [] }))
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('a'.repeat(81))
+    await lookup.search()
+
+    expect(lookup.queryValidationMessage.value).toBe(
+      'LOCATION_LOOKUP_QUERY_TOO_LONG',
+    )
+
+    lookup.updateQuery('Berlin')
+
+    expect(lookup.queryValidationMessage.value).toBeNull()
+    expect(lookup.errorMessage.value).toBeNull()
+    expect(lookup.canSearch.value).toBe(true)
+  })
+
   it('should clear visible results and selection when the query changes after a successful search', async () => {
     const berlin = {
       type: 'place' as const,
@@ -128,20 +164,11 @@ describe('useLocationLookup', () => {
   })
 
   it('should ignore an in-flight response after the query changes before a new submit', async () => {
-    const response = createDeferredResponse({
-      items: [
-        {
-          type: 'place' as const,
-          id: '2950159',
-          label: 'Berlin, Germany',
-          countryCode: 'DE',
-          latitude: 52.52437,
-          longitude: 13.41053,
-          postalCode: null,
-        },
-      ],
-    })
-    const search = vi.fn(() => response.promise)
+    const response = createDeferredResponse<LocationSearchResponse>()
+    const search = vi.fn(
+      (_query: string, _limit?: number): Promise<LocationSearchResponse> =>
+        response.promise,
+    )
     const lookup = useLocationLookup({ search })
 
     lookup.updateQuery('Berlin')
@@ -170,34 +197,13 @@ describe('useLocationLookup', () => {
   })
 
   it('should ignore stale search responses when a newer request finishes first', async () => {
-    const firstResponse = createDeferredResponse({
-      items: [
-        {
-          type: 'place' as const,
-          id: '2950159',
-          label: 'Berlin, Germany',
-          countryCode: 'DE',
-          latitude: 52.52437,
-          longitude: 13.41053,
-          postalCode: null,
-        },
-      ],
-    })
-    const secondResponse = createDeferredResponse({
-      items: [
-        {
-          type: 'place' as const,
-          id: '2950150',
-          label: 'Bern, Switzerland',
-          countryCode: 'CH',
-          latitude: 46.94809,
-          longitude: 7.44744,
-          postalCode: null,
-        },
-      ],
-    })
+    const firstResponse = createDeferredResponse<LocationSearchResponse>()
+    const secondResponse = createDeferredResponse<LocationSearchResponse>()
     const search = vi
-      .fn<(query: string, limit?: number) => Promise<LocationSearchResponse>>()
+      .fn(
+        (_query: string, _limit?: number): Promise<LocationSearchResponse> =>
+          firstResponse.promise,
+      )
       .mockImplementationOnce(() => firstResponse.promise)
       .mockImplementationOnce(() => secondResponse.promise)
     const lookup = useLocationLookup({ search })
@@ -254,20 +260,11 @@ describe('useLocationLookup', () => {
   })
 
   it('should ignore duplicate submits while a search is already loading', async () => {
-    const response = createDeferredResponse({
-      items: [
-        {
-          type: 'place' as const,
-          id: '2950159',
-          label: 'Berlin, Germany',
-          countryCode: 'DE',
-          latitude: 52.52437,
-          longitude: 13.41053,
-          postalCode: null,
-        },
-      ],
-    })
-    const search = vi.fn(() => response.promise)
+    const response = createDeferredResponse<LocationSearchResponse>()
+    const search = vi.fn(
+      (_query: string, _limit?: number): Promise<LocationSearchResponse> =>
+        response.promise,
+    )
     const lookup = useLocationLookup({ search })
 
     lookup.updateQuery('Berlin')
