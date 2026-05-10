@@ -55,25 +55,41 @@ public class LocationSearchService {
             uniqueResults.values().stream().sorted(resultComparator()).toList(), limit));
   }
 
-  // Numeric input should prefer German PLZ matches before generic GeoNames prefix lookup so
-  // prefixes such as "101" or embedded fragments such as "Sankt Augustin 5375" stay on the
-  // postal-code path instead of surfacing unrelated European place names.
+  // Numeric-only input should keep the PLZ prefix path for incremental search. Mixed input should
+  // prefer postal-code results only when it contains a standalone five-digit German PLZ, otherwise
+  // arbitrary digit fragments such as house numbers would hide relevant place and country matches.
   private Optional<List<LocationSearchResult>> searchGermanPostalCodeResults(
       String normalizedQuery, int limit) {
-    return firstDigitSequence(normalizedQuery)
-        .map(
-            postalCodeQuery -> {
-              final List<LocationSearchResult> exactMatches =
-                  locationSearchRepository.searchGermanPostalCodesExact(postalCodeQuery, limit);
-              if (!exactMatches.isEmpty()) {
-                return exactMatches;
-              }
+    final Optional<String> numericOnlyPostalCodeQuery =
+        numericOnlyPostalCodePrefix(normalizedQuery);
+    if (numericOnlyPostalCodeQuery.isPresent()) {
+      return searchGermanPostalCodePrefixResults(numericOnlyPostalCodeQuery.get(), limit);
+    }
 
-              return locationSearchRepository.searchGermanPostalCodes(
-                  postalCodeQuery, escapeLikePattern(postalCodeQuery) + "%", limit);
-            })
+    return standaloneGermanPostalCode(normalizedQuery)
+        .map(
+            postalCodeQuery ->
+                locationSearchRepository.searchGermanPostalCodesExact(postalCodeQuery, limit))
         .filter(results -> !results.isEmpty())
         .map(results -> results.stream().sorted(resultComparator()).limit(limit).toList());
+  }
+
+  private Optional<List<LocationSearchResult>> searchGermanPostalCodePrefixResults(
+      String postalCodeQuery, int limit) {
+    final List<LocationSearchResult> exactMatches =
+        locationSearchRepository.searchGermanPostalCodesExact(postalCodeQuery, limit);
+    if (!exactMatches.isEmpty()) {
+      return Optional.of(exactMatches.stream().sorted(resultComparator()).limit(limit).toList());
+    }
+
+    final List<LocationSearchResult> prefixMatches =
+        locationSearchRepository.searchGermanPostalCodes(
+            postalCodeQuery, escapeLikePattern(postalCodeQuery) + "%", limit);
+    if (prefixMatches.isEmpty()) {
+      return Optional.empty();
+    }
+
+    return Optional.of(prefixMatches.stream().sorted(resultComparator()).limit(limit).toList());
   }
 
   // Query families stay separate because each table has different ranking rules. Place rows use
@@ -253,19 +269,45 @@ public class LocationSearchService {
     return "P".equals(result.featureClass()) ? 0 : 1;
   }
 
-  // German postal codes are numeric. The first digit run captures input such as
-  // "Sankt Augustin 53757" without treating free text as a postal-code lookup.
-  private static Optional<String> firstDigitSequence(String value) {
+  // Incremental PLZ search should only trigger when the whole query is a plausible postal-code
+  // prefix. Mixed text such as "A1" or "Neustadt 2" must stay on the regular name lookup path.
+  private static Optional<String> numericOnlyPostalCodePrefix(String value) {
+    if (value.isEmpty() || value.length() > 5) {
+      return Optional.empty();
+    }
+
+    for (int index = 0; index < value.length(); index++) {
+      if (!Character.isDigit(value.charAt(index))) {
+        return Optional.empty();
+      }
+    }
+
+    return Optional.of(value);
+  }
+
+  // Free-text input may still carry a real embedded PLZ such as "Sankt Augustin 53757". Only a
+  // standalone five-digit token should take the postal-code fast path.
+  private static Optional<String> standaloneGermanPostalCode(String value) {
     final StringBuilder digits = new StringBuilder();
     for (int index = 0; index < value.length(); index++) {
       final char character = value.charAt(index);
       if (Character.isDigit(character)) {
         digits.append(character);
-      } else if (!digits.isEmpty()) {
-        return Optional.of(digits.toString());
+        continue;
       }
+
+      final Optional<String> postalCode = exactGermanPostalCodeToken(digits);
+      if (postalCode.isPresent()) {
+        return postalCode;
+      }
+
+      digits.setLength(0);
     }
-    return digits.isEmpty() ? Optional.empty() : Optional.of(digits.toString());
+    return exactGermanPostalCodeToken(digits);
+  }
+
+  private static Optional<String> exactGermanPostalCodeToken(StringBuilder digits) {
+    return digits.length() == 5 ? Optional.of(digits.toString()) : Optional.empty();
   }
 
   private static LocationSearchResultResponse toResponse(LocationSearchResult result) {

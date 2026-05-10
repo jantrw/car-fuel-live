@@ -38,10 +38,7 @@ public class LocationSearchController {
   LocationSearchResponse searchLocations(
       @RequestParam("query")
           @NotBlank(message = "Query must not be blank.")
-          @TrimmedSize(
-              min = 2,
-              max = 80,
-              message = "Query must be between 2 and 80 characters.")
+          @TrimmedSize(min = 2, max = 80, message = "Query must be between 2 and 80 characters.")
           String query,
       @RequestParam(name = "limit", defaultValue = "" + DEFAULT_LIMIT)
           @Min(value = 1, message = "Limit must be at least 1.")

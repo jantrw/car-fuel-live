@@ -167,6 +167,27 @@ class LocationSearchControllerTests {
   }
 
   @Test
+  void should_returnPostalCodeResult_when_queryContainsStandaloneGermanPostalCode()
+      throws Exception {
+    mockMvc
+        .perform(get("/api/v1/locations/search").param("query", "Street 1 53757"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].type").value("postalCode"))
+        .andExpect(jsonPath("$.items[0].postalCode").value("53757"))
+        .andExpect(jsonPath("$.items[0].label").value("53757 Sankt Augustin, Germany"));
+  }
+
+  @Test
+  void should_notReturnPostalCodeResults_when_queryContainsOnlyArbitraryDigitFragment()
+      throws Exception {
+    mockMvc
+        .perform(get("/api/v1/locations/search").param("query", "A1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items", hasSize(0)));
+  }
+
+  @Test
   void should_returnSinglePlace_when_textQueryMatchesPlaceAndAdministrativeDuplicate()
       throws Exception {
     mockMvc
@@ -240,9 +261,7 @@ class LocationSearchControllerTests {
   @Test
   void should_returnValidationError_when_trimmedQueryIsTooLong() throws Exception {
     mockMvc
-        .perform(
-            get("/api/v1/locations/search")
-                .param("query", " " + "a".repeat(81) + " "))
+        .perform(get("/api/v1/locations/search").param("query", " " + "a".repeat(81) + " "))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         .andExpect(jsonPath("$.details", hasSize(1)))
