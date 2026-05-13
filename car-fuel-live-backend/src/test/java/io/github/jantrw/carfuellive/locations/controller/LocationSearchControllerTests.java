@@ -31,7 +31,7 @@ class LocationSearchControllerTests {
   @Test
   void should_returnTypedLocationResults_when_queryMatchesSeededRows() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "Ber").param("limit", "8"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "Ber").param("limit", "8"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(2)))
         .andExpect(jsonPath("$.items[0].type").value("place"))
@@ -45,17 +45,6 @@ class LocationSearchControllerTests {
   @Test
   void should_returnCountryResult_when_queryMatchesCountry() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "Belgium"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.items", hasSize(1)))
-        .andExpect(jsonPath("$.items[0].type").value("country"))
-        .andExpect(jsonPath("$.items[0].id").value("BE"))
-        .andExpect(jsonPath("$.items[0].latitude").value(50.5039));
-  }
-
-  @Test
-  void should_returnSuggestionsContract_when_queryMatchesCountry() throws Exception {
-    mockMvc
         .perform(get("/api/v1/locations/suggestions").param("q", "Belgium"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(1)))
@@ -63,6 +52,20 @@ class LocationSearchControllerTests {
         .andExpect(jsonPath("$.items[0].id").value("BE"))
         .andExpect(jsonPath("$.items[0].latitude").value(nullValue()))
         .andExpect(jsonPath("$.items[0].longitude").value(nullValue()));
+  }
+
+  @Test
+  void should_rankPlacesBeforeCountries_when_partialTextSuggestionsAreRequested() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/locations/suggestions").param("q", "Be").param("limit", "8"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items", hasSize(3)))
+        .andExpect(jsonPath("$.items[0].type").value("place"))
+        .andExpect(jsonPath("$.items[0].id").value("2950159"))
+        .andExpect(jsonPath("$.items[1].type").value("place"))
+        .andExpect(jsonPath("$.items[1].id").value("3169070"))
+        .andExpect(jsonPath("$.items[2].type").value("country"))
+        .andExpect(jsonPath("$.items[2].id").value("BE"));
   }
 
   @Test
@@ -92,24 +95,9 @@ class LocationSearchControllerTests {
   }
 
   @Test
-  void should_keepLegacyCountryFirstPrefixRanking_when_searchUsesPartialCountryQuery()
-      throws Exception {
-    mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "Be").param("limit", "8"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.items", hasSize(3)))
-        .andExpect(jsonPath("$.items[0].type").value("country"))
-        .andExpect(jsonPath("$.items[0].id").value("BE"))
-        .andExpect(jsonPath("$.items[1].type").value("place"))
-        .andExpect(jsonPath("$.items[1].id").value("2950159"))
-        .andExpect(jsonPath("$.items[2].type").value("place"))
-        .andExpect(jsonPath("$.items[2].id").value("3169070"));
-  }
-
-  @Test
   void should_returnPlaceResult_when_queryMatchesAlias() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "Berlino"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "Berlino"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].type").value("place"))
@@ -119,7 +107,7 @@ class LocationSearchControllerTests {
   @Test
   void should_returnPostalCodeResult_when_queryMatchesGermanPostalCode() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "10115"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "10115"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].type").value("postalCode"))
@@ -130,7 +118,7 @@ class LocationSearchControllerTests {
   @Test
   void should_returnPostalCodeResult_when_queryMatchesGermanPostalCodePrefix() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "5375"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "5375"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].type").value("postalCode"))
@@ -142,7 +130,7 @@ class LocationSearchControllerTests {
   void should_returnPostalCodeResult_when_queryContainsStandaloneGermanPostalCode()
       throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "Street 1 53757"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "Street 1 53757"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].type").value("postalCode"))
@@ -154,7 +142,7 @@ class LocationSearchControllerTests {
   void should_notReturnPostalCodeResults_when_queryContainsOnlyArbitraryDigitFragment()
       throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "A1"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "A1"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(0)));
   }
@@ -163,7 +151,7 @@ class LocationSearchControllerTests {
   void should_returnSinglePlace_when_textQueryMatchesPlaceAndAdministrativeDuplicate()
       throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "Sankt Augustin"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "Sankt Augustin"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].type").value("place"))
@@ -175,7 +163,7 @@ class LocationSearchControllerTests {
   void should_returnDistinctSameNamePlaces_when_queryMatchesMultiplePlacesInSameCountry()
       throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "Neustadt"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "Neustadt"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(2)))
         .andExpect(jsonPath("$.items[0].type").value("place"))
@@ -191,7 +179,7 @@ class LocationSearchControllerTests {
   @Test
   void should_returnOnlyPostalCodeResults_when_queryContainsMatchingPostalCode() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "Sankt Augustin 53757"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "Sankt Augustin 53757"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].type").value("postalCode"))
@@ -201,7 +189,7 @@ class LocationSearchControllerTests {
   @Test
   void should_returnEmptyItems_when_queryHasNoMatch() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "DoesNotExist"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "DoesNotExist"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(0)));
   }
@@ -209,7 +197,7 @@ class LocationSearchControllerTests {
   @Test
   void should_returnValidationError_when_queryIsTooShort() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "b"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "b"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         .andExpect(jsonPath("$.details", hasSize(1)))
@@ -221,7 +209,7 @@ class LocationSearchControllerTests {
   @Test
   void should_returnValidationError_when_trimmedQueryIsTooShort() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", " b "))
+        .perform(get("/api/v1/locations/suggestions").param("q", " b "))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         .andExpect(jsonPath("$.details", hasSize(1)))
@@ -233,7 +221,7 @@ class LocationSearchControllerTests {
   @Test
   void should_returnValidationError_when_trimmedQueryIsTooLong() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", " " + "a".repeat(81) + " "))
+        .perform(get("/api/v1/locations/suggestions").param("q", " " + "a".repeat(81) + " "))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         .andExpect(jsonPath("$.details", hasSize(1)))
@@ -245,7 +233,7 @@ class LocationSearchControllerTests {
   @Test
   void should_returnValidationError_when_limitIsTooLarge() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "Berlin").param("limit", "9"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "Berlin").param("limit", "9"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
   }
@@ -253,7 +241,7 @@ class LocationSearchControllerTests {
   @Test
   void should_returnValidationError_when_limitIsMalformed() throws Exception {
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "Berlin").param("limit", "foo"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "Berlin").param("limit", "foo"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         .andExpect(jsonPath("$.details", hasSize(1)))
@@ -295,7 +283,7 @@ class LocationSearchControllerTests {
     LocationSearchTestData.resetAliasOverflowFixture(jdbcClient);
 
     mockMvc
-        .perform(get("/api/v1/locations/search").param("query", "Santa Maria").param("limit", "8"))
+        .perform(get("/api/v1/locations/suggestions").param("q", "Santa Maria").param("limit", "8"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(8)))
         .andExpect(jsonPath("$.items[0].id").value("3167551"))

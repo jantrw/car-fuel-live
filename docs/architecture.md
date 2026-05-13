@@ -2,16 +2,16 @@
 
 ```text
 Browser (Vue 3 + Vite frontend)
-  -> manual location lookup MVP in `car-fuel-live-frontend/src/components/location-lookup`
+  -> manual search foundation in `car-fuel-live-frontend/src/components/location-lookup`
   -> lookup state in `src/composables/useLocationLookup.ts`
+  -> country context persistence in `src/stores/locationCountryContext.ts`
   -> backend calls through `src/api/locationSearch.ts`
-  -> shared UI base with shadcn-vue button scaffold
+  -> grouped autocomplete sections with keyboard navigation
 
 Spring Boot backend
   -> `BackendApplication`
   -> stateless public API security via `SecurityConfig`
   -> `GET /api/v1/locations/suggestions` for autocomplete suggestions
-  -> retained `GET /api/v1/locations/search` MVP lookup endpoint
   -> no Tankerkönig integration implemented yet
 
 PostgreSQL 17 location dataset
@@ -22,10 +22,12 @@ PostgreSQL 17 location dataset
 
 ## Current Module State
 
-- Frontend currently contains a temporary manual location lookup MVP. It lets the user enter a term, request matches, select a typed result, and view the selected label and coordinates.
-- The lookup form enforces the backend minimum query length locally and renders an inline validation hint only after the user submits a one-character text or numeric query, before any request is sent.
+- Frontend currently contains the manual search foundation for autocomplete. It derives the active country context from `localStorage`, browser locale, or time zone, persists only that country code, and shows it visibly above the input.
+- The lookup form requests `/api/v1/locations/suggestions` after a `250 ms` debounce once the trimmed input has at least two characters, aborts stale in-flight requests with `AbortController`, and groups the flat backend response into visible city/place, country, and postal-code sections.
+- Keyboard handling currently supports `ArrowDown`, `ArrowUp`, `Enter`, and `Escape`, while pointer selection survives input blur so clicking a suggestion still works reliably.
+- Selecting a suggestion in the current slice only fills the input and closes the autocomplete list. The later result-state behavior remains intentionally out of scope for this slice.
 - Frontend backend access is isolated in `src/api/locationSearch.ts`; components do not call `fetch` directly.
-- Frontend user-facing MVP copy is available in English and German through `src/i18n/locationLookupMessages.ts`.
+- Frontend user-facing copy is available in English and German through `src/i18n/locationLookupMessages.ts`.
 - Backend currently contains the Spring Boot entrypoint, stateless `permitAll` security configuration, structured validation error handling, and the local location search feature.
 - The backend location search feature is grouped under `locations/` with controller, service, repository, DTO, and model packages.
 - No geolocation flow, country persistence flow, rate limiting, or Tankerkönig client is implemented yet.
@@ -54,9 +56,6 @@ PostgreSQL 17 location dataset
   - `id`, `label`, `countryCode`, `latitude`, `longitude`, and optional `postalCode`.
   `country` suggestion items intentionally omit `latitude` and `longitude`; `place` and `postalCode` items include them. Place results are first merged by place identity, then same-place populated/admin duplicates with the same administrative hierarchy are collapsed so distinct same-name towns remain selectable. If multiple German place results still share one visible label, the service injects a German Bundesland name from `admin1_code` into those labels without adding another database join. If the user query contains a postal code and a matching postal-code row exists, only postal-code results are returned. For textual autocomplete, city and place matches rank ahead of country prefix matches, and optional `countryCode` only boosts matching-country results instead of filtering.
   No-match responses return `200 OK` with an empty `items` list.
-
-- `GET /api/v1/locations/search`
-  Retained temporary MVP lookup endpoint for the current frontend screen. It uses the same underlying seeded dataset and typed result model, but keeps the legacy `query` parameter and still returns country coordinates.
 
 ## PostgreSQL Schema
 

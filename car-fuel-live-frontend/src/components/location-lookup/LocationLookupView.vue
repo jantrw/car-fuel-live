@@ -1,22 +1,30 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
 
 import { useLocationLookup } from '@/composables/useLocationLookup'
 import { resolveLocationLookupMessages } from '@/i18n/locationLookupMessages'
+import { useLocationCountryContextStore } from '@/stores/locationCountryContext'
 
 import LocationResultList from './LocationResultList.vue'
 import LocationSearchForm from './LocationSearchForm.vue'
-import SelectedLocationPanel from './SelectedLocationPanel.vue'
 
 const messages = resolveLocationLookupMessages()
-const lookup = useLocationLookup()
-const isLoading = computed(() => lookup.status.value === 'loading')
-const validationMessage = computed(() =>
-  lookup.queryValidationMessage.value === 'LOCATION_LOOKUP_QUERY_TOO_SHORT'
-    ? messages.searchTooShort
-    : lookup.queryValidationMessage.value === 'LOCATION_LOOKUP_QUERY_TOO_LONG'
-      ? messages.searchTooLong
-      : null,
+const countryContextStore = useLocationCountryContextStore()
+countryContextStore.initializeCountryContext()
+const { countryCode } = storeToRefs(countryContextStore)
+
+const lookup = useLocationLookup({
+  countryCode,
+})
+
+const countryLabel = computed(() =>
+  countryContextStore.countryLabel(messages.locale),
+)
+const activeSuggestionId = computed(() =>
+  lookup.activeResult.value === null
+    ? null
+    : `location-suggestion-${lookup.activeResult.value.type}-${lookup.activeResult.value.id}`,
 )
 </script>
 
@@ -46,25 +54,31 @@ const validationMessage = computed(() =>
         </p>
       </section>
 
-      <section class="grid gap-4">
+      <section class="grid content-start gap-4">
         <LocationSearchForm
-          :query="lookup.query.value"
-          :can-search="lookup.canSearch.value"
-          :is-loading="isLoading"
-          :validation-message="validationMessage"
+          :active-suggestion-id="activeSuggestionId"
+          :country-code="countryCode"
+          :country-label="countryLabel"
+          :is-autocomplete-open="lookup.isAutocompleteOpen.value"
           :messages="messages"
+          :query="lookup.query.value"
+          @blur-input="lookup.blurInput"
+          @close-autocomplete="lookup.closeAutocomplete"
+          @confirm-highlighted-result="lookup.confirmHighlightedResult"
+          @focus-input="lookup.focusInput"
+          @move-highlight-next="lookup.moveHighlightNext"
+          @move-highlight-previous="lookup.moveHighlightPrevious"
           @update-query="lookup.updateQuery"
-          @search="lookup.search"
         />
         <LocationResultList
-          :results="lookup.results.value"
+          :active-suggestion-id="activeSuggestionId"
+          :groups="lookup.groupedResults.value"
+          :is-open="lookup.isAutocompleteOpen.value"
+          :messages="messages"
           :status="lookup.status.value"
-          :messages="messages"
+          @pointer-selection-cancel="lookup.cancelPointerSelection"
+          @pointer-selection-start="lookup.markPointerSelectionStart"
           @select-result="lookup.selectResult"
-        />
-        <SelectedLocationPanel
-          :selected-result="lookup.selectedResult.value"
-          :messages="messages"
         />
       </section>
     </div>

@@ -1,49 +1,51 @@
 export interface LocationLookupMessages {
+  locale: 'en' | 'de'
   eyebrow: string
   title: string
   intro: string
+  currentCountryLabel: string
+  currentCountryHint: string
   searchLabel: string
   searchPlaceholder: string
-  searchTooShort: string
-  searchTooLong: string
-  searchButton: string
   loading: string
-  resultsTitle: string
+  suggestionsTitle: string
   noResultsTitle: string
   noResultsBody: string
   errorTitle: string
   errorBody: string
-  selectedTitle: string
-  latitude: string
-  longitude: string
-  coordinatesUnavailable: string
   privacyNotice: string
+  keyboardHint: string
+  suggestionGroupTitle: Record<'country' | 'place' | 'postalCode', string>
   resultType: Record<'country' | 'place' | 'postalCode', string>
 }
 
 const messages: Record<'en' | 'de', LocationLookupMessages> = {
   en: {
+    locale: 'en',
     eyebrow: 'Manual location lookup',
-    title: 'Find seeded locations',
+    title: 'Search local suggestions',
     intro:
-      'Search the local PostgreSQL dataset for countries, places, and German postal codes.',
-    searchLabel: 'Search term',
+      'Type to browse local PostgreSQL suggestions for countries, cities, places, and German postal codes.',
+    currentCountryLabel: 'Country context',
+    currentCountryHint:
+      'Suggestions prefer matches from this country when the backend can rank them.',
+    searchLabel: 'Search',
     searchPlaceholder: 'Berlin, Belgium, 10115',
-    searchTooShort: 'Enter at least 2 characters or digits.',
-    searchTooLong: 'Enter at most 80 characters or digits.',
-    searchButton: 'Search',
     loading: 'Searching...',
-    resultsTitle: 'Matches',
+    suggestionsTitle: 'Suggestions',
     noResultsTitle: 'No local match',
     noResultsBody: 'Try another spelling or a nearby place.',
     errorTitle: 'Lookup failed',
     errorBody: 'The location service did not return usable results.',
-    selectedTitle: 'Selected location',
-    latitude: 'Latitude',
-    longitude: 'Longitude',
-    coordinatesUnavailable: 'Coordinates not available',
     privacyNotice:
-      'This MVP searches local seed data only. No browser location is requested or stored.',
+      'This UI uses local seed data only. It stores the selected country context, but not coordinates.',
+    keyboardHint:
+      'Use Arrow keys to move through suggestions, Enter to choose one, and Escape to close the list.',
+    suggestionGroupTitle: {
+      country: 'Countries',
+      place: 'Cities and places',
+      postalCode: 'Postal codes',
+    },
     resultType: {
       country: 'Country',
       place: 'Place',
@@ -51,28 +53,32 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     },
   },
   de: {
+    locale: 'de',
     eyebrow: 'Manuelle Standortsuche',
-    title: 'Gespeicherte Orte finden',
+    title: 'Lokale Vorschlaege durchsuchen',
     intro:
-      'Durchsuche den lokalen PostgreSQL-Datensatz nach Ländern, Orten und deutschen Postleitzahlen.',
-    searchLabel: 'Suchbegriff',
+      'Tippe, um lokale PostgreSQL-Vorschlaege fuer Laender, Staedte, Orte und deutsche Postleitzahlen zu durchsuchen.',
+    currentCountryLabel: 'Laenderkontext',
+    currentCountryHint:
+      'Vorschlaege bevorzugen Treffer aus diesem Land, wenn das Backend sie hoeher einstufen kann.',
+    searchLabel: 'Suche',
     searchPlaceholder: 'Berlin, Bernau bei Berlin, 10115',
-    searchTooShort: 'Gib mindestens 2 Buchstaben oder Ziffern ein.',
-    searchTooLong: 'Gib hoechstens 80 Buchstaben oder Ziffern ein.',
-    searchButton: 'Suchen',
     loading: 'Suche laeuft...',
-    resultsTitle: 'Treffer',
+    suggestionsTitle: 'Vorschlaege',
     noResultsTitle: 'Kein lokaler Treffer',
     noResultsBody:
       'Versuche eine andere Schreibweise oder einen nahegelegenen Ort.',
     errorTitle: 'Suche fehlgeschlagen',
     errorBody: 'Der Standortdienst hat keine nutzbaren Ergebnisse geliefert.',
-    selectedTitle: 'Ausgewaehlter Standort',
-    latitude: 'Breitengrad',
-    longitude: 'Laengengrad',
-    coordinatesUnavailable: 'Koordinaten nicht verfuegbar',
     privacyNotice:
-      'Dieses MVP durchsucht nur lokale Seed-Daten. Browser-Standort wird nicht abgefragt oder gespeichert.',
+      'Diese UI nutzt nur lokale Seed-Daten. Gespeichert wird nur der Laenderkontext, keine Koordinaten.',
+    keyboardHint:
+      'Mit den Pfeiltasten durch Vorschlaege gehen, mit Enter auswaehlen und mit Escape die Liste schliessen.',
+    suggestionGroupTitle: {
+      country: 'Laender',
+      place: 'Staedte und Orte',
+      postalCode: 'Postleitzahlen',
+    },
     resultType: {
       country: 'Land',
       place: 'Ort',

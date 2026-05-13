@@ -30,36 +30,25 @@ public class LocationSearchService {
     this.locationSearchRepository = locationSearchRepository;
   }
 
-  // Prefer exact postal-code matches when input contains digits, then use exact name lookups
-  // before prefix fallback so indexed queries win whenever the user provides a full name.
-  @Transactional(readOnly = true)
-  public LocationSearchResponse search(String query, int limit) {
-    return lookup(query, limit, RankingProfile.LEGACY_SEARCH, Optional.empty(), true);
-  }
-
   @Transactional(readOnly = true)
   public LocationSearchResponse suggest(String query, String countryCode, int limit) {
-    return lookup(
-        query, limit, RankingProfile.SUGGESTIONS, normalizeCountryCode(countryCode), false);
+    return lookup(query, limit, normalizeCountryCode(countryCode));
   }
 
+  // Prefer exact postal-code matches when input contains digits, then use exact name lookups
+  // before prefix fallback so indexed queries win whenever the user provides a full name.
   private LocationSearchResponse lookup(
-      String query,
-      int limit,
-      RankingProfile rankingProfile,
-      Optional<String> boostedCountryCode,
-      boolean includeCountryCoordinates) {
+      String query, int limit, Optional<String> boostedCountryCode) {
     final String normalizedQuery = normalize(query);
     final String likePrefix = escapeLikePattern(normalizedQuery) + "%";
     final int candidateLimit = searchCandidateLimit(limit);
     final Map<String, LocationSearchResult> uniqueResults = new LinkedHashMap<>();
-    final Comparator<LocationSearchResult> comparator =
-        resultComparator(rankingProfile, boostedCountryCode);
+    final Comparator<LocationSearchResult> comparator = resultComparator(boostedCountryCode);
 
     final Optional<List<LocationSearchResult>> postalCodeResults =
         searchGermanPostalCodeResults(normalizedQuery, limit, comparator);
     if (postalCodeResults.isPresent()) {
-      return toSearchResponse(postalCodeResults.get(), includeCountryCoordinates);
+      return toSearchResponse(postalCodeResults.get());
     }
 
     addExactResults(uniqueResults, normalizedQuery, candidateLimit, comparator);
@@ -68,8 +57,7 @@ public class LocationSearchService {
     }
 
     return toSearchResponse(
-        limitVisibleResults(uniqueResults.values().stream().sorted(comparator).toList(), limit),
-        includeCountryCoordinates);
+        limitVisibleResults(uniqueResults.values().stream().sorted(comparator).toList(), limit));
   }
 
   // Numeric-only input should keep the PLZ prefix path for incremental search. Mixed input should
@@ -185,21 +173,14 @@ public class LocationSearchService {
   // SQL assigns matchRank by match quality. Java applies shared tie-breakers so results from
   // place, alias, country, and postal-code queries are ranked consistently.
   private static Comparator<LocationSearchResult> resultComparator(
-      RankingProfile rankingProfile, Optional<String> boostedCountryCode) {
+      Optional<String> boostedCountryCode) {
     return Comparator.<LocationSearchResult>comparingInt(
-            result -> rankingRank(result, rankingProfile))
+            LocationSearchService::suggestionRankingRank)
         .thenComparingInt(result -> countryBoostRank(result, boostedCountryCode))
         .thenComparing(LocationSearchService::featureClassRank)
         .thenComparing(Comparator.comparingLong(LocationSearchResult::popularity).reversed())
         .thenComparing(LocationSearchResult::label)
         .thenComparing(LocationSearchResult::id);
-  }
-
-  private static int rankingRank(LocationSearchResult result, RankingProfile rankingProfile) {
-    return switch (rankingProfile) {
-      case LEGACY_SEARCH -> result.matchRank();
-      case SUGGESTIONS -> suggestionRankingRank(result);
-    };
   }
 
   private static int suggestionRankingRank(LocationSearchResult result) {
@@ -227,17 +208,13 @@ public class LocationSearchService {
     return 1;
   }
 
-  private static LocationSearchResponse toSearchResponse(
-      List<LocationSearchResult> results, boolean includeCountryCoordinates) {
+  private static LocationSearchResponse toSearchResponse(List<LocationSearchResult> results) {
     final Map<String, Long> visibleGermanPlaceCounts = visibleGermanPlaceCounts(results);
     final List<LocationSearchResultResponse> items =
         results.stream()
             .map(
                 result ->
-                    toResponse(
-                        result,
-                        visibleGermanPlaceCounts.getOrDefault(result.id(), 0L) > 1,
-                        includeCountryCoordinates))
+                    toResponse(result, visibleGermanPlaceCounts.getOrDefault(result.id(), 0L) > 1))
             .toList();
 
     return new LocationSearchResponse(items);
@@ -383,35 +360,27 @@ public class LocationSearchService {
     return digits.length() == 5 ? Optional.of(digits.toString()) : Optional.empty();
   }
 
-  private static LocationSearchResultResponse toResponse(LocationSearchResult result) {
-    return toResponse(result, false, true);
-  }
-
   private static LocationSearchResultResponse toResponse(
-      LocationSearchResult result,
-      boolean includeGermanAdmin1Name,
-      boolean includeCountryCoordinates) {
+      LocationSearchResult result, boolean includeGermanAdmin1Name) {
     return new LocationSearchResultResponse(
         result.type(),
         result.id(),
         displayLabel(result, includeGermanAdmin1Name),
         result.countryCode(),
-        responseLatitude(result, includeCountryCoordinates),
-        responseLongitude(result, includeCountryCoordinates),
+        responseLatitude(result),
+        responseLongitude(result),
         result.postalCode());
   }
 
-  private static Double responseLatitude(
-      LocationSearchResult result, boolean includeCountryCoordinates) {
-    if ("country".equals(result.type()) && !includeCountryCoordinates) {
+  private static Double responseLatitude(LocationSearchResult result) {
+    if ("country".equals(result.type())) {
       return null;
     }
     return result.latitude();
   }
 
-  private static Double responseLongitude(
-      LocationSearchResult result, boolean includeCountryCoordinates) {
-    if ("country".equals(result.type()) && !includeCountryCoordinates) {
+  private static Double responseLongitude(LocationSearchResult result) {
+    if ("country".equals(result.type())) {
       return null;
     }
     return result.longitude();
@@ -483,10 +452,5 @@ public class LocationSearchService {
 
   private static String escapeLikePattern(String value) {
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-  }
-
-  private enum RankingProfile {
-    LEGACY_SEARCH,
-    SUGGESTIONS
   }
 }

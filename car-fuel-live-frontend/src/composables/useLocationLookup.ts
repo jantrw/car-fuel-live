@@ -1,10 +1,21 @@
-import { computed, shallowRef } from 'vue'
+import {
+  computed,
+  readonly,
+  shallowRef,
+  type ComputedRef,
+  type Ref,
+  watch,
+} from 'vue'
 
 import {
-  searchLocations,
+  suggestLocations,
   type LocationSearchResponse,
   type LocationSearchResult,
 } from '@/api/locationSearch'
+import {
+  flattenLocationSuggestionGroups,
+  groupLocationSuggestions,
+} from '@/lib/locationSuggestions'
 
 export type LocationLookupStatus =
   | 'idle'
@@ -14,123 +25,198 @@ export type LocationLookupStatus =
   | 'error'
 
 interface UseLocationLookupOptions {
-  search?: (query: string, limit?: number) => Promise<LocationSearchResponse>
+  countryCode?: Ref<string>
+  debounceMs?: number
+  suggest?: (
+    query: string,
+    options?: {
+      countryCode?: string | null
+      limit?: number
+      signal?: AbortSignal
+    },
+  ) => Promise<LocationSearchResponse>
 }
 
 const MIN_QUERY_LENGTH = 2
-const MAX_QUERY_LENGTH = 80
-const QUERY_TOO_SHORT_ERROR = 'LOCATION_LOOKUP_QUERY_TOO_SHORT'
-const QUERY_TOO_LONG_ERROR = 'LOCATION_LOOKUP_QUERY_TOO_LONG'
+const DEFAULT_LIMIT = 8
+const DEFAULT_DEBOUNCE_MS = 250
 
-// Allow tests to inject the lookup dependency while production keeps the real API client. Keep
-// only raw source state here; trimmed input and canSearch stay derived.
+// The lookup flow is now autocomplete-driven. Keep source state minimal, derive grouped output,
+// and let the watcher own debounce and request cancellation so stale requests never leak through.
 export function useLocationLookup(options: UseLocationLookupOptions = {}) {
-  const lookup = options.search ?? searchLocations
+  const suggest = options.suggest ?? suggestLocations
+  const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS
+  const activeCountryCode = options.countryCode
+
   const query = shallowRef('')
   const results = shallowRef<LocationSearchResult[]>([])
-  const selectedResult = shallowRef<LocationSearchResult | null>(null)
   const status = shallowRef<LocationLookupStatus>('idle')
-  const errorMessage = shallowRef<string | null>(null)
-  const hasSubmittedInvalidQuery = shallowRef(false)
-  let latestSearchRequestId = 0
+  const isInputFocused = shallowRef(false)
+  const highlightedIndex = shallowRef(-1)
+  const pointerSelecting = shallowRef(false)
+  let skipNextLookup = false
 
   const trimmedQuery = computed(() => query.value.trim())
-  const queryValidationMessage = computed(() => {
-    if (!hasSubmittedInvalidQuery.value || trimmedQuery.value.length === 0) {
-      return null
-    }
-
-    return validateQuery(trimmedQuery.value)
-  })
-  const canSearch = computed(
-    () => trimmedQuery.value.length > 0 && status.value !== 'loading',
+  const groupedResults = computed(() => groupLocationSuggestions(results.value))
+  const visibleResults = computed(() =>
+    flattenLocationSuggestionGroups(groupedResults.value),
+  )
+  const activeResult = computed(() =>
+    highlightedIndex.value < 0
+      ? null
+      : visibleResults.value[highlightedIndex.value] ?? null,
+  )
+  const isAutocompleteOpen = computed(
+    () =>
+      isInputFocused.value &&
+      (status.value === 'loading' ||
+        status.value === 'results' ||
+        status.value === 'noResults' ||
+        status.value === 'error'),
   )
 
-  // Ignore blank or duplicate submits, then reset the previous selection before the next result
-  // set replaces it.
-  async function search() {
-    if (status.value === 'loading') {
-      return
-    }
-
-    if (trimmedQuery.value.length === 0) {
-      return
-    }
-
-    const validationError = validateQuery(trimmedQuery.value)
-    if (validationError !== null) {
-      hasSubmittedInvalidQuery.value = true
-      results.value = []
-      selectedResult.value = null
-      status.value = 'idle'
-      errorMessage.value = validationError
-      return
-    }
-
-    const requestId = ++latestSearchRequestId
-    hasSubmittedInvalidQuery.value = false
-    results.value = []
-    status.value = 'loading'
-    errorMessage.value = null
-    selectedResult.value = null
-
-    try {
-      const response = await lookup(trimmedQuery.value, 8)
-      if (requestId !== latestSearchRequestId) {
+  watch(
+    [trimmedQuery, activeCountryCode ?? computed(() => '')],
+    ([nextQuery, nextCountryCode], _previous, onCleanup) => {
+      if (skipNextLookup) {
+        skipNextLookup = false
         return
       }
 
-      results.value = response.items
-      status.value = response.items.length > 0 ? 'results' : 'noResults'
-    } catch {
-      if (requestId !== latestSearchRequestId) {
+      highlightedIndex.value = -1
+
+      if (nextQuery.length < MIN_QUERY_LENGTH) {
+        results.value = []
+        status.value = 'idle'
         return
       }
 
-      // UI copy is localized by state, not by raw backend or network error text.
-      results.value = []
-      status.value = 'error'
-      errorMessage.value = 'LOCATION_LOOKUP_FAILED'
-    }
-  }
+      const controller = new AbortController()
+      const timeoutId = globalThis.setTimeout(async () => {
+        status.value = 'loading'
 
-  // Selection is view-local for this MVP; raw coordinates must not be persisted.
-  function selectResult(result: LocationSearchResult) {
-    selectedResult.value = result
-  }
+        try {
+          const response = await suggest(nextQuery, {
+            countryCode: nextCountryCode,
+            limit: DEFAULT_LIMIT,
+            signal: controller.signal,
+          })
+
+          if (controller.signal.aborted) {
+            return
+          }
+
+          results.value = response.items
+          status.value = response.items.length > 0 ? 'results' : 'noResults'
+        } catch {
+          if (controller.signal.aborted) {
+            return
+          }
+
+          results.value = []
+          status.value = 'error'
+        }
+      }, debounceMs)
+
+      onCleanup(() => {
+        globalThis.clearTimeout(timeoutId)
+        controller.abort()
+      })
+    },
+  )
 
   function updateQuery(value: string) {
     query.value = value
-    latestSearchRequestId += 1
+    isInputFocused.value = true
+  }
+
+  function focusInput() {
+    isInputFocused.value = true
+  }
+
+  function blurInput() {
+    if (pointerSelecting.value) {
+      return
+    }
+
+    isInputFocused.value = false
+    highlightedIndex.value = -1
+  }
+
+  function moveHighlightNext() {
+    if (visibleResults.value.length === 0) {
+      return
+    }
+
+    highlightedIndex.value =
+      highlightedIndex.value >= visibleResults.value.length - 1
+        ? 0
+        : highlightedIndex.value + 1
+  }
+
+  function moveHighlightPrevious() {
+    if (visibleResults.value.length === 0) {
+      return
+    }
+
+    highlightedIndex.value =
+      highlightedIndex.value <= 0
+        ? visibleResults.value.length - 1
+        : highlightedIndex.value - 1
+  }
+
+  function confirmHighlightedResult() {
+    if (activeResult.value === null) {
+      return
+    }
+
+    selectResult(activeResult.value)
+  }
+
+  function closeAutocomplete() {
+    isInputFocused.value = false
+    highlightedIndex.value = -1
+  }
+
+  function markPointerSelectionStart() {
+    pointerSelecting.value = true
+  }
+
+  function selectResult(result: LocationSearchResult) {
+    pointerSelecting.value = false
+    skipNextLookup = true
+    query.value = result.label
     results.value = []
-    selectedResult.value = null
     status.value = 'idle'
-    errorMessage.value = null
-    hasSubmittedInvalidQuery.value = false
+    isInputFocused.value = false
+    highlightedIndex.value = -1
+  }
+
+  function cancelPointerSelection() {
+    pointerSelecting.value = false
   }
 
   return {
-    query,
-    results,
-    selectedResult,
-    status,
-    errorMessage,
-    queryValidationMessage,
-    canSearch,
-    search,
-    selectResult,
+    query: readonly(query),
+    groupedResults,
+    status: readonly(status),
+    isAutocompleteOpen,
+    highlightedIndex: readonly(highlightedIndex),
+    activeResult,
     updateQuery,
+    focusInput,
+    blurInput,
+    moveHighlightNext,
+    moveHighlightPrevious,
+    confirmHighlightedResult,
+    closeAutocomplete,
+    markPointerSelectionStart,
+    cancelPointerSelection,
+    selectResult,
   }
 }
 
-function validateQuery(query: string): string | null {
-  if (query.length < MIN_QUERY_LENGTH) {
-    return QUERY_TOO_SHORT_ERROR
-  }
-
-  if (query.length > MAX_QUERY_LENGTH) {
-    return QUERY_TOO_LONG_ERROR
-  }
-
-  return null
-}
+export type UseLocationLookupReturn = ReturnType<typeof useLocationLookup>
+export type LocationSuggestionGroup = ComputedRef<
+  ReturnType<typeof groupLocationSuggestions>
+>

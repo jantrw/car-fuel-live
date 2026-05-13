@@ -29,26 +29,6 @@ public class LocationSearchController {
   }
 
   @Operation(
-      summary = "Search seeded locations",
-      description = "Search countries, places, and German postal codes.")
-  @ApiResponse(responseCode = "200", description = "Search completed.")
-  @ApiResponse(responseCode = "400", description = "Search request validation failed.")
-  // This MVP endpoint is request-driven. Later autocomplete APIs can add debounce and country
-  // context without changing this minimal lookup contract.
-  @GetMapping("/search")
-  LocationSearchResponse searchLocations(
-      @RequestParam("query")
-          @NotBlank(message = "Query must not be blank.")
-          @TrimmedSize(min = 2, max = 80, message = "Query must be between 2 and 80 characters.")
-          String query,
-      @RequestParam(name = "limit", defaultValue = "" + DEFAULT_LIMIT)
-          @Min(value = 1, message = "Limit must be at least 1.")
-          @Max(value = 8, message = "Limit must be at most 8.")
-          int limit) {
-    return locationSearchService.search(query, limit);
-  }
-
-  @Operation(
       summary = "Suggest seeded locations",
       description =
           "Suggest countries, places, and German postal codes from the seeded PostgreSQL dataset.")
