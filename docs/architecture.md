@@ -10,7 +10,8 @@ Browser (Vue 3 + Vite frontend)
 Spring Boot backend
   -> `BackendApplication`
   -> stateless public API security via `SecurityConfig`
-  -> `GET /api/v1/locations/search` for local location lookup
+  -> `GET /api/v1/locations/suggestions` for autocomplete suggestions
+  -> retained `GET /api/v1/locations/search` MVP lookup endpoint
   -> no Tankerkönig integration implemented yet
 
 PostgreSQL 17 location dataset
@@ -40,18 +41,22 @@ PostgreSQL 17 location dataset
 
 ## Current API
 
-- `GET /api/v1/locations/search`
-  Searches the local seeded PostgreSQL dataset only.
+- `GET /api/v1/locations/suggestions`
+  Searches the local seeded PostgreSQL dataset only for autocomplete suggestions.
   Query parameters:
-  - `query`: required non-blank text, length `2..80`.
+  - `q`: required non-blank text, length `2..80`.
+  - `countryCode`: optional two-letter ISO country code used as a ranking boost only.
   - `limit`: optional, defaults to `8`, max `8`.
   Invalid request parameters, including malformed numeric values such as `limit=foo`, are normalized into the shared `ApiErrorResponse` validation contract.
   Response:
   - `items`: flat list of typed results.
   - `type`: `country`, `place`, or `postalCode`.
   - `id`, `label`, `countryCode`, `latitude`, `longitude`, and optional `postalCode`.
-  Place results are first merged by place identity, then same-place populated/admin duplicates with the same administrative hierarchy are collapsed so distinct same-name towns remain selectable. If multiple German place results still share one visible label, the service injects a German Bundesland name from `admin1_code` into those labels without adding another database join. If the user query contains a postal code and a matching postal-code row exists, only postal-code results are returned.
+  `country` suggestion items intentionally omit `latitude` and `longitude`; `place` and `postalCode` items include them. Place results are first merged by place identity, then same-place populated/admin duplicates with the same administrative hierarchy are collapsed so distinct same-name towns remain selectable. If multiple German place results still share one visible label, the service injects a German Bundesland name from `admin1_code` into those labels without adding another database join. If the user query contains a postal code and a matching postal-code row exists, only postal-code results are returned. For textual autocomplete, city and place matches rank ahead of country prefix matches, and optional `countryCode` only boosts matching-country results instead of filtering.
   No-match responses return `200 OK` with an empty `items` list.
+
+- `GET /api/v1/locations/search`
+  Retained temporary MVP lookup endpoint for the current frontend screen. It uses the same underlying seeded dataset and typed result model, but keeps the legacy `query` parameter and still returns country coordinates.
 
 ## PostgreSQL Schema
 
