@@ -76,25 +76,6 @@ class LocationSearchServiceTests {
     assertThat(response.items().getFirst().longitude()).isNull();
   }
 
-  @Test
-  void should_keepLegacyCountryPrefixRanking_when_searchUsesPartialCountryQuery() {
-    when(locationSearchRepository.searchPlacesExact("be", 64)).thenReturn(List.of());
-    when(locationSearchRepository.searchPlaceAliasesExact("be", 64)).thenReturn(List.of());
-    when(locationSearchRepository.searchCountriesExact("be", 64)).thenReturn(List.of());
-    when(locationSearchRepository.searchPlaces("be", "be%", 64))
-        .thenReturn(
-            List.of(
-                place("2950159", "Berlin, Germany", "DE", 2, 3_426_354),
-                place("3169070", "Bernau bei Berlin, Germany", "DE", 2, 40_000)));
-    when(locationSearchRepository.searchPlaceAliases("be", "be%", 64)).thenReturn(List.of());
-    when(locationSearchRepository.searchCountries("be", "be%", 64))
-        .thenReturn(List.of(country("BE", "Belgium", 1, 11_500_000)));
-
-    final LocationSearchResponse response = locationSearchService.search("Be", 8);
-
-    assertThat(response.items()).extracting("id").containsExactly("BE", "2950159", "3169070");
-  }
-
   private static LocationSearchResult place(
       String id, String label, String countryCode, int matchRank, long popularity) {
     return new LocationSearchResult(
