@@ -71,8 +71,10 @@
 ### Location Search and Geocoding
 - PostgreSQL should hold seeded GeoNames data for European countries, administrative/place rows, place aliases, and German postal codes.
 - The seeded dataset is the only source for manual search suggestions and coordinate resolution.
-- The current MVP exposes `GET /api/v1/locations/search?query=...&limit=...` for local lookup. It returns a flat `items` list with explicit result types: `country`, `place`, and `postalCode`.
-- The MVP search endpoint requires `query` length `2..80` characters and `limit` values that parse as integers in the allowed range. Invalid request parameters return the shared structured validation error payload.
+- The backend now exposes `GET /api/v1/locations/suggestions?q=...&countryCode=...&limit=...` for autocomplete suggestions from the seeded PostgreSQL dataset. It returns a flat `items` list with explicit result types: `country`, `place`, and `postalCode`.
+- The suggestions endpoint requires `q` length `2..80` characters, treats optional `countryCode` as a ranking boost only, and limits `limit` to `8`. Invalid request parameters return the shared structured validation error payload.
+- `place` and `postalCode` suggestion items include coordinates directly in the response. `country` suggestion items omit coordinates so country selection remains a context change, not a centroid lookup.
+- The earlier `GET /api/v1/locations/search?query=...&limit=...` MVP endpoint remains available for the temporary manual lookup screen and still returns the same typed `items` list.
 - The backend may fetch a bounded internal candidate window larger than the requested `limit` so the final user-visible limit is applied only after cross-query ranking and semantic deduplication.
 - If a query contains a German postal code and PostgreSQL has a matching postal-code row, the MVP returns only postal-code results for that query.
 - Text-only place searches suppress postal-code-by-place-name matches and collapse only same-place place/admin duplicates that share the same administrative hierarchy, preferring populated places over administrative rows while keeping distinct same-name towns selectable. When multiple German place results would otherwise share the same visible label, the backend appends the Bundesland name from `admin1_code` to those labels so users can distinguish them.
@@ -83,7 +85,7 @@
 - `location_place_aliases` should store `place_geoname_id`, `alias_name`, `normalized_alias_name`, and `created_at`.
 - `german_postal_codes` should store `country_code`, `postal_code`, `place_name`, `normalized_place_name`, optional `admin1_name` to `admin3_name`, `latitude`, `longitude`, optional `accuracy`, and `created_at`.
 - Manual search should start after a short partial input and query PostgreSQL for ranked matches first.
-- Suggestion ranking should favor exact matches, then prefix matches, then alias matches, then popularity and country relevance.
+- Suggestion ranking should favor city and place matches over country prefix matches for textual autocomplete, then popularity, with optional `countryCode` applied only as a boost.
 - For Germany, support local resolution of postal codes, cities, places, and the country itself from the seeded dataset.
 - When a selected or submitted city or region already exists in PostgreSQL, the backend should use the stored coordinates immediately and continue to Tankerkönig.
 - When a selected or submitted country already exists in PostgreSQL, the frontend should switch to that country context and render the major-city defaults for that country.
