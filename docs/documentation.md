@@ -8,6 +8,7 @@
 
 ## Planned Product Behavior
 
+- Current issue #38 MVP: users can type a search term, request local matches, select one typed result, and see its stored label and coordinates. This is a temporary proof slice before the later autocomplete and country-context flows.
 - On first visit, derive the initial country from browser locale and time zone.
 - If browser locale has no region, default to Germany.
 - If the user does not share a city, show prices for major cities in the selected country/area.
@@ -70,6 +71,12 @@
 ### Location Search and Geocoding
 - PostgreSQL should hold seeded GeoNames data for European countries, administrative/place rows, place aliases, and German postal codes.
 - The seeded dataset is the only source for manual search suggestions and coordinate resolution.
+- The current MVP exposes `GET /api/v1/locations/search?query=...&limit=...` for local lookup. It returns a flat `items` list with explicit result types: `country`, `place`, and `postalCode`.
+- The MVP search endpoint requires `query` length `2..80` characters and `limit` values that parse as integers in the allowed range. Invalid request parameters return the shared structured validation error payload.
+- The backend may fetch a bounded internal candidate window larger than the requested `limit` so the final user-visible limit is applied only after cross-query ranking and semantic deduplication.
+- If a query contains a German postal code and PostgreSQL has a matching postal-code row, the MVP returns only postal-code results for that query.
+- Text-only place searches suppress postal-code-by-place-name matches and collapse only same-place place/admin duplicates that share the same administrative hierarchy, preferring populated places over administrative rows while keeping distinct same-name towns selectable. When multiple German place results would otherwise share the same visible label, the backend appends the Bundesland name from `admin1_code` to those labels so users can distinguish them.
+- MVP no-match behavior is `200 OK` with `items: []`; the frontend shows an empty state instead of an error.
 - Do not add a broad second geocoding source. If a cache exists, keep it limited to canonical coordinates for the largest European cities and the most common German cities and warm it from PostgreSQL.
 - `location_countries` should store `country_code`, `geoname_id`, `name`, `normalized_name`, `iso3_code`, `numeric_code`, `capital_name`, `continent_code`, optional `latitude`/`longitude`, optional `population`, and `created_at`.
 - `location_places` should store `geoname_id`, `country_code`, `name`, `ascii_name`, `normalized_name`, `normalized_ascii_name`, `latitude`, `longitude`, `feature_class`, `feature_code`, optional `admin1_code` to `admin4_code`, `population`, optional `timezone`, optional `source_modified_on`, optional `alternate_names`, and `created_at`.
@@ -139,7 +146,7 @@
 - Keep `TANKERKOENIG_API_KEY` empty until live fuel-price integration is being worked on.
 - Database: `docker compose --env-file .\car-fuel-live-backend\.env -f .\car-fuel-live-backend\docker-compose.yml up -d`
 - Backend: `.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun`
-- The bundled PostgreSQL container binds to `127.0.0.1:5432` only for local development.
+- The bundled PostgreSQL container binds to `127.0.0.1:3307` only for local development.
 - Initial location seed for a new or empty local database: `.\car-fuel-live-backend\scripts\import-location-data.ps1`
 - Frontend: `npm --prefix .\car-fuel-live-frontend run dev`
 - Swagger UI: `http://localhost:8080/swagger-ui.html` in development, no authentication required
@@ -154,8 +161,10 @@
 - The script does not create target schema tables. It fails if Flyway migration `V1` has not completed successfully.
 
 ### Frontend Foundation
-- The frontend foundation uses Vue 3 with TypeScript enabled.
+- The frontend uses Vue 3 with TypeScript enabled.
 - `shadcn-vue` is installed for UI component scaffolding.
+- The current frontend screen is a temporary manual location lookup MVP for issue #38. It sends search requests through `src/api/`, validates the response shape at runtime, and stores selected coordinates only in component memory for the current view.
+- Vite proxies `/api` to `http://localhost:8080` during local development.
 
 ### Verification Commands
 - Backend tests: `.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend test`

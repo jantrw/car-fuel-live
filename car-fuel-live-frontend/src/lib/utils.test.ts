@@ -10,7 +10,13 @@ describe('cn', () => {
   })
 
   it('should ignore falsy values when optional classes are provided', () => {
-    const result = cn('flex', undefined, false && 'hidden', null, 'items-center')
+    const result = cn(
+      'flex',
+      undefined,
+      false && 'hidden',
+      null,
+      'items-center',
+    )
 
     expect(result).toBe('flex items-center')
   })
