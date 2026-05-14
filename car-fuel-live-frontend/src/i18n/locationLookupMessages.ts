@@ -19,6 +19,7 @@ export interface LocationLookupMessages {
   privacyNotice: string
   validationMessage: {
     QUERY_TOO_SHORT: string
+    QUERY_TOO_LONG: string
   }
   suggestionGroupTitle: Record<'country' | 'place' | 'postalCode', string>
   resultType: Record<'country' | 'place' | 'postalCode', string>
@@ -50,6 +51,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
       'This UI uses local seed data only. It stores the selected country context, but not coordinates.',
     validationMessage: {
       QUERY_TOO_SHORT: 'Enter at least two characters before searching.',
+      QUERY_TOO_LONG: 'Enter at most 80 characters before searching.',
     },
     suggestionGroupTitle: {
       country: 'Countries',
@@ -88,6 +90,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
       'Diese UI nutzt nur lokale Seed-Daten. Gespeichert wird nur der Laenderkontext, keine Koordinaten.',
     validationMessage: {
       QUERY_TOO_SHORT: 'Gib vor der Suche mindestens zwei Zeichen ein.',
+      QUERY_TOO_LONG: 'Gib vor der Suche hoechstens 80 Zeichen ein.',
     },
     suggestionGroupTitle: {
       country: 'Laender',

@@ -8,7 +8,7 @@ const props = defineProps<{
   countryCode: string
   countryLabel: string
   isLoading: boolean
-  validationMessage: 'QUERY_TOO_SHORT' | null
+  validationMessage: 'QUERY_TOO_SHORT' | 'QUERY_TOO_LONG' | null
   messages: LocationLookupMessages
 }>()
 

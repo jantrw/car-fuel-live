@@ -88,6 +88,18 @@ describe('useLocationLookup', () => {
     expect(lookup.validationMessage.value).toBe('QUERY_TOO_SHORT')
   })
 
+  it('should show submit-time validation when the trimmed query is too long', async () => {
+    const search = vi.fn<SearchFn>(async () => ({ items: [] }))
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('a'.repeat(81))
+    await lookup.submitSearch()
+
+    expect(search).not.toHaveBeenCalled()
+    expect(lookup.status.value).toBe('validation')
+    expect(lookup.validationMessage.value).toBe('QUERY_TOO_LONG')
+  })
+
   it('should clear previous visible state when the user edits the query after a search', async () => {
     const search = vi.fn<SearchFn>(async () => ({
       items: [

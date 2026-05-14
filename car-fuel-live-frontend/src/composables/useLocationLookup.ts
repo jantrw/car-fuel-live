@@ -15,7 +15,7 @@ export type LocationLookupStatus =
   | 'error'
   | 'validation'
 
-export type LocationLookupValidationMessage = 'QUERY_TOO_SHORT'
+export type LocationLookupValidationMessage = 'QUERY_TOO_SHORT' | 'QUERY_TOO_LONG'
 
 interface UseLocationLookupOptions {
   countryCode?: Ref<string>
@@ -30,6 +30,7 @@ interface UseLocationLookupOptions {
 }
 
 const MIN_QUERY_LENGTH = 2
+const MAX_QUERY_LENGTH = 80
 const DEFAULT_LIMIT = 8
 
 // The manual lookup flow is explicit again: input updates only local state, submit triggers the
@@ -61,6 +62,13 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
       results.value = []
       status.value = 'validation'
       validationMessage.value = 'QUERY_TOO_SHORT'
+      return
+    }
+
+    if (nextQuery.length > MAX_QUERY_LENGTH) {
+      results.value = []
+      status.value = 'validation'
+      validationMessage.value = 'QUERY_TOO_LONG'
       return
     }
 
