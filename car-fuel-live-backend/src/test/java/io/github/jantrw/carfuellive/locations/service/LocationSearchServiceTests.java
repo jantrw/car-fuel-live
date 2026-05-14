@@ -92,14 +92,14 @@ class LocationSearchServiceTests {
         .thenReturn(
             List.of(
                 place("3", "Bex, Switzerland", "CH", 2, 6_900),
-                place("4", "Baix, France", "FR", 2, 6_100)));
+                place("4", "Beaune, France", "FR", 2, 20_551)));
     when(locationSearchRepository.searchPlaceAliases("be", "be%", 64)).thenReturn(List.of());
     when(locationSearchRepository.searchCountries("be", "be%", 64))
         .thenReturn(List.of(country("BE", "Belgium", 1, 11_500_000)));
 
     final LocationSearchResponse response = locationSearchService.suggest("Be", "DE", 8);
 
-    assertThat(response.items()).extracting("id").containsExactly("2950159", "3", "4", "BE");
+    assertThat(response.items()).extracting("id").containsExactly("2950159", "4", "3", "BE");
   }
 
   @Test
@@ -144,6 +144,88 @@ class LocationSearchServiceTests {
     final LocationSearchResponse response = locationSearchService.suggest("Berl", "DE", 8);
 
     assertThat(response.items()).extracting("id").containsExactly("2950159", "9");
+  }
+
+  @Test
+  void should_preferStrongLocalPrefixOverLowPopulationExactMatch_when_queryIsMei() {
+    when(locationSearchRepository.searchPlacesExactInCountry("mei", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlaceAliasesExactInCountry("mei", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlacesExact("mei", 64))
+        .thenReturn(
+            List.of(
+                place("10", "Mei, Portugal", "PT", 0, 0),
+                administrativePlace("11", "Mei, Portugal", "PT", 1, 118)));
+    when(locationSearchRepository.searchPlaceAliasesExact("mei", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchCountriesExact("mei", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchPlacesInCountry("mei", "mei%", "DE", 64))
+        .thenReturn(
+            List.of(
+                place("2872347", "Meiderich, Germany", "DE", 2, 45_297),
+                place("2867302", "Meissen, Germany", "DE", 2, 28_492),
+                place("2873427", "Meinerzhagen, Germany", "DE", 2, 21_982),
+                place("2873467", "Meiningen, Germany", "DE", 2, 21_580),
+                place("2872126", "Meitingen, Germany", "DE", 2, 11_201)));
+    when(locationSearchRepository.searchPlaceAliasesInCountry("mei", "mei%", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlaces("mei", "mei%", 64))
+        .thenReturn(
+            List.of(
+                place("2867302", "Meissen, Germany", "DE", 2, 28_492),
+                place("2873427", "Meinerzhagen, Germany", "DE", 2, 21_982),
+                place("2873467", "Meiningen, Germany", "DE", 2, 21_580),
+                place("10", "Mei, Portugal", "PT", 0, 0),
+                place("15", "Meise, Belgium", "BE", 2, 18_497),
+                place("16", "Meilen, Switzerland", "CH", 2, 14_207)));
+    when(locationSearchRepository.searchPlaceAliases("mei", "mei%", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchCountries("mei", "mei%", 64)).thenReturn(List.of());
+
+    final LocationSearchResponse response = locationSearchService.suggest("Mei", "DE", 8);
+
+    assertThat(response.items())
+        .extracting("id")
+        .containsExactly("2872347", "2867302", "2873427", "2873467", "2872126", "10", "15", "16");
+  }
+
+  @Test
+  void should_notLetLowPopulationExactMatchesSuppressStrongerGlobalContinuation_when_queryIsPari() {
+    when(locationSearchRepository.searchPlacesExactInCountry("pari", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlaceAliasesExactInCountry("pari", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlacesExact("pari", 64))
+        .thenReturn(
+            List.of(
+                place("12", "Pari, Italy", "IT", 0, 204),
+                place("13", "Pari, Estonia", "EE", 0, 475)));
+    when(locationSearchRepository.searchPlaceAliasesExact("pari", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchCountriesExact("pari", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchPlacesInCountry("pari", "pari%", "DE", 64))
+        .thenReturn(
+            List.of(
+                place("2855426", "Parin, Germany", "DE", 2, 900),
+                place("2855422", "Paring, Germany", "DE", 2, 800),
+                place("2855423", "Paring, Germany", "DE", 2, 700),
+                place("2855421", "Parishof, Germany", "DE", 2, 600),
+                place("18", "Parin Neu, Germany", "DE", 2, 500)));
+    when(locationSearchRepository.searchPlaceAliasesInCountry("pari", "pari%", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlaces("pari", "pari%", 64))
+        .thenReturn(
+            List.of(
+                place("2988507", "Paris, France", "FR", 2, 2_138_551),
+                place("14", "Parikkala, Finland", "FI", 2, 5_000),
+                place("12", "Pari, Italy", "IT", 0, 204),
+                place("13", "Pari, Estonia", "EE", 0, 475)));
+    when(locationSearchRepository.searchPlaceAliases("pari", "pari%", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchCountries("pari", "pari%", 64)).thenReturn(List.of());
+
+    final LocationSearchResponse response = locationSearchService.suggest("Pari", "DE", 8);
+
+    assertThat(response.items())
+        .extracting("id")
+        .containsExactly("2855426", "2855422", "2855423", "2855421", "18", "13", "2988507", "14");
   }
 
   @Test
@@ -210,6 +292,25 @@ class LocationSearchServiceTests {
         2.0,
         null,
         "P",
+        null,
+        null,
+        null,
+        null,
+        matchRank,
+        popularity);
+  }
+
+  private static LocationSearchResult administrativePlace(
+      String id, String label, String countryCode, int matchRank, long popularity) {
+    return new LocationSearchResult(
+        "place",
+        id,
+        label,
+        countryCode,
+        1.0,
+        2.0,
+        null,
+        "A",
         null,
         null,
         null,
