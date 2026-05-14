@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class LocationSearchService {
 
   private static final Map<String, String> GERMAN_ADMIN1_NAMES = germanAdmin1Names();
+  private static final int SHORT_PREFIX_MAX_LENGTH = 3;
   private static final int SEARCH_CANDIDATE_MULTIPLIER = 8;
   private static final int MAX_SEARCH_CANDIDATES = 64;
 
@@ -43,7 +44,8 @@ public class LocationSearchService {
     final String likePrefix = escapeLikePattern(normalizedQuery) + "%";
     final int candidateLimit = searchCandidateLimit(limit);
     final Map<String, LocationSearchResult> uniqueResults = new LinkedHashMap<>();
-    final Comparator<LocationSearchResult> comparator = resultComparator(boostedCountryCode);
+    final Comparator<LocationSearchResult> comparator =
+        resultComparator(normalizedQuery, boostedCountryCode);
 
     final Optional<List<LocationSearchResult>> postalCodeResults =
         searchGermanPostalCodeResults(normalizedQuery, limit, comparator);
@@ -51,9 +53,15 @@ public class LocationSearchService {
       return toSearchResponse(postalCodeResults.get());
     }
 
-    addExactResults(uniqueResults, normalizedQuery, candidateLimit, comparator);
+    addExactResults(uniqueResults, normalizedQuery, candidateLimit, comparator, boostedCountryCode);
     if (uniqueResults.isEmpty()) {
-      addPrefixResults(uniqueResults, normalizedQuery, likePrefix, candidateLimit, comparator);
+      addPrefixResults(
+          uniqueResults,
+          normalizedQuery,
+          likePrefix,
+          candidateLimit,
+          comparator,
+          boostedCountryCode);
     }
 
     return toSearchResponse(
@@ -106,7 +114,10 @@ public class LocationSearchService {
       Map<String, LocationSearchResult> uniqueResults,
       String normalizedQuery,
       int candidateLimit,
-      Comparator<LocationSearchResult> comparator) {
+      Comparator<LocationSearchResult> comparator,
+      Optional<String> boostedCountryCode) {
+    addContextCountryExactResults(
+        uniqueResults, normalizedQuery, candidateLimit, comparator, boostedCountryCode);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlacesExact(normalizedQuery, candidateLimit),
@@ -130,7 +141,10 @@ public class LocationSearchService {
       String normalizedQuery,
       String likePrefix,
       int candidateLimit,
-      Comparator<LocationSearchResult> comparator) {
+      Comparator<LocationSearchResult> comparator,
+      Optional<String> boostedCountryCode) {
+    addContextCountryPrefixResults(
+        uniqueResults, normalizedQuery, likePrefix, candidateLimit, comparator, boostedCountryCode);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaces(normalizedQuery, likePrefix, candidateLimit),
@@ -144,6 +158,60 @@ public class LocationSearchService {
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchCountries(normalizedQuery, likePrefix, candidateLimit),
+        LocationSearchService::idKey,
+        comparator);
+  }
+
+  // The context country must influence candidate collection, not only final sorting. Otherwise a
+  // bounded global overfetch window can still exclude locally relevant places before the boost is
+  // applied.
+  private void addContextCountryExactResults(
+      Map<String, LocationSearchResult> uniqueResults,
+      String normalizedQuery,
+      int candidateLimit,
+      Comparator<LocationSearchResult> comparator,
+      Optional<String> boostedCountryCode) {
+    if (boostedCountryCode.isEmpty()) {
+      return;
+    }
+
+    final String countryCode = boostedCountryCode.get();
+    addBestResults(
+        uniqueResults,
+        locationSearchRepository.searchPlacesExactInCountry(
+            normalizedQuery, countryCode, candidateLimit),
+        LocationSearchService::idKey,
+        comparator);
+    addBestResults(
+        uniqueResults,
+        locationSearchRepository.searchPlaceAliasesExactInCountry(
+            normalizedQuery, countryCode, candidateLimit),
+        LocationSearchService::idKey,
+        comparator);
+  }
+
+  private void addContextCountryPrefixResults(
+      Map<String, LocationSearchResult> uniqueResults,
+      String normalizedQuery,
+      String likePrefix,
+      int candidateLimit,
+      Comparator<LocationSearchResult> comparator,
+      Optional<String> boostedCountryCode) {
+    if (boostedCountryCode.isEmpty()) {
+      return;
+    }
+
+    final String countryCode = boostedCountryCode.get();
+    addBestResults(
+        uniqueResults,
+        locationSearchRepository.searchPlacesInCountry(
+            normalizedQuery, likePrefix, countryCode, candidateLimit),
+        LocationSearchService::idKey,
+        comparator);
+    addBestResults(
+        uniqueResults,
+        locationSearchRepository.searchPlaceAliasesInCountry(
+            normalizedQuery, likePrefix, countryCode, candidateLimit),
         LocationSearchService::idKey,
         comparator);
   }
@@ -173,10 +241,10 @@ public class LocationSearchService {
   // SQL assigns matchRank by match quality. Java applies shared tie-breakers so results from
   // place, alias, country, and postal-code queries are ranked consistently.
   private static Comparator<LocationSearchResult> resultComparator(
-      Optional<String> boostedCountryCode) {
+      String normalizedQuery, Optional<String> boostedCountryCode) {
     return Comparator.<LocationSearchResult>comparingInt(
             LocationSearchService::suggestionRankingRank)
-        .thenComparingInt(result -> countryBoostRank(result, boostedCountryCode))
+        .thenComparingInt(result -> countryBoostRank(result, normalizedQuery, boostedCountryCode))
         .thenComparing(LocationSearchService::featureClassRank)
         .thenComparing(Comparator.comparingLong(LocationSearchResult::popularity).reversed())
         .thenComparing(LocationSearchResult::label)
@@ -200,12 +268,38 @@ public class LocationSearchService {
   }
 
   private static int countryBoostRank(
-      LocationSearchResult result, Optional<String> boostedCountryCode) {
-    if (boostedCountryCode.isPresent()
-        && boostedCountryCode.get().equalsIgnoreCase(result.countryCode())) {
+      LocationSearchResult result, String normalizedQuery, Optional<String> boostedCountryCode) {
+    if (boostedCountryCode.isEmpty()
+        || !boostedCountryCode.get().equalsIgnoreCase(result.countryCode())) {
+      return 1;
+    }
+
+    if (normalizedQuery.length() <= SHORT_PREFIX_MAX_LENGTH
+        || isExactNameMatch(result, normalizedQuery)) {
       return 0;
     }
+
     return 1;
+  }
+
+  // The context country should strongly steer short ambiguous prefixes such as "Wi". For longer
+  // searches, keep the country preference only as a tie-breaker for true exact name matches such
+  // as multiple places called "Paris" so clear user intent still wins.
+  private static boolean isExactNameMatch(LocationSearchResult result, String normalizedQuery) {
+    if ("postalCode".equals(result.type())) {
+      return normalizedQuery.equals(result.postalCode());
+    }
+
+    return normalize(primaryName(result)).equals(normalizedQuery);
+  }
+
+  private static String primaryName(LocationSearchResult result) {
+    if ("country".equals(result.type())) {
+      return result.label();
+    }
+
+    final int separatorIndex = result.label().indexOf(", ");
+    return separatorIndex < 0 ? result.label() : result.label().substring(0, separatorIndex);
   }
 
   private static LocationSearchResponse toSearchResponse(List<LocationSearchResult> results) {

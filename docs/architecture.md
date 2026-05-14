@@ -6,12 +6,12 @@ Browser (Vue 3 + Vite frontend)
   -> lookup state in `src/composables/useLocationLookup.ts`
   -> country context persistence in `src/stores/locationCountryContext.ts`
   -> backend calls through `src/api/locationSearch.ts`
-  -> grouped autocomplete sections with keyboard navigation
+  -> explicit search form with grouped result sections
 
 Spring Boot backend
   -> `BackendApplication`
   -> stateless public API security via `SecurityConfig`
-  -> `GET /api/v1/locations/suggestions` for autocomplete suggestions
+  -> `GET /api/v1/locations/suggestions` for local manual-search results
   -> no Tankerkönig integration implemented yet
 
 PostgreSQL 17 location dataset
@@ -22,10 +22,9 @@ PostgreSQL 17 location dataset
 
 ## Current Module State
 
-- Frontend currently contains the manual search foundation for autocomplete. It derives the active country context from `localStorage`, browser locale, or time zone, persists only that country code, and shows it visibly above the input.
-- The lookup form requests `/api/v1/locations/suggestions` after a `250 ms` debounce once the trimmed input has at least two characters, aborts stale in-flight requests with `AbortController`, and groups the flat backend response into visible city/place, country, and postal-code sections.
-- Keyboard handling currently supports `ArrowDown`, `ArrowUp`, `Enter`, and `Escape`, while pointer selection survives input blur so clicking a suggestion still works reliably.
-- Selecting a suggestion in the current slice only fills the input and closes the autocomplete list. The later result-state behavior remains intentionally out of scope for this slice.
+- Frontend currently contains the manual search foundation for explicit local search. It derives the active country context from `localStorage`, browser locale, or time zone, persists only that country code, and shows it visibly above the input.
+- The lookup form requests `/api/v1/locations/suggestions` only after an explicit search action. Query edits clear stale visible state immediately, and the grouped backend response renders as visible city/place, country, and postal-code result sections.
+- Selecting a returned result in the current slice only fills the input and clears the visible result list. The later result-state behavior remains intentionally out of scope for this slice.
 - Frontend backend access is isolated in `src/api/locationSearch.ts`; components do not call `fetch` directly.
 - Frontend user-facing copy is available in English and German through `src/i18n/locationLookupMessages.ts`.
 - Backend currently contains the Spring Boot entrypoint, stateless `permitAll` security configuration, structured validation error handling, and the local location search feature.
@@ -44,17 +43,17 @@ PostgreSQL 17 location dataset
 ## Current API
 
 - `GET /api/v1/locations/suggestions`
-  Searches the local seeded PostgreSQL dataset only for autocomplete suggestions.
+  Searches the local seeded PostgreSQL dataset only for manual-search results.
   Query parameters:
   - `q`: required non-blank text, length `2..80`.
-  - `countryCode`: optional two-letter ISO country code used as a ranking boost only.
+  - `countryCode`: optional two-letter ISO country code used as a ranking preference only.
   - `limit`: optional, defaults to `8`, max `8`.
   Invalid request parameters, including malformed numeric values such as `limit=foo`, are normalized into the shared `ApiErrorResponse` validation contract.
   Response:
   - `items`: flat list of typed results.
   - `type`: `country`, `place`, or `postalCode`.
   - `id`, `label`, `countryCode`, `latitude`, `longitude`, and optional `postalCode`.
-  `country` suggestion items intentionally omit `latitude` and `longitude`; `place` and `postalCode` items include them. Place results are first merged by place identity, then same-place populated/admin duplicates with the same administrative hierarchy are collapsed so distinct same-name towns remain selectable. If multiple German place results still share one visible label, the service injects a German Bundesland name from `admin1_code` into those labels without adding another database join. If the user query contains a postal code and a matching postal-code row exists, only postal-code results are returned. For textual autocomplete, city and place matches rank ahead of country prefix matches, and optional `countryCode` only boosts matching-country results instead of filtering.
+  `country` items intentionally omit `latitude` and `longitude`; `place` and `postalCode` items include them. Place results are first merged by place identity, then same-place populated/admin duplicates with the same administrative hierarchy are collapsed so distinct same-name towns remain selectable. If multiple German place results still share one visible label, the service injects a German Bundesland name from `admin1_code` into those labels without adding another database join. If the user query contains a postal code and a matching postal-code row exists, only postal-code results are returned. For textual manual search, city and place matches rank ahead of country prefix matches. Optional `countryCode` influences both candidate collection and final ranking so locally relevant results from the active country survive the bounded result window, but the boost is strongest for short ambiguous prefixes and weakens to a tie-breaker for longer exact place-name matches.
   No-match responses return `200 OK` with an empty `items` list.
 
 ## PostgreSQL Schema

@@ -29,13 +29,13 @@ public class LocationSearchController {
   }
 
   @Operation(
-      summary = "Suggest seeded locations",
+      summary = "Search seeded locations",
       description =
-          "Suggest countries, places, and German postal codes from the seeded PostgreSQL dataset.")
-  @ApiResponse(responseCode = "200", description = "Suggestions completed.")
-  @ApiResponse(responseCode = "400", description = "Suggestion request validation failed.")
+          "Search countries, places, and German postal codes from the seeded PostgreSQL dataset.")
+  @ApiResponse(responseCode = "200", description = "Location search completed.")
+  @ApiResponse(responseCode = "400", description = "Location search request validation failed.")
   @GetMapping("/suggestions")
-  LocationSearchResponse suggestLocations(
+  LocationSearchResponse searchLocations(
       @RequestParam("q")
           @NotBlank(message = "Query must not be blank.")
           @TrimmedSize(min = 2, max = 80, message = "Query must be between 2 and 80 characters.")

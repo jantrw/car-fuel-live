@@ -1,21 +1,11 @@
-import {
-  computed,
-  readonly,
-  shallowRef,
-  type ComputedRef,
-  type Ref,
-  watch,
-} from 'vue'
+import { computed, readonly, shallowRef, type Ref } from 'vue'
 
 import {
-  suggestLocations,
+  searchLocations,
   type LocationSearchResponse,
   type LocationSearchResult,
 } from '@/api/locationSearch'
-import {
-  flattenLocationSuggestionGroups,
-  groupLocationSuggestions,
-} from '@/lib/locationSuggestions'
+import { groupLocationSuggestions } from '@/lib/locationSuggestions'
 
 export type LocationLookupStatus =
   | 'idle'
@@ -23,11 +13,13 @@ export type LocationLookupStatus =
   | 'results'
   | 'noResults'
   | 'error'
+  | 'validation'
+
+export type LocationLookupValidationMessage = 'QUERY_TOO_SHORT'
 
 interface UseLocationLookupOptions {
   countryCode?: Ref<string>
-  debounceMs?: number
-  suggest?: (
+  search?: (
     query: string,
     options?: {
       countryCode?: string | null
@@ -39,184 +31,106 @@ interface UseLocationLookupOptions {
 
 const MIN_QUERY_LENGTH = 2
 const DEFAULT_LIMIT = 8
-const DEFAULT_DEBOUNCE_MS = 250
 
-// The lookup flow is now autocomplete-driven. Keep source state minimal, derive grouped output,
-// and let the watcher own debounce and request cancellation so stale requests never leak through.
+// The manual lookup flow is explicit again: input updates only local state, submit triggers the
+// backend request, and stale visible results are cleared as soon as the query changes.
 export function useLocationLookup(options: UseLocationLookupOptions = {}) {
-  const suggest = options.suggest ?? suggestLocations
-  const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS
+  const search = options.search ?? searchLocations
   const activeCountryCode = options.countryCode
 
   const query = shallowRef('')
   const results = shallowRef<LocationSearchResult[]>([])
   const status = shallowRef<LocationLookupStatus>('idle')
-  const isInputFocused = shallowRef(false)
-  const highlightedIndex = shallowRef(-1)
-  const pointerSelecting = shallowRef(false)
-  let skipNextLookup = false
+  const validationMessage = shallowRef<LocationLookupValidationMessage | null>(null)
+  const lastSubmittedQuery = shallowRef('')
+  let currentController: AbortController | null = null
 
   const trimmedQuery = computed(() => query.value.trim())
   const groupedResults = computed(() => groupLocationSuggestions(results.value))
-  const visibleResults = computed(() =>
-    flattenLocationSuggestionGroups(groupedResults.value),
-  )
-  const activeResult = computed(() =>
-    highlightedIndex.value < 0
-      ? null
-      : visibleResults.value[highlightedIndex.value] ?? null,
-  )
-  const isAutocompleteOpen = computed(
-    () =>
-      isInputFocused.value &&
-      (status.value === 'loading' ||
-        status.value === 'results' ||
-        status.value === 'noResults' ||
-        status.value === 'error'),
-  )
+  const hasVisibleResults = computed(() => status.value === 'results')
 
-  watch(
-    [trimmedQuery, activeCountryCode ?? computed(() => '')],
-    ([nextQuery, nextCountryCode], _previous, onCleanup) => {
-      if (skipNextLookup) {
-        skipNextLookup = false
-        return
-      }
+  async function submitSearch() {
+    if (status.value === 'loading') {
+      return
+    }
 
-      highlightedIndex.value = -1
+    const nextQuery = trimmedQuery.value
+    lastSubmittedQuery.value = nextQuery
 
-      if (nextQuery.length < MIN_QUERY_LENGTH) {
-        results.value = []
-        status.value = 'idle'
-        return
-      }
+    if (nextQuery.length < MIN_QUERY_LENGTH) {
+      results.value = []
+      status.value = 'validation'
+      validationMessage.value = 'QUERY_TOO_SHORT'
+      return
+    }
 
-      const controller = new AbortController()
-      const timeoutId = globalThis.setTimeout(async () => {
-        status.value = 'loading'
+    currentController?.abort()
+    const controller = new AbortController()
+    currentController = controller
+    status.value = 'loading'
+    validationMessage.value = null
 
-        try {
-          const response = await suggest(nextQuery, {
-            countryCode: nextCountryCode,
-            limit: DEFAULT_LIMIT,
-            signal: controller.signal,
-          })
-
-          if (controller.signal.aborted) {
-            return
-          }
-
-          results.value = response.items
-          status.value = response.items.length > 0 ? 'results' : 'noResults'
-        } catch {
-          if (controller.signal.aborted) {
-            return
-          }
-
-          results.value = []
-          status.value = 'error'
-        }
-      }, debounceMs)
-
-      onCleanup(() => {
-        globalThis.clearTimeout(timeoutId)
-        controller.abort()
+    try {
+      const response = await search(nextQuery, {
+        countryCode: activeCountryCode?.value ?? null,
+        limit: DEFAULT_LIMIT,
+        signal: controller.signal,
       })
-    },
-  )
+
+      if (controller.signal.aborted || currentController !== controller) {
+        return
+      }
+
+      results.value = response.items
+      status.value = response.items.length > 0 ? 'results' : 'noResults'
+    } catch {
+      if (controller.signal.aborted || currentController !== controller) {
+        return
+      }
+
+      results.value = []
+      status.value = 'error'
+    } finally {
+      if (currentController === controller) {
+        currentController = null
+      }
+    }
+  }
 
   function updateQuery(value: string) {
     query.value = value
-    isInputFocused.value = true
-  }
 
-  function focusInput() {
-    isInputFocused.value = true
-  }
-
-  function blurInput() {
-    if (pointerSelecting.value) {
+    if (status.value === 'idle' && validationMessage.value === null) {
       return
     }
 
-    isInputFocused.value = false
-    highlightedIndex.value = -1
-  }
-
-  function moveHighlightNext() {
-    if (visibleResults.value.length === 0) {
-      return
-    }
-
-    highlightedIndex.value =
-      highlightedIndex.value >= visibleResults.value.length - 1
-        ? 0
-        : highlightedIndex.value + 1
-  }
-
-  function moveHighlightPrevious() {
-    if (visibleResults.value.length === 0) {
-      return
-    }
-
-    highlightedIndex.value =
-      highlightedIndex.value <= 0
-        ? visibleResults.value.length - 1
-        : highlightedIndex.value - 1
-  }
-
-  function confirmHighlightedResult() {
-    if (activeResult.value === null) {
-      return
-    }
-
-    selectResult(activeResult.value)
-  }
-
-  function closeAutocomplete() {
-    isInputFocused.value = false
-    highlightedIndex.value = -1
-  }
-
-  function markPointerSelectionStart() {
-    pointerSelecting.value = true
+    currentController?.abort()
+    currentController = null
+    results.value = []
+    status.value = 'idle'
+    validationMessage.value = null
   }
 
   function selectResult(result: LocationSearchResult) {
-    pointerSelecting.value = false
-    skipNextLookup = true
+    currentController?.abort()
+    currentController = null
     query.value = result.label
     results.value = []
     status.value = 'idle'
-    isInputFocused.value = false
-    highlightedIndex.value = -1
-  }
-
-  function cancelPointerSelection() {
-    pointerSelecting.value = false
+    validationMessage.value = null
   }
 
   return {
     query: readonly(query),
     groupedResults,
     status: readonly(status),
-    isAutocompleteOpen,
-    highlightedIndex: readonly(highlightedIndex),
-    activeResult,
+    validationMessage: readonly(validationMessage),
+    hasVisibleResults,
+    lastSubmittedQuery: readonly(lastSubmittedQuery),
+    submitSearch,
     updateQuery,
-    focusInput,
-    blurInput,
-    moveHighlightNext,
-    moveHighlightPrevious,
-    confirmHighlightedResult,
-    closeAutocomplete,
-    markPointerSelectionStart,
-    cancelPointerSelection,
     selectResult,
   }
 }
 
 export type UseLocationLookupReturn = ReturnType<typeof useLocationLookup>
-export type LocationSuggestionGroup = ComputedRef<
-  ReturnType<typeof groupLocationSuggestions>
->

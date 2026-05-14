@@ -7,47 +7,22 @@ const props = defineProps<{
   query: string
   countryCode: string
   countryLabel: string
-  isAutocompleteOpen: boolean
-  activeSuggestionId: string | null
+  isLoading: boolean
+  validationMessage: 'QUERY_TOO_SHORT' | null
   messages: LocationLookupMessages
 }>()
 
 const emit = defineEmits<{
   updateQuery: [value: string]
-  focusInput: []
-  blurInput: []
-  moveHighlightNext: []
-  moveHighlightPrevious: []
-  confirmHighlightedResult: []
-  closeAutocomplete: []
+  submitSearch: []
 }>()
 
 function onInput(event: Event) {
   emit('updateQuery', (event.target as HTMLInputElement).value)
 }
 
-function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'ArrowDown') {
-    event.preventDefault()
-    emit('moveHighlightNext')
-    return
-  }
-
-  if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    emit('moveHighlightPrevious')
-    return
-  }
-
-  if (event.key === 'Enter') {
-    event.preventDefault()
-    emit('confirmHighlightedResult')
-    return
-  }
-
-  if (event.key === 'Escape') {
-    emit('closeAutocomplete')
-  }
+function onSubmit() {
+  emit('submitSearch')
 }
 </script>
 
@@ -76,7 +51,7 @@ function onKeydown(event: KeyboardEvent) {
       </div>
     </div>
 
-    <div class="mt-4 grid gap-3">
+    <form class="mt-4 grid gap-3" @submit.prevent="onSubmit">
       <label class="text-sm font-semibold text-slate-900" for="location-query">
         {{ props.messages.searchLabel }}
       </label>
@@ -89,23 +64,29 @@ function onKeydown(event: KeyboardEvent) {
           id="location-query"
           :value="props.query"
           :placeholder="props.messages.searchPlaceholder"
-          :aria-controls="'location-suggestions'"
-          :aria-activedescendant="props.activeSuggestionId ?? undefined"
-          :aria-expanded="props.isAutocompleteOpen"
-          aria-autocomplete="list"
-          aria-haspopup="listbox"
           class="min-h-12 w-full rounded-md border border-slate-300 bg-white pr-3 pl-10 text-base text-slate-950 transition outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-100"
-          role="combobox"
           type="search"
-          @blur="emit('blurInput')"
-          @focus="emit('focusInput')"
           @input="onInput"
-          @keydown="onKeydown"
         />
       </div>
-      <p class="text-sm text-slate-600">
-        {{ props.messages.keyboardHint }}
+      <p
+        v-if="props.validationMessage !== null"
+        class="text-sm font-medium text-amber-700"
+      >
+        {{ props.messages.validationMessage[props.validationMessage] }}
       </p>
-    </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <button
+          :disabled="props.isLoading"
+          class="inline-flex min-h-11 items-center justify-center rounded-md bg-sky-700 px-4 text-sm font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          type="submit"
+        >
+          {{ props.isLoading ? props.messages.loading : props.messages.searchAction }}
+        </button>
+        <p class="text-sm text-slate-600">
+          {{ props.messages.searchHint }}
+        </p>
+      </div>
+    </form>
   </section>
 </template>

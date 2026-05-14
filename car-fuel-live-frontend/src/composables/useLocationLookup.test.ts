@@ -1,19 +1,19 @@
-import { nextTick, shallowRef } from 'vue'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { shallowRef } from 'vue'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { LocationSearchResponse } from '@/api/locationSearch'
 
 import { useLocationLookup } from './useLocationLookup'
 
-type SuggestOptions = {
+type SearchOptions = {
   countryCode?: string | null
   limit?: number
   signal?: AbortSignal
 }
 
-type SuggestFn = (
+type SearchFn = (
   query: string,
-  options?: SuggestOptions,
+  options?: SearchOptions,
 ) => Promise<LocationSearchResponse>
 
 function createDeferredResponse<T>() {
@@ -36,17 +36,9 @@ async function flushPromises() {
 }
 
 describe('useLocationLookup', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('should request suggestions with debounce and optional country context', async () => {
+  it('should request results only after an explicit submit with country context', async () => {
     const countryCode = shallowRef('DE')
-    const suggest = vi.fn<SuggestFn>(async () => ({
+    const search = vi.fn<SearchFn>(async () => ({
       items: [
         {
           type: 'place' as const,
@@ -59,23 +51,21 @@ describe('useLocationLookup', () => {
         },
       ],
     }))
-    const lookup = useLocationLookup({ countryCode, suggest })
+    const lookup = useLocationLookup({ countryCode, search })
 
-    lookup.focusInput()
-    lookup.updateQuery('Be')
-    await nextTick()
+    lookup.updateQuery('Ber')
 
-    expect(suggest).not.toHaveBeenCalled()
+    expect(search).not.toHaveBeenCalled()
 
-    await vi.advanceTimersByTimeAsync(250)
+    await lookup.submitSearch()
 
-    expect(suggest).toHaveBeenCalledTimes(1)
-    const [calledQuery, calledOptions] = suggest.mock.calls[0] as [
+    expect(search).toHaveBeenCalledTimes(1)
+    const [calledQuery, calledOptions] = search.mock.calls[0] as [
       string,
-      SuggestOptions,
+      SearchOptions,
     ]
 
-    expect(calledQuery).toBe('Be')
+    expect(calledQuery).toBe('Ber')
     expect(calledOptions).toMatchObject({
       countryCode: 'DE',
       limit: 8,
@@ -86,25 +76,68 @@ describe('useLocationLookup', () => {
     expect(lookup.groupedResults.value[0].type).toBe('place')
   })
 
-  it('should not request suggestions while the query is shorter than the autocomplete minimum', async () => {
-    const suggest = vi.fn<SuggestFn>(async () => ({ items: [] }))
-    const lookup = useLocationLookup({ suggest })
+  it('should show submit-time validation when the trimmed query is too short', async () => {
+    const search = vi.fn<SearchFn>(async () => ({ items: [] }))
+    const lookup = useLocationLookup({ search })
 
-    lookup.focusInput()
     lookup.updateQuery('B')
-    await nextTick()
-    await vi.advanceTimersByTimeAsync(250)
+    await lookup.submitSearch()
 
-    expect(suggest).not.toHaveBeenCalled()
-    expect(lookup.status.value).toBe('idle')
+    expect(search).not.toHaveBeenCalled()
+    expect(lookup.status.value).toBe('validation')
+    expect(lookup.validationMessage.value).toBe('QUERY_TOO_SHORT')
   })
 
-  it('should abort stale in-flight requests when a newer query replaces them', async () => {
+  it('should clear previous visible state when the user edits the query after a search', async () => {
+    const search = vi.fn<SearchFn>(async () => ({
+      items: [
+        {
+          type: 'place' as const,
+          id: '2950159',
+          label: 'Berlin, Germany',
+          countryCode: 'DE',
+          latitude: 52.52437,
+          longitude: 13.41053,
+          postalCode: null,
+        },
+      ],
+    }))
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('Ber')
+    await lookup.submitSearch()
+
+    expect(lookup.status.value).toBe('results')
+
+    lookup.updateQuery('Bern')
+
+    expect(lookup.status.value).toBe('idle')
+    expect(lookup.groupedResults.value).toEqual([])
+    expect(lookup.validationMessage.value).toBeNull()
+  })
+
+  it('should ignore duplicate submits while a request is already loading', async () => {
+    const deferredResponse = createDeferredResponse<LocationSearchResponse>()
+    const search = vi.fn<SearchFn>(() => deferredResponse.promise)
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('Ber')
+    const firstSubmit = lookup.submitSearch()
+    const secondSubmit = lookup.submitSearch()
+
+    deferredResponse.resolve({ items: [] })
+    await Promise.all([firstSubmit, secondSubmit])
+
+    expect(search).toHaveBeenCalledTimes(1)
+    expect(lookup.status.value).toBe('noResults')
+  })
+
+  it('should ignore an aborted earlier request when a newer submit starts', async () => {
     const firstResponse = createDeferredResponse<LocationSearchResponse>()
     const secondResponse = createDeferredResponse<LocationSearchResponse>()
     const signals: AbortSignal[] = []
-    const suggest = vi
-      .fn<SuggestFn>()
+    const search = vi
+      .fn<SearchFn>()
       .mockImplementationOnce((_query, options) => {
         signals.push(options?.signal as AbortSignal)
         return firstResponse.promise
@@ -113,23 +146,15 @@ describe('useLocationLookup', () => {
         signals.push(options?.signal as AbortSignal)
         return secondResponse.promise
       })
-    const lookup = useLocationLookup({ suggest })
-
-    lookup.focusInput()
-    lookup.updateQuery('Be')
-    await nextTick()
-    await vi.advanceTimersByTimeAsync(250)
-
-    expect(suggest).toHaveBeenCalledTimes(1)
-    expect(signals[0].aborted).toBe(false)
+    const lookup = useLocationLookup({ search })
 
     lookup.updateQuery('Ber')
-    await nextTick()
+    const firstSubmit = lookup.submitSearch()
+
+    lookup.updateQuery('Berlin')
+    const secondSubmit = lookup.submitSearch()
 
     expect(signals[0].aborted).toBe(true)
-
-    await vi.advanceTimersByTimeAsync(250)
-    expect(suggest).toHaveBeenCalledTimes(2)
 
     firstResponse.resolve({
       items: [
@@ -157,84 +182,16 @@ describe('useLocationLookup', () => {
         },
       ],
     })
+
+    await Promise.all([firstSubmit, secondSubmit])
     await flushPromises()
 
     expect(lookup.status.value).toBe('results')
     expect(lookup.groupedResults.value[0].items[0].id).toBe('2950159')
   })
 
-  it('should expose grouped keyboard navigation in rendered suggestion order', async () => {
-    const suggest = vi.fn<SuggestFn>(async () => ({
-      items: [
-        {
-          type: 'country' as const,
-          id: 'BE',
-          label: 'Belgium',
-          countryCode: 'BE',
-          latitude: null,
-          longitude: null,
-          postalCode: null,
-        },
-        {
-          type: 'place' as const,
-          id: '2950159',
-          label: 'Berlin, Germany',
-          countryCode: 'DE',
-          latitude: 52.52437,
-          longitude: 13.41053,
-          postalCode: null,
-        },
-      ],
-    }))
-    const lookup = useLocationLookup({ suggest })
-
-    lookup.focusInput()
-    lookup.updateQuery('Be')
-    await nextTick()
-    await vi.advanceTimersByTimeAsync(250)
-
-    lookup.moveHighlightNext()
-    expect(lookup.activeResult.value?.id).toBe('2950159')
-
-    lookup.moveHighlightNext()
-    expect(lookup.activeResult.value?.id).toBe('BE')
-
-    lookup.moveHighlightPrevious()
-    expect(lookup.activeResult.value?.id).toBe('2950159')
-  })
-
-  it('should close the autocomplete and update the input when enter confirms the active suggestion', async () => {
-    const suggest = vi.fn<SuggestFn>(async () => ({
-      items: [
-        {
-          type: 'place' as const,
-          id: '2950159',
-          label: 'Berlin, Germany',
-          countryCode: 'DE',
-          latitude: 52.52437,
-          longitude: 13.41053,
-          postalCode: null,
-        },
-      ],
-    }))
-    const lookup = useLocationLookup({ suggest })
-
-    lookup.focusInput()
-    lookup.updateQuery('Be')
-    await nextTick()
-    await vi.advanceTimersByTimeAsync(250)
-    lookup.moveHighlightNext()
-
-    lookup.confirmHighlightedResult()
-
-    expect(lookup.query.value).toBe('Berlin, Germany')
-    expect(lookup.status.value).toBe('idle')
-    expect(lookup.isAutocompleteOpen.value).toBe(false)
-    expect(lookup.groupedResults.value).toEqual([])
-  })
-
-  it('should preserve pointer selection when blur fires before the suggestion click completes', async () => {
-    const suggest = vi.fn<SuggestFn>(async () => ({
+  it('should fill the input and clear visible results when a result is selected', async () => {
+    const search = vi.fn<SearchFn>(async () => ({
       items: [
         {
           type: 'postalCode' as const,
@@ -247,19 +204,14 @@ describe('useLocationLookup', () => {
         },
       ],
     }))
-    const lookup = useLocationLookup({ suggest })
+    const lookup = useLocationLookup({ search })
 
-    lookup.focusInput()
     lookup.updateQuery('10115')
-    await nextTick()
-    await vi.advanceTimersByTimeAsync(250)
-
-    lookup.markPointerSelectionStart()
-    lookup.blurInput()
+    await lookup.submitSearch()
     lookup.selectResult(lookup.groupedResults.value[0].items[0])
 
     expect(lookup.query.value).toBe('10115 Berlin, Germany')
-    expect(lookup.isAutocompleteOpen.value).toBe(false)
     expect(lookup.status.value).toBe('idle')
+    expect(lookup.groupedResults.value).toEqual([])
   })
 })
