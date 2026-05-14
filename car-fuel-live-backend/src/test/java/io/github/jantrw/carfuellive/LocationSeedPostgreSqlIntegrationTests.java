@@ -1,17 +1,19 @@
 package io.github.jantrw.carfuellive;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.util.StreamUtils;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -63,7 +65,7 @@ class LocationSeedPostgreSqlIntegrationTests {
       try (PreparedStatement statement =
           connection.prepareStatement(
               """
-              SELECT name, latitude, longitude
+              SELECT name, latitude, longitude, capital_place_geoname_id
               FROM location_countries
               WHERE country_code = ?
               """)) {
@@ -73,6 +75,21 @@ class LocationSeedPostgreSqlIntegrationTests {
           assertThat(resultSet.getString("name")).isEqualTo("Germany");
           assertThat(resultSet.getDouble("latitude")).isEqualTo(51.1657d);
           assertThat(resultSet.getDouble("longitude")).isEqualTo(10.4515d);
+          assertThat(resultSet.getLong("capital_place_geoname_id")).isEqualTo(2950159L);
+        }
+      }
+
+      try (PreparedStatement statement =
+          connection.prepareStatement(
+              """
+              SELECT capital_place_geoname_id
+              FROM location_countries
+              WHERE country_code = ?
+              """)) {
+        statement.setString(1, "FR");
+        try (var resultSet = statement.executeQuery()) {
+          assertThat(resultSet.next()).isTrue();
+          assertThat(resultSet.getLong("capital_place_geoname_id")).isEqualTo(2988507L);
         }
       }
 
@@ -142,6 +159,20 @@ class LocationSeedPostgreSqlIntegrationTests {
     }
   }
 
+  @Test
+  void should_failSeedTransform_whenCapitalPlaceMappingCannotBeResolvedDeterministically()
+      throws Exception {
+    try (Connection connection = dataSource.getConnection()) {
+      executeSqlScript(connection, "db/seed/location_seed_stage_tables.sql");
+
+      insertUnresolvedCountryStageRow(connection);
+      insertUnresolvedCountryPlaceStageRows(connection);
+
+      assertThatThrownBy(() -> executeSqlScript(connection, "db/seed/location_seed_transform.sql"))
+          .hasStackTraceContaining("Capital place mapping unresolved for: ZZ (Zedland)");
+    }
+  }
+
   private void insertCountryStageRows(Connection connection) throws Exception {
     try (PreparedStatement statement =
         connection.prepareStatement(
@@ -153,10 +184,11 @@ class LocationSeedPostgreSqlIntegrationTests {
                 name,
                 normalized_name,
                 capital_name,
+                normalized_capital_name,
                 population,
                 continent_code,
                 geoname_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """)) {
       insertCountryStageRow(
           statement,
@@ -166,11 +198,22 @@ class LocationSeedPostgreSqlIntegrationTests {
           "Germany",
           "germany",
           "Berlin",
+          "berlin",
           "84000000",
           "EU",
           "2921044");
       insertCountryStageRow(
-          statement, "FR", "FRA", "250", "France", "france", "Paris", "68000000", "EU", "3017382");
+          statement,
+          "FR",
+          "FRA",
+          "250",
+          "France",
+          "france",
+          "Paris",
+          "paris",
+          "68000000",
+          "EU",
+          "3017382");
     }
   }
 
@@ -182,6 +225,7 @@ class LocationSeedPostgreSqlIntegrationTests {
       String name,
       String normalizedName,
       String capitalName,
+      String normalizedCapitalName,
       String population,
       String continentCode,
       String geonameId)
@@ -192,9 +236,10 @@ class LocationSeedPostgreSqlIntegrationTests {
     statement.setString(4, name);
     statement.setString(5, normalizedName);
     statement.setString(6, capitalName);
-    statement.setString(7, population);
-    statement.setString(8, continentCode);
-    statement.setString(9, geonameId);
+    statement.setString(7, normalizedCapitalName);
+    statement.setString(8, population);
+    statement.setString(9, continentCode);
+    statement.setString(10, geonameId);
     statement.executeUpdate();
   }
 
@@ -243,6 +288,26 @@ class LocationSeedPostgreSqlIntegrationTests {
           "Europe/Berlin",
           "2026-04-10",
           "Deutschland,Germany");
+      insertPlaceStageRow(
+          statement,
+          "3017382",
+          "FR",
+          "France",
+          "France",
+          "france",
+          "france",
+          "46.2276",
+          "2.2137",
+          "A",
+          "PCLI",
+          "",
+          "",
+          "",
+          "",
+          "68000000",
+          "Europe/Paris",
+          "2026-04-10",
+          "France");
       insertPlaceStageRow(
           statement,
           "2950159",
@@ -384,6 +449,106 @@ class LocationSeedPostgreSqlIntegrationTests {
     }
   }
 
+  private void insertUnresolvedCountryStageRow(Connection connection) throws Exception {
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            """
+            INSERT INTO location_country_stage (
+                country_code,
+                iso3_code,
+                numeric_code,
+                name,
+                normalized_name,
+                capital_name,
+                normalized_capital_name,
+                population,
+                continent_code,
+                geoname_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """)) {
+      insertCountryStageRow(
+          statement,
+          "ZZ",
+          "ZZZ",
+          "999",
+          "Zedland",
+          "zedland",
+          "Alpha City",
+          "alpha city",
+          "1000",
+          "EU",
+          "9900001");
+    }
+  }
+
+  private void insertUnresolvedCountryPlaceStageRows(Connection connection) throws Exception {
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            """
+            INSERT INTO location_place_stage (
+                geoname_id,
+                country_code,
+                name,
+                ascii_name,
+                normalized_name,
+                normalized_ascii_name,
+                latitude,
+                longitude,
+                feature_class,
+                feature_code,
+                admin1_code,
+                admin2_code,
+                admin3_code,
+                admin4_code,
+                population,
+                timezone,
+                source_modified_on,
+                alternate_names
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """)) {
+      insertPlaceStageRow(
+          statement,
+          "9900001",
+          "ZZ",
+          "Zedland",
+          "Zedland",
+          "zedland",
+          "zedland",
+          "10.0",
+          "20.0",
+          "A",
+          "PCLI",
+          "",
+          "",
+          "",
+          "",
+          "1000",
+          "Europe/Berlin",
+          "2026-04-10",
+          "Zedland");
+      insertPlaceStageRow(
+          statement,
+          "9900002",
+          "ZZ",
+          "Different City",
+          "Different City",
+          "different city",
+          "different city",
+          "11.0",
+          "21.0",
+          "P",
+          "PPLC",
+          "",
+          "",
+          "",
+          "",
+          "500",
+          "Europe/Berlin",
+          "2026-04-10",
+          "Different City");
+    }
+  }
+
   private long selectCount(Connection connection, String sql) throws Exception {
     try (PreparedStatement statement = connection.prepareStatement(sql);
         var resultSet = statement.executeQuery()) {
@@ -393,8 +558,12 @@ class LocationSeedPostgreSqlIntegrationTests {
   }
 
   private void executeSqlScript(Connection connection, String classpathLocation) {
-    ResourceDatabasePopulator databasePopulator =
-        new ResourceDatabasePopulator(new ClassPathResource(classpathLocation));
-    databasePopulator.populate(connection);
+    try (var inputStream =
+            new org.springframework.core.io.ClassPathResource(classpathLocation).getInputStream();
+        Statement statement = connection.createStatement()) {
+      statement.execute(StreamUtils.copyToString(inputStream, StandardCharsets.UTF_8));
+    } catch (Exception exception) {
+      throw new RuntimeException("Executing SQL script failed: " + classpathLocation, exception);
+    }
   }
 }

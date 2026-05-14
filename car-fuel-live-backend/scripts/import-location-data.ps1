@@ -179,16 +179,16 @@ function Assert-LocationSchemaMigrated {
         throw "Flyway has not created the location schema in this database. Start the backend first with '.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun', then run this seed script."
     }
 
-    $locationSchemaMigrated = Invoke-PostgresScalar `
+    $capitalMappingColumnExists = Invoke-PostgresScalar `
         -ContainerId $ContainerId `
         -DatabaseUser $DatabaseUser `
         -DatabasePassword $DatabasePassword `
         -DatabaseName $DatabaseName `
-        -Query "SELECT EXISTS (SELECT 1 FROM flyway_schema_history WHERE version = '1' AND success = true);" `
-        -FailureMessage 'Checking the location schema migration failed.'
+        -Query "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'location_countries' AND column_name = 'capital_place_geoname_id');" `
+        -FailureMessage 'Checking the required location schema columns failed.'
 
-    if ($locationSchemaMigrated -ne 't') {
-        throw "Flyway migration V1 has not completed successfully in this database. Start the backend first with '.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun', then run this seed script."
+    if ($capitalMappingColumnExists -ne 't') {
+        throw "The required location schema columns are missing in this database. Start the backend first with '.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun', then run this seed script."
     }
 }
 
@@ -304,6 +304,7 @@ try {
                 $(Get-TabField -Fields $fields -Index 4),
                 $(Normalize-SearchText (Get-TabField -Fields $fields -Index 4)),
                 $(Get-TabField -Fields $fields -Index 5),
+                $(Normalize-SearchText (Get-TabField -Fields $fields -Index 5)),
                 $(Get-TabField -Fields $fields -Index 7),
                 $continentCode,
                 $(Get-TabField -Fields $fields -Index 16)
