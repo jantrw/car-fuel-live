@@ -21,11 +21,6 @@ const lookup = useLocationLookup({
 const countryLabel = computed(() =>
   countryContextStore.countryLabel(messages.locale),
 )
-const activeSuggestionId = computed(() =>
-  lookup.activeResult.value === null
-    ? null
-    : `location-suggestion-${lookup.activeResult.value.type}-${lookup.activeResult.value.id}`,
-)
 </script>
 
 <template>
@@ -56,28 +51,20 @@ const activeSuggestionId = computed(() =>
 
       <section class="grid content-start gap-4">
         <LocationSearchForm
-          :active-suggestion-id="activeSuggestionId"
           :country-code="countryCode"
           :country-label="countryLabel"
-          :is-autocomplete-open="lookup.isAutocompleteOpen.value"
+          :is-loading="lookup.status.value === 'loading'"
           :messages="messages"
           :query="lookup.query.value"
-          @blur-input="lookup.blurInput"
-          @close-autocomplete="lookup.closeAutocomplete"
-          @confirm-highlighted-result="lookup.confirmHighlightedResult"
-          @focus-input="lookup.focusInput"
-          @move-highlight-next="lookup.moveHighlightNext"
-          @move-highlight-previous="lookup.moveHighlightPrevious"
+          :validation-message="lookup.validationMessage.value"
+          @submit-search="lookup.submitSearch"
           @update-query="lookup.updateQuery"
         />
         <LocationResultList
-          :active-suggestion-id="activeSuggestionId"
           :groups="lookup.groupedResults.value"
-          :is-open="lookup.isAutocompleteOpen.value"
           :messages="messages"
+          :query="lookup.lastSubmittedQuery.value"
           :status="lookup.status.value"
-          @pointer-selection-cancel="lookup.cancelPointerSelection"
-          @pointer-selection-start="lookup.markPointerSelectionStart"
           @select-result="lookup.selectResult"
         />
       </section>

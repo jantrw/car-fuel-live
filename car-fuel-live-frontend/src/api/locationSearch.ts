@@ -14,7 +14,7 @@ export interface LocationSearchResponse {
   items: LocationSearchResult[]
 }
 
-interface SuggestLocationsOptions {
+interface SearchLocationsOptions {
   countryCode?: string | null
   limit?: number
   signal?: AbortSignal
@@ -22,10 +22,10 @@ interface SuggestLocationsOptions {
 }
 
 // Keep all backend communication behind this API boundary so components never call fetch
-// directly.
-export async function suggestLocations(
+// directly, even when the UI switches between autocomplete and explicit search flows.
+export async function searchLocations(
   query: string,
-  options: SuggestLocationsOptions = {},
+  options: SearchLocationsOptions = {},
 ): Promise<LocationSearchResponse> {
   const params = new URLSearchParams({
     q: query,

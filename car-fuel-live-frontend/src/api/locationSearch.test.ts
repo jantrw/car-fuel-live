@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { suggestLocations } from './locationSearch'
+import { searchLocations } from './locationSearch'
 
-describe('suggestLocations', () => {
-  it('should call the suggestions API with country context when provided', async () => {
+describe('searchLocations', () => {
+  it('should call the backend search endpoint with country context when provided', async () => {
     const fetcher = vi.fn(async () => {
       return new Response(
         JSON.stringify({
@@ -23,7 +23,7 @@ describe('suggestLocations', () => {
     })
     const controller = new AbortController()
 
-    const response = await suggestLocations('Berlin', {
+    const response = await searchLocations('Berlin', {
       countryCode: ' de ',
       signal: controller.signal,
       fetcher,
@@ -44,12 +44,12 @@ describe('suggestLocations', () => {
     })
   })
 
-  it('should omit blank country context from suggestions requests', async () => {
+  it('should omit blank country context from explicit search requests', async () => {
     const fetcher = vi.fn(async () => {
       return new Response(JSON.stringify({ items: [] }))
     })
 
-    await suggestLocations('Belgium', {
+    await searchLocations('Belgium', {
       countryCode: ' ',
       fetcher,
     })
@@ -66,7 +66,7 @@ describe('suggestLocations', () => {
     })
 
     await expect(
-      suggestLocations('Berlin', { fetcher }),
+      searchLocations('Berlin', { fetcher }),
     ).rejects.toThrow('Invalid location lookup result type.')
   })
 })

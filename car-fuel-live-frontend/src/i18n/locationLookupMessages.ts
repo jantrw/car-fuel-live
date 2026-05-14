@@ -7,14 +7,19 @@ export interface LocationLookupMessages {
   currentCountryHint: string
   searchLabel: string
   searchPlaceholder: string
+  searchAction: string
+  searchHint: string
   loading: string
-  suggestionsTitle: string
+  resultsTitle: string
+  resultsQueryPrefix: string
   noResultsTitle: string
   noResultsBody: string
   errorTitle: string
   errorBody: string
   privacyNotice: string
-  keyboardHint: string
+  validationMessage: {
+    QUERY_TOO_SHORT: string
+  }
   suggestionGroupTitle: Record<'country' | 'place' | 'postalCode', string>
   resultType: Record<'country' | 'place' | 'postalCode', string>
 }
@@ -23,24 +28,29 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
   en: {
     locale: 'en',
     eyebrow: 'Manual location lookup',
-    title: 'Search local suggestions',
+    title: 'Search local places',
     intro:
-      'Type to browse local PostgreSQL suggestions for countries, cities, places, and German postal codes.',
+      'Search the local PostgreSQL dataset for countries, cities, places, regions, and German postal codes when you want explicit local results.',
     currentCountryLabel: 'Country context',
     currentCountryHint:
-      'Suggestions prefer matches from this country when the backend can rank them.',
+      'Search results prefer matches from this country first, but still fall back across borders when needed.',
     searchLabel: 'Search',
     searchPlaceholder: 'Berlin, Belgium, 10115',
+    searchAction: 'Search places',
+    searchHint:
+      'Results appear only after you start a search. The country context is a preference, not a filter.',
     loading: 'Searching...',
-    suggestionsTitle: 'Suggestions',
+    resultsTitle: 'Results',
+    resultsQueryPrefix: 'Search for',
     noResultsTitle: 'No local match',
     noResultsBody: 'Try another spelling or a nearby place.',
     errorTitle: 'Lookup failed',
     errorBody: 'The location service did not return usable results.',
     privacyNotice:
       'This UI uses local seed data only. It stores the selected country context, but not coordinates.',
-    keyboardHint:
-      'Use Arrow keys to move through suggestions, Enter to choose one, and Escape to close the list.',
+    validationMessage: {
+      QUERY_TOO_SHORT: 'Enter at least two characters before searching.',
+    },
     suggestionGroupTitle: {
       country: 'Countries',
       place: 'Cities and places',
@@ -55,16 +65,20 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
   de: {
     locale: 'de',
     eyebrow: 'Manuelle Standortsuche',
-    title: 'Lokale Vorschlaege durchsuchen',
+    title: 'Lokale Orte gezielt suchen',
     intro:
-      'Tippe, um lokale PostgreSQL-Vorschlaege fuer Laender, Staedte, Orte und deutsche Postleitzahlen zu durchsuchen.',
+      'Suche im lokalen PostgreSQL-Datensatz nach Laendern, Staedten, Orten, Regionen und deutschen Postleitzahlen, wenn du bewusst lokale Treffer laden willst.',
     currentCountryLabel: 'Laenderkontext',
     currentCountryHint:
-      'Vorschlaege bevorzugen Treffer aus diesem Land, wenn das Backend sie hoeher einstufen kann.',
+      'Suchergebnisse bevorzugen Treffer aus diesem Land, greifen bei Bedarf aber weiter laenderuebergreifend.',
     searchLabel: 'Suche',
-    searchPlaceholder: 'Berlin, Bernau bei Berlin, 10115',
+    searchPlaceholder: 'Berlin, Belgien, 10115',
+    searchAction: 'Orte suchen',
+    searchHint:
+      'Ergebnisse erscheinen erst nach einer bewussten Suche. Der Laenderkontext ist eine Praeferenz, kein Filter.',
     loading: 'Suche laeuft...',
-    suggestionsTitle: 'Vorschlaege',
+    resultsTitle: 'Ergebnisse',
+    resultsQueryPrefix: 'Suche nach',
     noResultsTitle: 'Kein lokaler Treffer',
     noResultsBody:
       'Versuche eine andere Schreibweise oder einen nahegelegenen Ort.',
@@ -72,8 +86,9 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     errorBody: 'Der Standortdienst hat keine nutzbaren Ergebnisse geliefert.',
     privacyNotice:
       'Diese UI nutzt nur lokale Seed-Daten. Gespeichert wird nur der Laenderkontext, keine Koordinaten.',
-    keyboardHint:
-      'Mit den Pfeiltasten durch Vorschlaege gehen, mit Enter auswaehlen und mit Escape die Liste schliessen.',
+    validationMessage: {
+      QUERY_TOO_SHORT: 'Gib vor der Suche mindestens zwei Zeichen ein.',
+    },
     suggestionGroupTitle: {
       country: 'Laender',
       place: 'Staedte und Orte',

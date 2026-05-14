@@ -8,14 +8,15 @@
 
 ## Planned Product Behavior
 
-- Current frontend slice: users type into an autocomplete field, see grouped local suggestions, and work inside an active country context derived from `localStorage`, browser locale, or time zone. Selection end states beyond filling the input belong to the later follow-up slice.
+- Current frontend slice: users enter a manual location query, trigger an explicit local search, and work inside an active country context derived from `localStorage`, browser locale, or time zone. Selecting a returned result still only fills the input in this slice; later result-state behavior belongs to a follow-up slice.
 - On first visit, derive the initial country from `localStorage`, then browser locale region, then time zone heuristic, then Germany.
 - If the user does not share a city, show prices for major cities in the selected country/area.
 - Store the selected country in `localStorage`.
 - Users can choose `Use my city`. Only then request browser geolocation and show nearby gas prices.
 - Users can manually enter a country, city, region, place, or German postal code. The backend resolves matching text to longitude and latitude from PostgreSQL before any Tankerkönig lookup.
-- Manual search must provide autocomplete suggestions for countries, cities, regions, places, and German postal codes.
-- Suggestions should appear after short inputs such as `Be` and return matches such as `Berlin`, `Bern`, and `Belgium`.
+- Manual search must support countries, cities, regions, places, and German postal codes.
+- Explicit searches such as `Be` or `Ber` should return locally relevant matches from PostgreSQL, with the active country context used as a ranking preference across all supported countries.
+- The country-context preference should be strongest for short or ambiguous prefixes such as `Wi`, but must not override a clear exact place intent such as `Bern`. When multiple equally strong exact place matches compete, the active country context should break the tie, for example for multiple places named `Paris`.
 - Selecting a city or region should use stored coordinates directly. Selecting a country should switch country context and load that country's default major-city results instead of querying Tankerkönig with a country centroid.
 - Users can filter results by fuel type: **E5**, **E10**, **Diesel**.
 - Users can filter results by distance: `1km`, `2km`, `5km`.
@@ -45,7 +46,7 @@
 1. First visit fallback: frontend reads browser locale and time zone, derives a country if possible, falls back to Germany when locale has no region, and renders major-city prices for that country.
 2. Remembered country: frontend reads the selected country from `localStorage` and renders that country's default results without asking for geolocation.
 3. Use my city: user chooses `Use my city`, browser asks for permission, frontend sends temporary coordinates to backend, backend queries Tankerkönig, frontend renders nearby prices.
-4. Manual search foundation: user enters part of a country, city, region, place, or German postal code, frontend shows grouped suggestions from PostgreSQL, and later slices decide what selecting a suggestion should load next.
+4. Manual search foundation: user enters part of a country, city, region, place, or German postal code, explicitly starts a search, frontend shows grouped local results from PostgreSQL, and later slices decide what selecting a result should load next.
 5. Filter: user selects fuel type and distance, results update in place or via a new backend query depending on implementation.
 
 ---
@@ -65,15 +66,15 @@
 - The frontend may persist only the selected country in `localStorage` for later visits.
 - Raw coordinates must not be persisted in `localStorage`, `sessionStorage`, Pinia, or backend storage.
 - The UI should include a minimal privacy notice stating that location is used for the current request and not stored.
-- Manual search should provide an accessible autocomplete dropdown for partial queries and support matching countries, cities, regions, places, and German postal codes.
-- The frontend should render the active country context visibly and pass it to the suggestions API only as optional ranking context.
+- Manual search should provide an accessible explicit-search flow for partial queries and support matching countries, cities, regions, places, and German postal codes.
+- The frontend should render the active country context visibly and pass it to the backend only as optional ranking context.
 
 ### Location Search and Geocoding
 - PostgreSQL should hold seeded GeoNames data for European countries, administrative/place rows, place aliases, and German postal codes.
-- The seeded dataset is the only source for manual search suggestions and coordinate resolution.
-- The backend now exposes `GET /api/v1/locations/suggestions?q=...&countryCode=...&limit=...` for autocomplete suggestions from the seeded PostgreSQL dataset. It returns a flat `items` list with explicit result types: `country`, `place`, and `postalCode`.
-- The suggestions endpoint requires `q` length `2..80` characters, treats optional `countryCode` as a ranking boost only, and limits `limit` to `8`. Invalid request parameters return the shared structured validation error payload.
-- `place` and `postalCode` suggestion items include coordinates directly in the response. `country` suggestion items omit coordinates so country selection remains a context change, not a centroid lookup.
+- The seeded dataset is the only source for manual search results and coordinate resolution.
+- The backend exposes `GET /api/v1/locations/suggestions?q=...&countryCode=...&limit=...` as the local location-search endpoint backed only by the seeded PostgreSQL dataset. It returns a flat `items` list with explicit result types: `country`, `place`, and `postalCode`.
+- The location-search endpoint requires `q` length `2..80` characters, treats optional `countryCode` as a ranking preference only, and limits `limit` to `8`. Invalid request parameters return the shared structured validation error payload.
+- `place` and `postalCode` items include coordinates directly in the response. `country` items omit coordinates so country selection remains a context change, not a centroid lookup.
 - The backend may fetch a bounded internal candidate window larger than the requested `limit` so the final user-visible limit is applied only after cross-query ranking and semantic deduplication.
 - If a query contains a German postal code and PostgreSQL has a matching postal-code row, the MVP returns only postal-code results for that query.
 - Text-only place searches suppress postal-code-by-place-name matches and collapse only same-place place/admin duplicates that share the same administrative hierarchy, preferring populated places over administrative rows while keeping distinct same-name towns selectable. When multiple German place results would otherwise share the same visible label, the backend appends the Bundesland name from `admin1_code` to those labels so users can distinguish them.
@@ -83,14 +84,15 @@
 - `location_places` should store `geoname_id`, `country_code`, `name`, `ascii_name`, `normalized_name`, `normalized_ascii_name`, `latitude`, `longitude`, `feature_class`, `feature_code`, optional `admin1_code` to `admin4_code`, `population`, optional `timezone`, optional `source_modified_on`, optional `alternate_names`, and `created_at`.
 - `location_place_aliases` should store `place_geoname_id`, `alias_name`, `normalized_alias_name`, and `created_at`.
 - `german_postal_codes` should store `country_code`, `postal_code`, `place_name`, `normalized_place_name`, optional `admin1_name` to `admin3_name`, `latitude`, `longitude`, optional `accuracy`, and `created_at`.
-- Manual search should start after a short partial input and query PostgreSQL for ranked matches first.
-- Suggestion ranking should favor city and place matches over country prefix matches for textual autocomplete, then popularity, with optional `countryCode` applied only as a boost.
-- The frontend autocomplete should debounce suggestion requests by `250 ms`, abort stale in-flight requests, and group the flat backend `items` list into visible sections for cities/places, countries, and postal codes.
+- Manual search should start only after an explicit user action and query PostgreSQL for ranked matches first.
+- Ranking should favor city and place matches over country prefix matches for textual search, and an optional `countryCode` should act as a strong country-context preference across all supported countries without becoming a hard filter.
+- The country-context preference should weigh short or ambiguous prefixes more strongly than longer clear place names. For longer exact place-name searches, it should behave mainly as a tie-breaker between equally strong exact matches.
+- The frontend should clear stale visible results on edit, trigger backend lookup only on explicit search, and group the flat backend `items` list into visible sections for cities/places, countries, and postal codes.
 - For Germany, support local resolution of postal codes, cities, places, and the country itself from the seeded dataset.
 - When a selected or submitted city or region already exists in PostgreSQL, the backend should use the stored coordinates immediately and continue to Tankerkönig.
 - When a selected or submitted country already exists in PostgreSQL, the frontend should switch to that country context and render the major-city defaults for that country.
 - If a submitted location is missing, return no local match.
-- Autocomplete must depend only on PostgreSQL matches and must not wait on any external geocoding provider.
+- Manual search result retrieval must depend only on PostgreSQL matches and must not wait on any external geocoding provider.
 
 ### Public API Boundary
 - The backend is a public, stateless, no-auth API.
@@ -165,8 +167,8 @@
 ### Frontend Foundation
 - The frontend uses Vue 3 with TypeScript enabled.
 - `shadcn-vue` is installed for UI component scaffolding.
-- The current frontend screen is a manual search foundation. It derives and persists only the active country context, calls `/api/v1/locations/suggestions` through `src/api/`, debounces requests, aborts stale lookups, groups results by suggestion type, and supports keyboard navigation inside the autocomplete list.
-- Selecting a suggestion in the current slice only fills the input and closes the suggestion list. Later result-state behavior belongs to the next frontend follow-up slice.
+- The current frontend screen is a manual search foundation. It derives and persists only the active country context, calls `/api/v1/locations/suggestions` through `src/api/` only after an explicit user search, clears stale visible results on edit, and groups results by type.
+- Selecting a returned result in the current slice only fills the input and clears the visible result list. Later result-state behavior belongs to the next frontend follow-up slice.
 - Vite proxies `/api` to `http://localhost:8080` during local development.
 
 ### Verification Commands
