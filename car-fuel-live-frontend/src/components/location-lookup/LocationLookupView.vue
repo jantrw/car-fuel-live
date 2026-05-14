@@ -1,22 +1,25 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
 
 import { useLocationLookup } from '@/composables/useLocationLookup'
 import { resolveLocationLookupMessages } from '@/i18n/locationLookupMessages'
+import { useLocationCountryContextStore } from '@/stores/locationCountryContext'
 
 import LocationResultList from './LocationResultList.vue'
 import LocationSearchForm from './LocationSearchForm.vue'
-import SelectedLocationPanel from './SelectedLocationPanel.vue'
 
 const messages = resolveLocationLookupMessages()
-const lookup = useLocationLookup()
-const isLoading = computed(() => lookup.status.value === 'loading')
-const validationMessage = computed(() =>
-  lookup.queryValidationMessage.value === 'LOCATION_LOOKUP_QUERY_TOO_SHORT'
-    ? messages.searchTooShort
-    : lookup.queryValidationMessage.value === 'LOCATION_LOOKUP_QUERY_TOO_LONG'
-      ? messages.searchTooLong
-      : null,
+const countryContextStore = useLocationCountryContextStore()
+countryContextStore.initializeCountryContext()
+const { countryCode } = storeToRefs(countryContextStore)
+
+const lookup = useLocationLookup({
+  countryCode,
+})
+
+const countryLabel = computed(() =>
+  countryContextStore.countryLabel(messages.locale),
 )
 </script>
 
@@ -46,25 +49,23 @@ const validationMessage = computed(() =>
         </p>
       </section>
 
-      <section class="grid gap-4">
+      <section class="grid content-start gap-4">
         <LocationSearchForm
-          :query="lookup.query.value"
-          :can-search="lookup.canSearch.value"
-          :is-loading="isLoading"
-          :validation-message="validationMessage"
+          :country-code="countryCode"
+          :country-label="countryLabel"
+          :is-loading="lookup.status.value === 'loading'"
           :messages="messages"
+          :query="lookup.query.value"
+          :validation-message="lookup.validationMessage.value"
+          @submit-search="lookup.submitSearch"
           @update-query="lookup.updateQuery"
-          @search="lookup.search"
         />
         <LocationResultList
-          :results="lookup.results.value"
+          :groups="lookup.groupedResults.value"
+          :messages="messages"
+          :query="lookup.lastSubmittedQuery.value"
           :status="lookup.status.value"
-          :messages="messages"
           @select-result="lookup.selectResult"
-        />
-        <SelectedLocationPanel
-          :selected-result="lookup.selectedResult.value"
-          :messages="messages"
         />
       </section>
     </div>

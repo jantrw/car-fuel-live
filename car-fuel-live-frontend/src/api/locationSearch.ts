@@ -14,19 +14,31 @@ export interface LocationSearchResponse {
   items: LocationSearchResult[]
 }
 
+interface SearchLocationsOptions {
+  countryCode?: string | null
+  limit?: number
+  signal?: AbortSignal
+  fetcher?: typeof fetch
+}
+
 // Keep all backend communication behind this API boundary so components never call fetch
-// directly.
+// directly, even when the UI switches between autocomplete and explicit search flows.
 export async function searchLocations(
   query: string,
-  limit = 8,
-  fetcher: typeof fetch = fetch,
+  options: SearchLocationsOptions = {},
 ): Promise<LocationSearchResponse> {
   const params = new URLSearchParams({
-    query,
-    limit: limit.toString(),
+    q: query,
+    limit: (options.limit ?? 8).toString(),
   })
-  const response = await fetcher(
-    `/api/v1/locations/search?${params.toString()}`,
+  const normalizedCountryCode = normalizeCountryCode(options.countryCode)
+  if (normalizedCountryCode !== null) {
+    params.set('countryCode', normalizedCountryCode)
+  }
+
+  const response = await (options.fetcher ?? fetch)(
+    `/api/v1/locations/suggestions?${params.toString()}`,
+    { signal: options.signal },
   )
 
   if (!response.ok) {
@@ -108,4 +120,13 @@ function parseNullableNumber(value: unknown, field: string): number | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function normalizeCountryCode(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalizedValue = value.trim().toUpperCase()
+  return normalizedValue.length === 2 ? normalizedValue : null
 }

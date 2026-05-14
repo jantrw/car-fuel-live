@@ -4,7 +4,6 @@ import io.github.jantrw.carfuellive.locations.dto.LocationSearchResponse;
 import io.github.jantrw.carfuellive.locations.dto.LocationSearchResultResponse;
 import io.github.jantrw.carfuellive.locations.model.LocationSearchResult;
 import io.github.jantrw.carfuellive.locations.repository.LocationSearchRepository;
-import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -21,6 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class LocationSearchService {
 
   private static final Map<String, String> GERMAN_ADMIN1_NAMES = germanAdmin1Names();
+  private static final int SHORT_PREFIX_MAX_LENGTH = 3;
+  private static final long CLEAR_EXACT_PLACE_POPULARITY_MIN = 1_000;
+  private static final int CONTEXT_VISIBLE_TARGET = 5;
+  private static final int GLOBAL_VISIBLE_TARGET = 3;
   private static final int SEARCH_CANDIDATE_MULTIPLIER = 8;
   private static final int MAX_SEARCH_CANDIDATES = 64;
 
@@ -30,40 +33,72 @@ public class LocationSearchService {
     this.locationSearchRepository = locationSearchRepository;
   }
 
+  @Transactional(readOnly = true)
+  public LocationSearchResponse suggest(String query, String countryCode, int limit) {
+    return lookup(query, limit, normalizeCountryCode(countryCode));
+  }
+
   // Prefer exact postal-code matches when input contains digits, then use exact name lookups
   // before prefix fallback so indexed queries win whenever the user provides a full name.
-  @Transactional(readOnly = true)
-  public LocationSearchResponse search(String query, int limit) {
+  private LocationSearchResponse lookup(
+      String query, int limit, Optional<String> boostedCountryCode) {
     final String normalizedQuery = normalize(query);
     final String likePrefix = escapeLikePattern(normalizedQuery) + "%";
     final int candidateLimit = searchCandidateLimit(limit);
     final Map<String, LocationSearchResult> uniqueResults = new LinkedHashMap<>();
+    final Comparator<LocationSearchResult> comparator =
+        resultComparator(normalizedQuery, boostedCountryCode);
+    final boolean shouldUsePrefixFallback;
 
     final Optional<List<LocationSearchResult>> postalCodeResults =
-        searchGermanPostalCodeResults(normalizedQuery, limit);
+        searchGermanPostalCodeResults(normalizedQuery, limit, comparator);
     if (postalCodeResults.isPresent()) {
       return toSearchResponse(postalCodeResults.get());
     }
 
-    addExactResults(uniqueResults, normalizedQuery, candidateLimit);
-    if (uniqueResults.isEmpty()) {
-      addPrefixResults(uniqueResults, normalizedQuery, likePrefix, candidateLimit);
+    addExactResults(uniqueResults, normalizedQuery, candidateLimit, comparator, boostedCountryCode);
+    shouldUsePrefixFallback = shouldAddPrefixFallback(uniqueResults.values(), normalizedQuery);
+    if (shouldUsePrefixFallback) {
+      addPrefixResults(
+          uniqueResults,
+          normalizedQuery,
+          likePrefix,
+          candidateLimit,
+          comparator,
+          boostedCountryCode);
     }
 
     return toSearchResponse(
         limitVisibleResults(
-            uniqueResults.values().stream().sorted(resultComparator()).toList(), limit));
+            uniqueResults.values().stream().sorted(comparator).toList(),
+            limit,
+            normalizedQuery,
+            boostedCountryCode,
+            shouldUsePrefixFallback));
+  }
+
+  // Exact lookups should usually short-circuit to stay index-friendly. Keep the prefix fallback
+  // only when the current exact set does not contain a clear full-intent match, otherwise
+  // unfinished input such as "berli" gets trapped behind obscure exact rows like "Berli".
+  private static boolean shouldAddPrefixFallback(
+      java.util.Collection<LocationSearchResult> exactResults, String normalizedQuery) {
+    if (exactResults.isEmpty()) {
+      return true;
+    }
+
+    return exactResults.stream().noneMatch(result -> isClearExactIntent(result, normalizedQuery));
   }
 
   // Numeric-only input should keep the PLZ prefix path for incremental search. Mixed input should
   // prefer postal-code results only when it contains a standalone five-digit German PLZ, otherwise
   // arbitrary digit fragments such as house numbers would hide relevant place and country matches.
   private Optional<List<LocationSearchResult>> searchGermanPostalCodeResults(
-      String normalizedQuery, int limit) {
+      String normalizedQuery, int limit, Comparator<LocationSearchResult> comparator) {
     final Optional<String> numericOnlyPostalCodeQuery =
         numericOnlyPostalCodePrefix(normalizedQuery);
     if (numericOnlyPostalCodeQuery.isPresent()) {
-      return searchGermanPostalCodePrefixResults(numericOnlyPostalCodeQuery.get(), limit);
+      return searchGermanPostalCodePrefixResults(
+          numericOnlyPostalCodeQuery.get(), limit, comparator);
     }
 
     return standaloneGermanPostalCode(normalizedQuery)
@@ -71,15 +106,15 @@ public class LocationSearchService {
             postalCodeQuery ->
                 locationSearchRepository.searchGermanPostalCodesExact(postalCodeQuery, limit))
         .filter(results -> !results.isEmpty())
-        .map(results -> results.stream().sorted(resultComparator()).limit(limit).toList());
+        .map(results -> results.stream().sorted(comparator).limit(limit).toList());
   }
 
   private Optional<List<LocationSearchResult>> searchGermanPostalCodePrefixResults(
-      String postalCodeQuery, int limit) {
+      String postalCodeQuery, int limit, Comparator<LocationSearchResult> comparator) {
     final List<LocationSearchResult> exactMatches =
         locationSearchRepository.searchGermanPostalCodesExact(postalCodeQuery, limit);
     if (!exactMatches.isEmpty()) {
-      return Optional.of(exactMatches.stream().sorted(resultComparator()).limit(limit).toList());
+      return Optional.of(exactMatches.stream().sorted(comparator).limit(limit).toList());
     }
 
     final List<LocationSearchResult> prefixMatches =
@@ -89,7 +124,7 @@ public class LocationSearchService {
       return Optional.empty();
     }
 
-    return Optional.of(prefixMatches.stream().sorted(resultComparator()).limit(limit).toList());
+    return Optional.of(prefixMatches.stream().sorted(comparator).limit(limit).toList());
   }
 
   // Query families stay separate because each table has different ranking rules. Place rows use
@@ -97,19 +132,28 @@ public class LocationSearchService {
   // filtering collapses same-place admin/place overlaps. Each query overfetches a bounded
   // candidate window so the user-facing limit is enforced only after cross-query dedupe.
   private void addExactResults(
-      Map<String, LocationSearchResult> uniqueResults, String normalizedQuery, int candidateLimit) {
+      Map<String, LocationSearchResult> uniqueResults,
+      String normalizedQuery,
+      int candidateLimit,
+      Comparator<LocationSearchResult> comparator,
+      Optional<String> boostedCountryCode) {
+    addContextCountryExactResults(
+        uniqueResults, normalizedQuery, candidateLimit, comparator, boostedCountryCode);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlacesExact(normalizedQuery, candidateLimit),
-        LocationSearchService::idKey);
+        LocationSearchService::idKey,
+        comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaceAliasesExact(normalizedQuery, candidateLimit),
-        LocationSearchService::idKey);
+        LocationSearchService::idKey,
+        comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchCountriesExact(normalizedQuery, candidateLimit),
-        LocationSearchService::idKey);
+        LocationSearchService::idKey,
+        comparator);
   }
 
   // Prefix fallback keeps short input useful while preserving fast exact lookups for full names.
@@ -117,45 +161,266 @@ public class LocationSearchService {
       Map<String, LocationSearchResult> uniqueResults,
       String normalizedQuery,
       String likePrefix,
-      int candidateLimit) {
+      int candidateLimit,
+      Comparator<LocationSearchResult> comparator,
+      Optional<String> boostedCountryCode) {
+    addContextCountryPrefixResults(
+        uniqueResults, normalizedQuery, likePrefix, candidateLimit, comparator, boostedCountryCode);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaces(normalizedQuery, likePrefix, candidateLimit),
-        LocationSearchService::idKey);
+        LocationSearchService::idKey,
+        comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaceAliases(normalizedQuery, likePrefix, candidateLimit),
-        LocationSearchService::idKey);
+        LocationSearchService::idKey,
+        comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchCountries(normalizedQuery, likePrefix, candidateLimit),
-        LocationSearchService::idKey);
+        LocationSearchService::idKey,
+        comparator);
+  }
+
+  // The context country must influence candidate collection, not only final sorting. Otherwise a
+  // bounded global overfetch window can still exclude locally relevant places before the boost is
+  // applied.
+  private void addContextCountryExactResults(
+      Map<String, LocationSearchResult> uniqueResults,
+      String normalizedQuery,
+      int candidateLimit,
+      Comparator<LocationSearchResult> comparator,
+      Optional<String> boostedCountryCode) {
+    if (boostedCountryCode.isEmpty()) {
+      return;
+    }
+
+    final String countryCode = boostedCountryCode.get();
+    addBestResults(
+        uniqueResults,
+        locationSearchRepository.searchPlacesExactInCountry(
+            normalizedQuery, countryCode, candidateLimit),
+        LocationSearchService::idKey,
+        comparator);
+    addBestResults(
+        uniqueResults,
+        locationSearchRepository.searchPlaceAliasesExactInCountry(
+            normalizedQuery, countryCode, candidateLimit),
+        LocationSearchService::idKey,
+        comparator);
+  }
+
+  private void addContextCountryPrefixResults(
+      Map<String, LocationSearchResult> uniqueResults,
+      String normalizedQuery,
+      String likePrefix,
+      int candidateLimit,
+      Comparator<LocationSearchResult> comparator,
+      Optional<String> boostedCountryCode) {
+    if (boostedCountryCode.isEmpty()) {
+      return;
+    }
+
+    final String countryCode = boostedCountryCode.get();
+    addBestResults(
+        uniqueResults,
+        locationSearchRepository.searchPlacesInCountry(
+            normalizedQuery, likePrefix, countryCode, candidateLimit),
+        LocationSearchService::idKey,
+        comparator);
+    addBestResults(
+        uniqueResults,
+        locationSearchRepository.searchPlaceAliasesInCountry(
+            normalizedQuery, likePrefix, countryCode, candidateLimit),
+        LocationSearchService::idKey,
+        comparator);
   }
 
   private static void addBestResults(
       Map<String, LocationSearchResult> uniqueResults,
       List<LocationSearchResult> results,
-      java.util.function.Function<LocationSearchResult, String> keyFactory) {
+      java.util.function.Function<LocationSearchResult, String> keyFactory,
+      Comparator<LocationSearchResult> comparator) {
+    if (results == null || results.isEmpty()) {
+      return;
+    }
+
     for (LocationSearchResult result : results) {
-      uniqueResults.merge(keyFactory.apply(result), result, LocationSearchService::best);
+      uniqueResults.merge(
+          keyFactory.apply(result),
+          result,
+          (current, candidate) -> best(current, candidate, comparator));
     }
   }
 
   // The same visible location can arrive through primary names and aliases. Keep the best ranked
   // candidate after semantic dedupe.
   private static LocationSearchResult best(
-      LocationSearchResult current, LocationSearchResult candidate) {
-    return resultComparator().compare(candidate, current) < 0 ? candidate : current;
+      LocationSearchResult current,
+      LocationSearchResult candidate,
+      Comparator<LocationSearchResult> comparator) {
+    return comparator.compare(candidate, current) < 0 ? candidate : current;
   }
 
   // SQL assigns matchRank by match quality. Java applies shared tie-breakers so results from
   // place, alias, country, and postal-code queries are ranked consistently.
-  private static Comparator<LocationSearchResult> resultComparator() {
-    return Comparator.comparingInt(LocationSearchResult::matchRank)
+  private static Comparator<LocationSearchResult> resultComparator(
+      String normalizedQuery, Optional<String> boostedCountryCode) {
+    return Comparator.<LocationSearchResult>comparingInt(
+            result -> intentRank(result, normalizedQuery, boostedCountryCode))
+        .thenComparingInt(LocationSearchService::suggestionRankingRank)
+        .thenComparingInt(result -> countryBoostRank(result, normalizedQuery, boostedCountryCode))
         .thenComparing(LocationSearchService::featureClassRank)
         .thenComparing(Comparator.comparingLong(LocationSearchResult::popularity).reversed())
         .thenComparing(LocationSearchResult::label)
         .thenComparing(LocationSearchResult::id);
+  }
+
+  // A literal exact row is not automatically clear user intent. Obscure low-population places
+  // such as "Berli", "Mei", or "Pari" should not outrank an unfinished stronger prefix such as
+  // "Berlin", "Meissen", or "Paris" just because GeoNames contains the shorter exact string.
+  // Treat only exact countries, postal codes, and materially populated exact places as clear
+  // full-name intent; otherwise allow stronger prefix candidates to lead.
+  private static int intentRank(
+      LocationSearchResult result, String normalizedQuery, Optional<String> boostedCountryCode) {
+    if (isClearExactIntent(result, normalizedQuery)) {
+      return 0;
+    }
+    if (isContextPreferredPrefix(result, normalizedQuery, boostedCountryCode)) {
+      return 1;
+    }
+    if (isStrongPrefixContinuation(result, normalizedQuery)) {
+      return 2;
+    }
+    return 3;
+  }
+
+  private static int suggestionRankingRank(LocationSearchResult result) {
+    if ("postalCode".equals(result.type())) {
+      return result.matchRank();
+    }
+
+    return switch (result.matchRank()) {
+      case 0 -> "place".equals(result.type()) ? 0 : 2;
+      case 1 -> "place".equals(result.type()) ? 1 : 5;
+      case 2 -> 3;
+      case 3 -> 4;
+      case 4 -> 6;
+      case 5 -> 7;
+      default -> result.matchRank();
+    };
+  }
+
+  private static int countryBoostRank(
+      LocationSearchResult result, String normalizedQuery, Optional<String> boostedCountryCode) {
+    if (boostedCountryCode.isEmpty()
+        || !boostedCountryCode.get().equalsIgnoreCase(result.countryCode())) {
+      return 1;
+    }
+
+    if (normalizedQuery.length() <= SHORT_PREFIX_MAX_LENGTH
+        || isExactNameMatch(result, normalizedQuery)) {
+      return 0;
+    }
+
+    return 1;
+  }
+
+  private static boolean isClearExactIntent(LocationSearchResult result, String normalizedQuery) {
+    if ("postalCode".equals(result.type())) {
+      return normalizedQuery.equals(result.postalCode());
+    }
+    if ("country".equals(result.type())) {
+      return normalize(result.label()).equals(normalizedQuery);
+    }
+    if (!"place".equals(result.type())) {
+      return false;
+    }
+
+    if (isExactAliasIntent(result, normalizedQuery)) {
+      return true;
+    }
+
+    return "P".equals(result.featureClass())
+        && isExactNameMatch(result, normalizedQuery)
+        && result.popularity() >= CLEAR_EXACT_PLACE_POPULARITY_MIN;
+  }
+
+  private static boolean isContextPreferredPrefix(
+      LocationSearchResult result, String normalizedQuery, Optional<String> boostedCountryCode) {
+    if (boostedCountryCode.isEmpty()
+        || !"place".equals(result.type())
+        || !boostedCountryCode.get().equalsIgnoreCase(result.countryCode())) {
+      return false;
+    }
+
+    final String normalizedPrimaryName = normalize(primaryName(result));
+    return normalizedPrimaryName.startsWith(normalizedQuery)
+        && !normalizedPrimaryName.equals(normalizedQuery);
+  }
+
+  private static boolean isLowConfidenceExactMatch(
+      LocationSearchResult result, String normalizedQuery) {
+    return "place".equals(result.type())
+        && isExactNameMatch(result, normalizedQuery)
+        && !isClearExactIntent(result, normalizedQuery);
+  }
+
+  private static boolean isExactAliasIntent(LocationSearchResult result, String normalizedQuery) {
+    if (!"place".equals(result.type()) || (result.matchRank() != 2 && result.matchRank() != 3)) {
+      return false;
+    }
+
+    if (normalize(primaryName(result)).startsWith(normalizedQuery)) {
+      return false;
+    }
+
+    if (normalizedQuery.length() > SHORT_PREFIX_MAX_LENGTH + 1) {
+      return true;
+    }
+
+    return normalizedQuery.length() == SHORT_PREFIX_MAX_LENGTH + 1
+        && matchesFoldedPrimaryVariant(result, normalizedQuery)
+        && result.popularity() >= CLEAR_EXACT_PLACE_POPULARITY_MIN;
+  }
+
+  private static boolean matchesFoldedPrimaryVariant(
+      LocationSearchResult result, String normalizedQuery) {
+    return LocationSearchNormalizer.normalizeFolded(primaryName(result)).equals(normalizedQuery);
+  }
+
+  private static boolean isStrongPrefixContinuation(
+      LocationSearchResult result, String normalizedQuery) {
+    if (!"place".equals(result.type())) {
+      return false;
+    }
+
+    final String normalizedPrimaryName = normalize(primaryName(result));
+    return normalizedPrimaryName.startsWith(normalizedQuery)
+        && !normalizedPrimaryName.equals(normalizedQuery)
+        && "P".equals(result.featureClass())
+        && result.popularity() >= CLEAR_EXACT_PLACE_POPULARITY_MIN;
+  }
+
+  // The context country should strongly steer short ambiguous prefixes such as "Wi". For longer
+  // searches, keep the country preference only as a tie-breaker for true exact name matches such
+  // as multiple places called "Paris" so clear user intent still wins.
+  private static boolean isExactNameMatch(LocationSearchResult result, String normalizedQuery) {
+    if ("postalCode".equals(result.type())) {
+      return normalizedQuery.equals(result.postalCode());
+    }
+
+    return normalize(primaryName(result)).equals(normalizedQuery);
+  }
+
+  private static String primaryName(LocationSearchResult result) {
+    if ("country".equals(result.type())) {
+      return result.label();
+    }
+
+    final int separatorIndex = result.label().indexOf(", ");
+    return separatorIndex < 0 ? result.label() : result.label().substring(0, separatorIndex);
   }
 
   private static LocationSearchResponse toSearchResponse(List<LocationSearchResult> results) {
@@ -201,19 +466,113 @@ public class LocationSearchService {
   }
 
   private static List<LocationSearchResult> limitVisibleResults(
+      List<LocationSearchResult> sortedResults,
+      int limit,
+      String normalizedQuery,
+      Optional<String> boostedCountryCode,
+      boolean mixedPrefixLayout) {
+    if (!mixedPrefixLayout || boostedCountryCode.isEmpty()) {
+      return collectVisibleResults(sortedResults, limit);
+    }
+
+    return collectMixedVisibleResults(sortedResults, limit, normalizedQuery, boostedCountryCode);
+  }
+
+  // Prefix searches should not collapse into a DE-only list. Build the visible slice in phases:
+  // first context-heavy local continuations, then a bounded global window for direct or near-direct
+  // alternatives, then fill any remaining slots from the regular ranked order.
+  private static List<LocationSearchResult> collectMixedVisibleResults(
+      List<LocationSearchResult> sortedResults,
+      int limit,
+      String normalizedQuery,
+      Optional<String> boostedCountryCode) {
+    final List<LocationSearchResult> clearExactIntents = new ArrayList<>();
+    final List<LocationSearchResult> contextPreferredPrefixes = new ArrayList<>();
+    final List<LocationSearchResult> lowConfidenceExactMatches = new ArrayList<>();
+    final List<LocationSearchResult> globalStrongPrefixes = new ArrayList<>();
+    final List<LocationSearchResult> rest = new ArrayList<>();
+
+    for (LocationSearchResult result : sortedResults) {
+      if (isClearExactIntent(result, normalizedQuery)) {
+        clearExactIntents.add(result);
+      } else if (isContextPreferredPrefix(result, normalizedQuery, boostedCountryCode)) {
+        contextPreferredPrefixes.add(result);
+      } else if (isLowConfidenceExactMatch(result, normalizedQuery)) {
+        lowConfidenceExactMatches.add(result);
+      } else if (isStrongPrefixContinuation(result, normalizedQuery)) {
+        globalStrongPrefixes.add(result);
+      } else {
+        rest.add(result);
+      }
+    }
+
+    final List<LocationSearchResult> visibleResults = new ArrayList<>();
+    appendBucket(visibleResults, clearExactIntents, limit, limit);
+
+    final int contextSlots = Math.min(limit - visibleResults.size(), CONTEXT_VISIBLE_TARGET);
+    appendBucket(visibleResults, contextPreferredPrefixes, contextSlots, limit);
+
+    final int globalSlots = Math.min(limit - visibleResults.size(), GLOBAL_VISIBLE_TARGET);
+    final int reservedLowConfidenceExactSlots =
+        lowConfidenceExactMatches.isEmpty() ? 0 : Math.min(1, globalSlots);
+    appendBucket(visibleResults, lowConfidenceExactMatches, reservedLowConfidenceExactSlots, limit);
+    appendBucket(
+        visibleResults, globalStrongPrefixes, globalSlots - reservedLowConfidenceExactSlots, limit);
+    appendBucket(
+        visibleResults,
+        lowConfidenceExactMatches,
+        globalSlots - reservedLowConfidenceExactSlots,
+        limit);
+
+    appendBucket(visibleResults, contextPreferredPrefixes, limit, limit);
+    appendBucket(visibleResults, globalStrongPrefixes, limit, limit);
+    appendBucket(visibleResults, lowConfidenceExactMatches, limit, limit);
+    appendBucket(visibleResults, rest, limit, limit);
+    return visibleResults;
+  }
+
+  private static List<LocationSearchResult> collectVisibleResults(
       List<LocationSearchResult> sortedResults, int limit) {
     final List<LocationSearchResult> visibleResults = new ArrayList<>();
-    for (LocationSearchResult candidate : sortedResults) {
+    appendBucket(visibleResults, sortedResults, limit, limit);
+    return visibleResults;
+  }
+
+  private static void appendBucket(
+      List<LocationSearchResult> visibleResults,
+      List<LocationSearchResult> candidates,
+      int maxFromBucket,
+      int limit) {
+    if (maxFromBucket <= 0 || visibleResults.size() >= limit) {
+      return;
+    }
+
+    int addedFromBucket = 0;
+    for (LocationSearchResult candidate : candidates) {
+      if (addedFromBucket == maxFromBucket || visibleResults.size() == limit) {
+        return;
+      }
+      if (containsSameResult(visibleResults, candidate)) {
+        continue;
+      }
       if (isSemanticPlaceDuplicateOfAny(visibleResults, candidate)) {
         continue;
       }
 
       visibleResults.add(candidate);
-      if (visibleResults.size() == limit) {
-        return visibleResults;
+      addedFromBucket++;
+    }
+  }
+
+  private static boolean containsSameResult(
+      List<LocationSearchResult> visibleResults, LocationSearchResult candidate) {
+    for (LocationSearchResult visibleResult : visibleResults) {
+      if (Objects.equals(visibleResult.type(), candidate.type())
+          && Objects.equals(visibleResult.id(), candidate.id())) {
+        return true;
       }
     }
-    return visibleResults;
+    return false;
   }
 
   private static boolean isSemanticPlaceDuplicateOfAny(
@@ -310,10 +669,6 @@ public class LocationSearchService {
     return digits.length() == 5 ? Optional.of(digits.toString()) : Optional.empty();
   }
 
-  private static LocationSearchResultResponse toResponse(LocationSearchResult result) {
-    return toResponse(result, false);
-  }
-
   private static LocationSearchResultResponse toResponse(
       LocationSearchResult result, boolean includeGermanAdmin1Name) {
     return new LocationSearchResultResponse(
@@ -321,13 +676,31 @@ public class LocationSearchService {
         result.id(),
         displayLabel(result, includeGermanAdmin1Name),
         result.countryCode(),
-        result.latitude(),
-        result.longitude(),
+        responseLatitude(result),
+        responseLongitude(result),
         result.postalCode());
+  }
+
+  private static Double responseLatitude(LocationSearchResult result) {
+    if ("country".equals(result.type())) {
+      return null;
+    }
+    return result.latitude();
+  }
+
+  private static Double responseLongitude(LocationSearchResult result) {
+    if ("country".equals(result.type())) {
+      return null;
+    }
+    return result.longitude();
   }
 
   private static String displayLabel(LocationSearchResult result, boolean includeGermanAdmin1Name) {
     if (!includeGermanAdmin1Name || !isGermanPlace(result)) {
+      return result.label();
+    }
+
+    if (result.admin1Code() == null) {
       return result.label();
     }
 
@@ -372,9 +745,20 @@ public class LocationSearchService {
   }
 
   private static String normalize(String value) {
-    final String withoutMarks =
-        Normalizer.normalize(value.trim(), Normalizer.Form.NFD).replaceAll("\\p{M}", "");
-    return withoutMarks.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+    return LocationSearchNormalizer.normalize(value);
+  }
+
+  private static Optional<String> normalizeCountryCode(String countryCode) {
+    if (countryCode == null) {
+      return Optional.empty();
+    }
+
+    final String normalized = countryCode.trim().toUpperCase(Locale.ROOT);
+    if (normalized.isEmpty()) {
+      return Optional.empty();
+    }
+
+    return Optional.of(normalized);
   }
 
   private static String escapeLikePattern(String value) {

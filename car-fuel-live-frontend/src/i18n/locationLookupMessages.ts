@@ -1,49 +1,63 @@
 export interface LocationLookupMessages {
+  locale: 'en' | 'de'
   eyebrow: string
   title: string
   intro: string
+  currentCountryLabel: string
+  currentCountryHint: string
   searchLabel: string
   searchPlaceholder: string
-  searchTooShort: string
-  searchTooLong: string
-  searchButton: string
+  searchAction: string
+  searchHint: string
   loading: string
   resultsTitle: string
+  resultsQueryPrefix: string
   noResultsTitle: string
   noResultsBody: string
   errorTitle: string
   errorBody: string
-  selectedTitle: string
-  latitude: string
-  longitude: string
-  coordinatesUnavailable: string
   privacyNotice: string
+  validationMessage: {
+    QUERY_TOO_SHORT: string
+    QUERY_TOO_LONG: string
+  }
+  suggestionGroupTitle: Record<'country' | 'place' | 'postalCode', string>
   resultType: Record<'country' | 'place' | 'postalCode', string>
 }
 
 const messages: Record<'en' | 'de', LocationLookupMessages> = {
   en: {
+    locale: 'en',
     eyebrow: 'Manual location lookup',
-    title: 'Find seeded locations',
+    title: 'Search local places',
     intro:
-      'Search the local PostgreSQL dataset for countries, places, and German postal codes.',
-    searchLabel: 'Search term',
+      'Search the local PostgreSQL dataset for countries, cities, places, regions, and German postal codes when you want explicit local results.',
+    currentCountryLabel: 'Country context',
+    currentCountryHint:
+      'Search results prefer matches from this country first, but still fall back across borders when needed.',
+    searchLabel: 'Search',
     searchPlaceholder: 'Berlin, Belgium, 10115',
-    searchTooShort: 'Enter at least 2 characters or digits.',
-    searchTooLong: 'Enter at most 80 characters or digits.',
-    searchButton: 'Search',
+    searchAction: 'Search places',
+    searchHint:
+      'Results appear only after you start a search. The country context is a preference, not a filter.',
     loading: 'Searching...',
-    resultsTitle: 'Matches',
+    resultsTitle: 'Results',
+    resultsQueryPrefix: 'Search for',
     noResultsTitle: 'No local match',
     noResultsBody: 'Try another spelling or a nearby place.',
     errorTitle: 'Lookup failed',
     errorBody: 'The location service did not return usable results.',
-    selectedTitle: 'Selected location',
-    latitude: 'Latitude',
-    longitude: 'Longitude',
-    coordinatesUnavailable: 'Coordinates not available',
     privacyNotice:
-      'This MVP searches local seed data only. No browser location is requested or stored.',
+      'This UI uses local seed data only. It stores the selected country context, but not coordinates.',
+    validationMessage: {
+      QUERY_TOO_SHORT: 'Enter at least two characters before searching.',
+      QUERY_TOO_LONG: 'Enter at most 80 characters before searching.',
+    },
+    suggestionGroupTitle: {
+      country: 'Countries',
+      place: 'Cities and places',
+      postalCode: 'Postal codes',
+    },
     resultType: {
       country: 'Country',
       place: 'Place',
@@ -51,28 +65,38 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     },
   },
   de: {
+    locale: 'de',
     eyebrow: 'Manuelle Standortsuche',
-    title: 'Gespeicherte Orte finden',
+    title: 'Lokale Orte gezielt suchen',
     intro:
-      'Durchsuche den lokalen PostgreSQL-Datensatz nach Ländern, Orten und deutschen Postleitzahlen.',
-    searchLabel: 'Suchbegriff',
-    searchPlaceholder: 'Berlin, Bernau bei Berlin, 10115',
-    searchTooShort: 'Gib mindestens 2 Buchstaben oder Ziffern ein.',
-    searchTooLong: 'Gib hoechstens 80 Buchstaben oder Ziffern ein.',
-    searchButton: 'Suchen',
+      'Suche im lokalen PostgreSQL-Datensatz nach Laendern, Staedten, Orten, Regionen und deutschen Postleitzahlen, wenn du bewusst lokale Treffer laden willst.',
+    currentCountryLabel: 'Laenderkontext',
+    currentCountryHint:
+      'Suchergebnisse bevorzugen Treffer aus diesem Land, greifen bei Bedarf aber weiter laenderuebergreifend.',
+    searchLabel: 'Suche',
+    searchPlaceholder: 'Berlin, Belgien, 10115',
+    searchAction: 'Orte suchen',
+    searchHint:
+      'Ergebnisse erscheinen erst nach einer bewussten Suche. Der Laenderkontext ist eine Praeferenz, kein Filter.',
     loading: 'Suche laeuft...',
-    resultsTitle: 'Treffer',
+    resultsTitle: 'Ergebnisse',
+    resultsQueryPrefix: 'Suche nach',
     noResultsTitle: 'Kein lokaler Treffer',
     noResultsBody:
       'Versuche eine andere Schreibweise oder einen nahegelegenen Ort.',
     errorTitle: 'Suche fehlgeschlagen',
     errorBody: 'Der Standortdienst hat keine nutzbaren Ergebnisse geliefert.',
-    selectedTitle: 'Ausgewaehlter Standort',
-    latitude: 'Breitengrad',
-    longitude: 'Laengengrad',
-    coordinatesUnavailable: 'Koordinaten nicht verfuegbar',
     privacyNotice:
-      'Dieses MVP durchsucht nur lokale Seed-Daten. Browser-Standort wird nicht abgefragt oder gespeichert.',
+      'Diese UI nutzt nur lokale Seed-Daten. Gespeichert wird nur der Laenderkontext, keine Koordinaten.',
+    validationMessage: {
+      QUERY_TOO_SHORT: 'Gib vor der Suche mindestens zwei Zeichen ein.',
+      QUERY_TOO_LONG: 'Gib vor der Suche hoechstens 80 Zeichen ein.',
+    },
+    suggestionGroupTitle: {
+      country: 'Laender',
+      place: 'Staedte und Orte',
+      postalCode: 'Postleitzahlen',
+    },
     resultType: {
       country: 'Land',
       place: 'Ort',

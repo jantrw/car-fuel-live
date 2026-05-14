@@ -1,10 +1,11 @@
-import { computed, shallowRef } from 'vue'
+import { computed, readonly, shallowRef, type Ref } from 'vue'
 
 import {
   searchLocations,
   type LocationSearchResponse,
   type LocationSearchResult,
 } from '@/api/locationSearch'
+import { groupLocationSuggestions } from '@/lib/locationSuggestions'
 
 export type LocationLookupStatus =
   | 'idle'
@@ -12,125 +13,132 @@ export type LocationLookupStatus =
   | 'results'
   | 'noResults'
   | 'error'
+  | 'validation'
+
+export type LocationLookupValidationMessage = 'QUERY_TOO_SHORT' | 'QUERY_TOO_LONG'
 
 interface UseLocationLookupOptions {
-  search?: (query: string, limit?: number) => Promise<LocationSearchResponse>
+  countryCode?: Ref<string>
+  search?: (
+    query: string,
+    options?: {
+      countryCode?: string | null
+      limit?: number
+      signal?: AbortSignal
+    },
+  ) => Promise<LocationSearchResponse>
 }
 
 const MIN_QUERY_LENGTH = 2
 const MAX_QUERY_LENGTH = 80
-const QUERY_TOO_SHORT_ERROR = 'LOCATION_LOOKUP_QUERY_TOO_SHORT'
-const QUERY_TOO_LONG_ERROR = 'LOCATION_LOOKUP_QUERY_TOO_LONG'
+const DEFAULT_LIMIT = 8
 
-// Allow tests to inject the lookup dependency while production keeps the real API client. Keep
-// only raw source state here; trimmed input and canSearch stay derived.
+// The manual lookup flow is explicit again: input updates only local state, submit triggers the
+// backend request, and stale visible results are cleared as soon as the query changes.
 export function useLocationLookup(options: UseLocationLookupOptions = {}) {
-  const lookup = options.search ?? searchLocations
+  const search = options.search ?? searchLocations
+  const activeCountryCode = options.countryCode
+
   const query = shallowRef('')
   const results = shallowRef<LocationSearchResult[]>([])
-  const selectedResult = shallowRef<LocationSearchResult | null>(null)
   const status = shallowRef<LocationLookupStatus>('idle')
-  const errorMessage = shallowRef<string | null>(null)
-  const hasSubmittedInvalidQuery = shallowRef(false)
-  let latestSearchRequestId = 0
+  const validationMessage = shallowRef<LocationLookupValidationMessage | null>(null)
+  const lastSubmittedQuery = shallowRef('')
+  let currentController: AbortController | null = null
 
   const trimmedQuery = computed(() => query.value.trim())
-  const queryValidationMessage = computed(() => {
-    if (!hasSubmittedInvalidQuery.value || trimmedQuery.value.length === 0) {
-      return null
-    }
+  const groupedResults = computed(() => groupLocationSuggestions(results.value))
+  const hasVisibleResults = computed(() => status.value === 'results')
 
-    return validateQuery(trimmedQuery.value)
-  })
-  const canSearch = computed(
-    () => trimmedQuery.value.length > 0 && status.value !== 'loading',
-  )
-
-  // Ignore blank or duplicate submits, then reset the previous selection before the next result
-  // set replaces it.
-  async function search() {
+  async function submitSearch() {
     if (status.value === 'loading') {
       return
     }
 
-    if (trimmedQuery.value.length === 0) {
-      return
-    }
+    const nextQuery = trimmedQuery.value
+    lastSubmittedQuery.value = nextQuery
 
-    const validationError = validateQuery(trimmedQuery.value)
-    if (validationError !== null) {
-      hasSubmittedInvalidQuery.value = true
+    if (nextQuery.length < MIN_QUERY_LENGTH) {
       results.value = []
-      selectedResult.value = null
-      status.value = 'idle'
-      errorMessage.value = validationError
+      status.value = 'validation'
+      validationMessage.value = 'QUERY_TOO_SHORT'
       return
     }
 
-    const requestId = ++latestSearchRequestId
-    hasSubmittedInvalidQuery.value = false
-    results.value = []
+    if (nextQuery.length > MAX_QUERY_LENGTH) {
+      results.value = []
+      status.value = 'validation'
+      validationMessage.value = 'QUERY_TOO_LONG'
+      return
+    }
+
+    currentController?.abort()
+    const controller = new AbortController()
+    currentController = controller
     status.value = 'loading'
-    errorMessage.value = null
-    selectedResult.value = null
+    validationMessage.value = null
 
     try {
-      const response = await lookup(trimmedQuery.value, 8)
-      if (requestId !== latestSearchRequestId) {
+      const response = await search(nextQuery, {
+        countryCode: activeCountryCode?.value ?? null,
+        limit: DEFAULT_LIMIT,
+        signal: controller.signal,
+      })
+
+      if (controller.signal.aborted || currentController !== controller) {
         return
       }
 
       results.value = response.items
       status.value = response.items.length > 0 ? 'results' : 'noResults'
     } catch {
-      if (requestId !== latestSearchRequestId) {
+      if (controller.signal.aborted || currentController !== controller) {
         return
       }
 
-      // UI copy is localized by state, not by raw backend or network error text.
       results.value = []
       status.value = 'error'
-      errorMessage.value = 'LOCATION_LOOKUP_FAILED'
+    } finally {
+      if (currentController === controller) {
+        currentController = null
+      }
     }
-  }
-
-  // Selection is view-local for this MVP; raw coordinates must not be persisted.
-  function selectResult(result: LocationSearchResult) {
-    selectedResult.value = result
   }
 
   function updateQuery(value: string) {
     query.value = value
-    latestSearchRequestId += 1
+
+    if (status.value === 'idle' && validationMessage.value === null) {
+      return
+    }
+
+    currentController?.abort()
+    currentController = null
     results.value = []
-    selectedResult.value = null
     status.value = 'idle'
-    errorMessage.value = null
-    hasSubmittedInvalidQuery.value = false
+    validationMessage.value = null
+  }
+
+  function selectResult(result: LocationSearchResult) {
+    currentController?.abort()
+    currentController = null
+    query.value = result.label
+    results.value = []
+    status.value = 'idle'
+    validationMessage.value = null
   }
 
   return {
-    query,
-    results,
-    selectedResult,
-    status,
-    errorMessage,
-    queryValidationMessage,
-    canSearch,
-    search,
-    selectResult,
+    query: readonly(query),
+    groupedResults,
+    status: readonly(status),
+    validationMessage: readonly(validationMessage),
+    hasVisibleResults,
+    lastSubmittedQuery: readonly(lastSubmittedQuery),
+    submitSearch,
     updateQuery,
+    selectResult,
   }
 }
 
-function validateQuery(query: string): string | null {
-  if (query.length < MIN_QUERY_LENGTH) {
-    return QUERY_TOO_SHORT_ERROR
-  }
-
-  if (query.length > MAX_QUERY_LENGTH) {
-    return QUERY_TOO_LONG_ERROR
-  }
-
-  return null
-}
+export type UseLocationLookupReturn = ReturnType<typeof useLocationLookup>

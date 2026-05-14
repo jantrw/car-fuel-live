@@ -1,8 +1,20 @@
+import { shallowRef } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { LocationSearchResponse } from '@/api/locationSearch'
 
 import { useLocationLookup } from './useLocationLookup'
+
+type SearchOptions = {
+  countryCode?: string | null
+  limit?: number
+  signal?: AbortSignal
+}
+
+type SearchFn = (
+  query: string,
+  options?: SearchOptions,
+) => Promise<LocationSearchResponse>
 
 function createDeferredResponse<T>() {
   let resolvePromise: (value: T) => void = () => {}
@@ -18,167 +30,18 @@ function createDeferredResponse<T>() {
   }
 }
 
+async function flushPromises() {
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
 describe('useLocationLookup', () => {
-  it('should select result when search returns a matching location', async () => {
-    const berlin = {
-      type: 'place' as const,
-      id: '2950159',
-      label: 'Berlin, Germany',
-      countryCode: 'DE',
-      latitude: 52.52437,
-      longitude: 13.41053,
-      postalCode: null,
-    }
-    const search = vi.fn(async () => ({ items: [berlin] }))
-    const lookup = useLocationLookup({ search })
-
-    lookup.query.value = 'Berlin'
-    await lookup.search()
-    lookup.selectResult(lookup.results.value[0])
-
-    expect(search).toHaveBeenCalledWith('Berlin', 8)
-    expect(lookup.status.value).toBe('results')
-    expect(lookup.selectedResult.value).toEqual(berlin)
-  })
-
-  it('should show no results when search returns empty items', async () => {
-    const search = vi.fn(async () => ({ items: [] }))
-    const lookup = useLocationLookup({ search })
-
-    lookup.query.value = 'Missing'
-    await lookup.search()
-
-    expect(lookup.status.value).toBe('noResults')
-    expect(lookup.results.value).toEqual([])
-    expect(lookup.errorMessage.value).toBeNull()
-  })
-
-  it('should allow submit attempt and expose validation message only after a too-short query is searched', async () => {
-    const search = vi.fn(async () => ({ items: [] }))
-    const lookup = useLocationLookup({ search })
-
-    lookup.query.value = '1'
-
-    expect(lookup.canSearch.value).toBe(true)
-    expect(lookup.queryValidationMessage.value).toBeNull()
-
-    await lookup.search()
-
-    expect(search).not.toHaveBeenCalled()
-    expect(lookup.queryValidationMessage.value).toBe(
-      'LOCATION_LOOKUP_QUERY_TOO_SHORT',
-    )
-    expect(lookup.errorMessage.value).toBe('LOCATION_LOOKUP_QUERY_TOO_SHORT')
-    expect(lookup.status.value).toBe('idle')
-  })
-
-  it('should clear the short-query validation once the input becomes valid', async () => {
-    const search = vi.fn(async () => ({ items: [] }))
-    const lookup = useLocationLookup({ search })
-
-    lookup.updateQuery('B')
-    await lookup.search()
-    lookup.updateQuery('Be')
-
-    expect(lookup.queryValidationMessage.value).toBeNull()
-    expect(lookup.canSearch.value).toBe(true)
-  })
-
-  it('should hide the short-query validation again while the user continues typing after a failed submit', async () => {
-    const search = vi.fn(async () => ({ items: [] }))
-    const lookup = useLocationLookup({ search })
-
-    lookup.updateQuery('B')
-    await lookup.search()
-
-    expect(lookup.queryValidationMessage.value).toBe(
-      'LOCATION_LOOKUP_QUERY_TOO_SHORT',
-    )
-
-    lookup.updateQuery('Be')
-
-    expect(lookup.queryValidationMessage.value).toBeNull()
-    expect(lookup.errorMessage.value).toBeNull()
-    expect(lookup.canSearch.value).toBe(true)
-  })
-
-  it('should reject an overlong query locally and expose the max-length validation message only after submit', async () => {
-    const search = vi.fn(async () => ({ items: [] }))
-    const lookup = useLocationLookup({ search })
-
-    lookup.updateQuery(` ${'a'.repeat(81)} `)
-
-    expect(lookup.queryValidationMessage.value).toBeNull()
-
-    await lookup.search()
-
-    expect(search).not.toHaveBeenCalled()
-    expect(lookup.queryValidationMessage.value).toBe(
-      'LOCATION_LOOKUP_QUERY_TOO_LONG',
-    )
-    expect(lookup.errorMessage.value).toBe('LOCATION_LOOKUP_QUERY_TOO_LONG')
-    expect(lookup.status.value).toBe('idle')
-  })
-
-  it('should clear the max-length validation after the user edits the query again', async () => {
-    const search = vi.fn(async () => ({ items: [] }))
-    const lookup = useLocationLookup({ search })
-
-    lookup.updateQuery('a'.repeat(81))
-    await lookup.search()
-
-    expect(lookup.queryValidationMessage.value).toBe(
-      'LOCATION_LOOKUP_QUERY_TOO_LONG',
-    )
-
-    lookup.updateQuery('Berlin')
-
-    expect(lookup.queryValidationMessage.value).toBeNull()
-    expect(lookup.errorMessage.value).toBeNull()
-    expect(lookup.canSearch.value).toBe(true)
-  })
-
-  it('should clear visible results and selection when the query changes after a successful search', async () => {
-    const berlin = {
-      type: 'place' as const,
-      id: '2950159',
-      label: 'Berlin, Germany',
-      countryCode: 'DE',
-      latitude: 52.52437,
-      longitude: 13.41053,
-      postalCode: null,
-    }
-    const search = vi.fn(async () => ({ items: [berlin] }))
-    const lookup = useLocationLookup({ search })
-
-    lookup.updateQuery('Berlin')
-    await lookup.search()
-    lookup.selectResult(berlin)
-
-    lookup.updateQuery('Bern')
-
-    expect(lookup.results.value).toEqual([])
-    expect(lookup.selectedResult.value).toBeNull()
-    expect(lookup.status.value).toBe('idle')
-    expect(lookup.errorMessage.value).toBeNull()
-  })
-
-  it('should ignore an in-flight response after the query changes before a new submit', async () => {
-    const response = createDeferredResponse<LocationSearchResponse>()
-    const search = vi.fn(
-      (_query: string, _limit?: number): Promise<LocationSearchResponse> =>
-        response.promise,
-    )
-    const lookup = useLocationLookup({ search })
-
-    lookup.updateQuery('Berlin')
-    const pendingSearch = lookup.search()
-
-    lookup.updateQuery('Bern')
-    response.resolve({
+  it('should request results only after an explicit submit with country context', async () => {
+    const countryCode = shallowRef('DE')
+    const search = vi.fn<SearchFn>(async () => ({
       items: [
         {
-          type: 'place',
+          type: 'place' as const,
           id: '2950159',
           label: 'Berlin, Germany',
           countryCode: 'DE',
@@ -187,94 +50,138 @@ describe('useLocationLookup', () => {
           postalCode: null,
         },
       ],
-    })
-    await pendingSearch
+    }))
+    const lookup = useLocationLookup({ countryCode, search })
+
+    lookup.updateQuery('Ber')
+
+    expect(search).not.toHaveBeenCalled()
+
+    await lookup.submitSearch()
 
     expect(search).toHaveBeenCalledTimes(1)
-    expect(lookup.results.value).toEqual([])
-    expect(lookup.selectedResult.value).toBeNull()
-    expect(lookup.status.value).toBe('idle')
+    const [calledQuery, calledOptions] = search.mock.calls[0] as [
+      string,
+      SearchOptions,
+    ]
+
+    expect(calledQuery).toBe('Ber')
+    expect(calledOptions).toMatchObject({
+      countryCode: 'DE',
+      limit: 8,
+    })
+    expect(calledOptions.signal).toBeInstanceOf(AbortSignal)
+    expect(lookup.status.value).toBe('results')
+    expect(lookup.groupedResults.value).toHaveLength(1)
+    expect(lookup.groupedResults.value[0].type).toBe('place')
   })
 
-  it('should ignore stale search responses when a newer request finishes first', async () => {
-    const firstResponse = createDeferredResponse<LocationSearchResponse>()
-    const secondResponse = createDeferredResponse<LocationSearchResponse>()
-    const search = vi
-      .fn(
-        (_query: string, _limit?: number): Promise<LocationSearchResponse> =>
-          firstResponse.promise,
-      )
-      .mockImplementationOnce(() => firstResponse.promise)
-      .mockImplementationOnce(() => secondResponse.promise)
+  it('should show submit-time validation when the trimmed query is too short', async () => {
+    const search = vi.fn<SearchFn>(async () => ({ items: [] }))
     const lookup = useLocationLookup({ search })
 
-    lookup.updateQuery('Berlin')
-    const firstSearch = lookup.search()
-    lookup.updateQuery('Bern')
-    const secondSearch = lookup.search()
+    lookup.updateQuery('B')
+    await lookup.submitSearch()
 
-    secondResponse.resolve({
+    expect(search).not.toHaveBeenCalled()
+    expect(lookup.status.value).toBe('validation')
+    expect(lookup.validationMessage.value).toBe('QUERY_TOO_SHORT')
+  })
+
+  it('should show submit-time validation when the trimmed query is too long', async () => {
+    const search = vi.fn<SearchFn>(async () => ({ items: [] }))
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('a'.repeat(81))
+    await lookup.submitSearch()
+
+    expect(search).not.toHaveBeenCalled()
+    expect(lookup.status.value).toBe('validation')
+    expect(lookup.validationMessage.value).toBe('QUERY_TOO_LONG')
+  })
+
+  it('should clear previous visible state when the user edits the query after a search', async () => {
+    const search = vi.fn<SearchFn>(async () => ({
       items: [
         {
-          type: 'place',
-          id: '2950150',
-          label: 'Bern, Switzerland',
-          countryCode: 'CH',
-          latitude: 46.94809,
-          longitude: 7.44744,
+          type: 'place' as const,
+          id: '2950159',
+          label: 'Berlin, Germany',
+          countryCode: 'DE',
+          latitude: 52.52437,
+          longitude: 13.41053,
           postalCode: null,
         },
       ],
-    })
-    await secondSearch
+    }))
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('Ber')
+    await lookup.submitSearch()
+
+    expect(lookup.status.value).toBe('results')
+
+    lookup.updateQuery('Bern')
+
+    expect(lookup.status.value).toBe('idle')
+    expect(lookup.groupedResults.value).toEqual([])
+    expect(lookup.validationMessage.value).toBeNull()
+  })
+
+  it('should ignore duplicate submits while a request is already loading', async () => {
+    const deferredResponse = createDeferredResponse<LocationSearchResponse>()
+    const search = vi.fn<SearchFn>(() => deferredResponse.promise)
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('Ber')
+    const firstSubmit = lookup.submitSearch()
+    const secondSubmit = lookup.submitSearch()
+
+    deferredResponse.resolve({ items: [] })
+    await Promise.all([firstSubmit, secondSubmit])
+
+    expect(search).toHaveBeenCalledTimes(1)
+    expect(lookup.status.value).toBe('noResults')
+  })
+
+  it('should ignore an aborted earlier request when a newer submit starts', async () => {
+    const firstResponse = createDeferredResponse<LocationSearchResponse>()
+    const secondResponse = createDeferredResponse<LocationSearchResponse>()
+    const signals: AbortSignal[] = []
+    const search = vi
+      .fn<SearchFn>()
+      .mockImplementationOnce((_query, options) => {
+        signals.push(options?.signal as AbortSignal)
+        return firstResponse.promise
+      })
+      .mockImplementationOnce((_query, options) => {
+        signals.push(options?.signal as AbortSignal)
+        return secondResponse.promise
+      })
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('Ber')
+    const firstSubmit = lookup.submitSearch()
+
+    lookup.updateQuery('Berlin')
+    const secondSubmit = lookup.submitSearch()
+
+    expect(signals[0].aborted).toBe(true)
 
     firstResponse.resolve({
       items: [
         {
-          type: 'place',
-          id: '2950159',
-          label: 'Berlin, Germany',
-          countryCode: 'DE',
-          latitude: 52.52437,
-          longitude: 13.41053,
+          type: 'country',
+          id: 'BE',
+          label: 'Belgium',
+          countryCode: 'BE',
+          latitude: null,
+          longitude: null,
           postalCode: null,
         },
       ],
     })
-    await firstSearch
-
-    expect(search).toHaveBeenNthCalledWith(1, 'Berlin', 8)
-    expect(search).toHaveBeenNthCalledWith(2, 'Bern', 8)
-    expect(lookup.status.value).toBe('results')
-    expect(lookup.results.value).toEqual([
-      {
-        type: 'place',
-        id: '2950150',
-        label: 'Bern, Switzerland',
-        countryCode: 'CH',
-        latitude: 46.94809,
-        longitude: 7.44744,
-        postalCode: null,
-      },
-    ])
-  })
-
-  it('should ignore duplicate submits while a search is already loading', async () => {
-    const response = createDeferredResponse<LocationSearchResponse>()
-    const search = vi.fn(
-      (_query: string, _limit?: number): Promise<LocationSearchResponse> =>
-        response.promise,
-    )
-    const lookup = useLocationLookup({ search })
-
-    lookup.updateQuery('Berlin')
-    const firstSearch = lookup.search()
-    const secondSearch = lookup.search()
-
-    expect(search).toHaveBeenCalledTimes(1)
-    expect(lookup.status.value).toBe('loading')
-
-    response.resolve({
+    secondResponse.resolve({
       items: [
         {
           type: 'place',
@@ -287,19 +194,36 @@ describe('useLocationLookup', () => {
         },
       ],
     })
-    await Promise.all([firstSearch, secondSearch])
+
+    await Promise.all([firstSubmit, secondSubmit])
+    await flushPromises()
 
     expect(lookup.status.value).toBe('results')
-    expect(lookup.results.value).toEqual([
-      {
-        type: 'place',
-        id: '2950159',
-        label: 'Berlin, Germany',
-        countryCode: 'DE',
-        latitude: 52.52437,
-        longitude: 13.41053,
-        postalCode: null,
-      },
-    ])
+    expect(lookup.groupedResults.value[0].items[0].id).toBe('2950159')
+  })
+
+  it('should fill the input and clear visible results when a result is selected', async () => {
+    const search = vi.fn<SearchFn>(async () => ({
+      items: [
+        {
+          type: 'postalCode' as const,
+          id: 'DE-10115-Berlin',
+          label: '10115 Berlin, Germany',
+          countryCode: 'DE',
+          latitude: 52.532,
+          longitude: 13.3849,
+          postalCode: '10115',
+        },
+      ],
+    }))
+    const lookup = useLocationLookup({ search })
+
+    lookup.updateQuery('10115')
+    await lookup.submitSearch()
+    lookup.selectResult(lookup.groupedResults.value[0].items[0])
+
+    expect(lookup.query.value).toBe('10115 Berlin, Germany')
+    expect(lookup.status.value).toBe('idle')
+    expect(lookup.groupedResults.value).toEqual([])
   })
 })
