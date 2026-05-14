@@ -4,7 +4,6 @@ import io.github.jantrw.carfuellive.locations.dto.LocationSearchResponse;
 import io.github.jantrw.carfuellive.locations.dto.LocationSearchResultResponse;
 import io.github.jantrw.carfuellive.locations.model.LocationSearchResult;
 import io.github.jantrw.carfuellive.locations.repository.LocationSearchRepository;
-import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -369,13 +368,26 @@ public class LocationSearchService {
   }
 
   private static boolean isExactAliasIntent(LocationSearchResult result, String normalizedQuery) {
-    if (!"place".equals(result.type())
-        || normalizedQuery.length() <= SHORT_PREFIX_MAX_LENGTH + 1
-        || (result.matchRank() != 2 && result.matchRank() != 3)) {
+    if (!"place".equals(result.type()) || (result.matchRank() != 2 && result.matchRank() != 3)) {
       return false;
     }
 
-    return !normalize(primaryName(result)).startsWith(normalizedQuery);
+    if (normalize(primaryName(result)).startsWith(normalizedQuery)) {
+      return false;
+    }
+
+    if (normalizedQuery.length() > SHORT_PREFIX_MAX_LENGTH + 1) {
+      return true;
+    }
+
+    return normalizedQuery.length() == SHORT_PREFIX_MAX_LENGTH + 1
+        && matchesFoldedPrimaryVariant(result, normalizedQuery)
+        && result.popularity() >= CLEAR_EXACT_PLACE_POPULARITY_MIN;
+  }
+
+  private static boolean matchesFoldedPrimaryVariant(
+      LocationSearchResult result, String normalizedQuery) {
+    return LocationSearchNormalizer.normalizeFolded(primaryName(result)).equals(normalizedQuery);
   }
 
   private static boolean isStrongPrefixContinuation(
@@ -733,9 +745,7 @@ public class LocationSearchService {
   }
 
   private static String normalize(String value) {
-    final String withoutMarks =
-        Normalizer.normalize(value.trim(), Normalizer.Form.NFD).replaceAll("\\p{M}", "");
-    return withoutMarks.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+    return LocationSearchNormalizer.normalize(value);
   }
 
   private static Optional<String> normalizeCountryCode(String countryCode) {

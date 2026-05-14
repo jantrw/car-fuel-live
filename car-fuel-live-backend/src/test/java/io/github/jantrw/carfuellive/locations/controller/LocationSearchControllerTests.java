@@ -106,6 +106,102 @@ class LocationSearchControllerTests {
   }
 
   @Test
+  void should_returnGermanPlace_when_queryUsesExpandedUmlautPrefix() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/locations/suggestions").param("q", "koe").param("countryCode", "DE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value("2886242"))
+        .andExpect(jsonPath("$.items[0].label").value("Köln, Germany"));
+  }
+
+  @Test
+  void should_returnGermanPlace_when_queryUsesFoldedUmlautName() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/locations/suggestions").param("q", "koln").param("countryCode", "DE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value("2886242"))
+        .andExpect(jsonPath("$.items[0].label").value("Köln, Germany"));
+  }
+
+  @Test
+  void should_returnGermanPlace_when_queryUsesFoldedUmlautPrefix() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/locations/suggestions").param("q", "mue").param("countryCode", "DE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value("2867714"))
+        .andExpect(jsonPath("$.items[0].label").value("München, Germany"));
+  }
+
+  @Test
+  void should_returnSwissPlace_when_queryUsesFoldedUmlautName() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/locations/suggestions").param("q", "zurich").param("countryCode", "DE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value("2657896"))
+        .andExpect(jsonPath("$.items[0].label").value("Zürich, Switzerland"));
+  }
+
+  @Test
+  void should_returnDanishPlace_when_queryUsesNordicAlias() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/locations/suggestions").param("q", "aarhus").param("countryCode", "DE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value("2624652"))
+        .andExpect(jsonPath("$.items[0].label").value("Århus, Denmark"));
+  }
+
+  @Test
+  void should_returnDanishPlace_when_queryUsesNordicPrefix() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/locations/suggestions").param("q", "aarh").param("countryCode", "DE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value("2624652"))
+        .andExpect(jsonPath("$.items[0].label").value("Århus, Denmark"));
+  }
+
+  @Test
+  void should_returnPolishPlace_when_queryUsesAsciiFallbackName() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/locations/suggestions").param("q", "wroclaw").param("countryCode", "DE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value("3081368"))
+        .andExpect(jsonPath("$.items[0].label").value("Wrocław, Poland"));
+  }
+
+  @Test
+  void should_returnPolishPlace_when_queryUsesNativeDiacriticName() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/locations/suggestions").param("q", "wrocław").param("countryCode", "DE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value("3081368"))
+        .andExpect(jsonPath("$.items[0].label").value("Wrocław, Poland"));
+  }
+
+  @Test
+  void should_returnSpanishPlace_when_queryUsesExactEuropeanName() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/locations/suggestions").param("q", "sevilla").param("countryCode", "DE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value("2510911"))
+        .andExpect(jsonPath("$.items[0].label").value("Sevilla, Spain"));
+  }
+
+  @Test
+  void should_returnCzechPlace_when_queryUsesAlternateLanguageAlias() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/locations/suggestions").param("q", "praha").param("countryCode", "DE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value("3067696"))
+        .andExpect(jsonPath("$.items[0].label").value("Prague, Czechia"));
+  }
+
+  @Test
   void should_returnPostalCodeResult_when_queryMatchesGermanPostalCode() throws Exception {
     mockMvc
         .perform(get("/api/v1/locations/suggestions").param("q", "10115"))
