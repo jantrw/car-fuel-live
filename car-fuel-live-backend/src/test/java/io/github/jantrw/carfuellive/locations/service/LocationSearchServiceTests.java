@@ -229,6 +229,50 @@ class LocationSearchServiceTests {
   }
 
   @Test
+  void should_treatPopularExactAliasAsClearIntent_when_queryUsesFoldedUmlautName() {
+    when(locationSearchRepository.searchPlacesExactInCountry("koln", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlaceAliasesExactInCountry("koln", "DE", 64))
+        .thenReturn(List.of(place("2886242", "Köln, Germany", "DE", 2, 1_080_000)));
+    when(locationSearchRepository.searchPlacesExact("koln", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchPlaceAliasesExact("koln", 64))
+        .thenReturn(List.of(place("2886242", "Köln, Germany", "DE", 2, 1_080_000)));
+    when(locationSearchRepository.searchCountriesExact("koln", 64)).thenReturn(List.of());
+
+    final LocationSearchResponse response = locationSearchService.suggest("koln", "DE", 8);
+
+    assertThat(response.items()).extracting("id").containsExactly("2886242");
+  }
+
+  @Test
+  void should_notTreatShortForeignExactAliasAsClearIntent_when_queryIsOnlyPrefixLength() {
+    when(locationSearchRepository.searchPlacesExactInCountry("koe", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlaceAliasesExactInCountry("koe", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlacesExact("koe", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchPlaceAliasesExact("koe", 64))
+        .thenReturn(List.of(place("3024447", "Coëx, France", "FR", 2, 3_200)));
+    when(locationSearchRepository.searchCountriesExact("koe", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchPlacesInCountry("koe", "koe%", "DE", 64))
+        .thenReturn(
+            List.of(
+                place("2886242", "Köln, Germany", "DE", 2, 1_080_000),
+                place("2885656", "Köpenick, Germany", "DE", 2, 67_148)));
+    when(locationSearchRepository.searchPlaceAliasesInCountry("koe", "koe%", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlaces("koe", "koe%", 64))
+        .thenReturn(List.of(place("2886242", "Köln, Germany", "DE", 2, 1_080_000)));
+    when(locationSearchRepository.searchPlaceAliases("koe", "koe%", 64))
+        .thenReturn(List.of(place("3024447", "Coëx, France", "FR", 2, 3_200)));
+    when(locationSearchRepository.searchCountries("koe", "koe%", 64)).thenReturn(List.of());
+
+    final LocationSearchResponse response = locationSearchService.suggest("koe", "DE", 8);
+
+    assertThat(response.items()).extracting("id").containsExactly("2886242", "2885656", "3024447");
+  }
+
+  @Test
   void should_notLetCountryPreferenceOverrideClearExactPlaceIntent_when_queryIsLonger() {
     when(locationSearchRepository.searchPlacesExactInCountry("bern", "DE", 64))
         .thenReturn(List.of());

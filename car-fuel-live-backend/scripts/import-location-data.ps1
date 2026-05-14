@@ -16,16 +16,25 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Normalize-SearchText {
-    param([AllowNull()][string]$Value)
+    param(
+        [AllowNull()][string]$Value,
+        [switch]$FoldGermanicDigraphs
+    )
 
     if ([string]::IsNullOrWhiteSpace($Value)) {
         return ''
     }
 
     $normalized = $Value.Trim().ToLowerInvariant()
-    $normalized = $normalized.Replace('ä', 'ae')
-    $normalized = $normalized.Replace('ö', 'oe')
-    $normalized = $normalized.Replace('ü', 'ue')
+    if ($FoldGermanicDigraphs) {
+        $normalized = $normalized.Replace('ä', 'a')
+        $normalized = $normalized.Replace('ö', 'o')
+        $normalized = $normalized.Replace('ü', 'u')
+    } else {
+        $normalized = $normalized.Replace('ä', 'ae')
+        $normalized = $normalized.Replace('ö', 'oe')
+        $normalized = $normalized.Replace('ü', 'ue')
+    }
     $normalized = $normalized.Replace('ß', 'ss')
     $normalized = $normalized.Replace('æ', 'ae')
     $normalized = $normalized.Replace('œ', 'oe')
@@ -42,6 +51,51 @@ function Normalize-SearchText {
     $collapsed = $builder.ToString().Normalize([Text.NormalizationForm]::FormC)
     $collapsed = [Regex]::Replace($collapsed, '[^a-z0-9]+', ' ')
     return [Regex]::Replace($collapsed, '\s+', ' ').Trim()
+}
+
+function Get-SearchTextVariants {
+    param([AllowNull()][string]$Value)
+
+    $variants = New-Object 'System.Collections.Generic.List[string]'
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]'
+
+    foreach ($candidate in @(
+        $(Normalize-SearchText $Value),
+        $(Normalize-SearchText $Value -FoldGermanicDigraphs)
+    )) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and $seen.Add($candidate)) {
+            $variants.Add($candidate)
+        }
+    }
+
+    return $variants
+}
+
+function Write-AliasStageRow {
+    param(
+        [System.IO.StreamWriter]$Writer,
+        [System.Collections.Generic.HashSet[string]]$AliasDeduplication,
+        [string]$PlaceGeonameId,
+        [string]$AliasName,
+        [string]$NormalizedAliasName
+    )
+
+    if ([string]::IsNullOrWhiteSpace($AliasName) -or [string]::IsNullOrWhiteSpace($NormalizedAliasName)) {
+        return
+    }
+
+    $dedupeKey = "$PlaceGeonameId|$AliasName"
+    if (-not $AliasDeduplication.Add($dedupeKey)) {
+        return
+    }
+
+    $Writer.WriteLine((
+        @(
+            $PlaceGeonameId,
+            $AliasName,
+            $NormalizedAliasName
+        ) -join "`t"
+    ))
 }
 
 function Download-File {
@@ -73,10 +127,11 @@ function Resolve-PostgresContainerId {
         [string]$ServiceName
     )
 
-    $containerId = (& docker compose --env-file $EnvironmentFile -f $ComposeFile ps -q $ServiceName).Trim()
+    $containerIdOutput = & docker compose --env-file $EnvironmentFile -f $ComposeFile ps -q $ServiceName
     if ($LASTEXITCODE -ne 0) {
         throw "Resolving the docker compose service '$ServiceName' failed."
     }
+    $containerId = if ($null -eq $containerIdOutput) { '' } else { ($containerIdOutput -join "`n").Trim() }
     if ([string]::IsNullOrWhiteSpace($containerId)) {
         throw "No running container found for docker compose service '$ServiceName'. Start the database first with 'docker compose -f $ComposeFile up -d'."
     }
@@ -94,10 +149,12 @@ function Invoke-PostgresScalar {
         [string]$FailureMessage
     )
 
-    $result = (& docker exec -e PGPASSWORD=$DatabasePassword $ContainerId sh -lc "psql -t -A -v ON_ERROR_STOP=1 -U '$DatabaseUser' -d '$DatabaseName' -c `"$Query`"").Trim()
+    $commandOutput = & docker exec -e PGPASSWORD=$DatabasePassword $ContainerId psql -t -A -v ON_ERROR_STOP=1 -U $DatabaseUser -d $DatabaseName -c $Query 2>&1
     if ($LASTEXITCODE -ne 0) {
-        throw $FailureMessage
+        $details = if ($null -eq $commandOutput) { '' } else { "`n$($commandOutput -join "`n")" }
+        throw "$FailureMessage$details"
     }
+    $result = if ($null -eq $commandOutput) { '' } else { ($commandOutput -join "`n").Trim() }
 
     return $result
 }
@@ -318,7 +375,20 @@ try {
                     $(Get-TabField -Fields $fields -Index 18),
                     $alternateNames
                 ) -join "`t"
-            ))
+            ))            
+
+            foreach ($variant in Get-SearchTextVariants $name) {
+                if ($variant -eq $normalizedName) {
+                    continue
+                }
+
+                Write-AliasStageRow `
+                    -Writer $aliasesWriter `
+                    -AliasDeduplication $aliasDeduplication `
+                    -PlaceGeonameId $geonameId `
+                    -AliasName $variant `
+                    -NormalizedAliasName $variant
+            }
 
             if ([string]::IsNullOrWhiteSpace($alternateNames)) {
                 continue
@@ -331,22 +401,25 @@ try {
 
                 $trimmedAlias = $alias.Trim()
                 $normalizedAlias = Normalize-SearchText $trimmedAlias
-                if ([string]::IsNullOrWhiteSpace($normalizedAlias)) {
-                    continue
-                }
+                Write-AliasStageRow `
+                    -Writer $aliasesWriter `
+                    -AliasDeduplication $aliasDeduplication `
+                    -PlaceGeonameId $geonameId `
+                    -AliasName $trimmedAlias `
+                    -NormalizedAliasName $normalizedAlias
 
-                $dedupeKey = "$geonameId|$trimmedAlias"
-                if (-not $aliasDeduplication.Add($dedupeKey)) {
-                    continue
-                }
+                foreach ($variant in Get-SearchTextVariants $trimmedAlias) {
+                    if ($variant -eq $normalizedAlias) {
+                        continue
+                    }
 
-                $aliasesWriter.WriteLine((
-                    @(
-                        $geonameId,
-                        $trimmedAlias,
-                        $normalizedAlias
-                    ) -join "`t"
-                ))
+                    Write-AliasStageRow `
+                        -Writer $aliasesWriter `
+                        -AliasDeduplication $aliasDeduplication `
+                        -PlaceGeonameId $geonameId `
+                        -AliasName $variant `
+                        -NormalizedAliasName $variant
+                }
             }
         }
     }
@@ -422,9 +495,10 @@ docker cp $postalCodesOutput "${containerId}:/tmp/de_postal_codes.tsv" | Out-Nul
 docker cp $loadSqlFile "${containerId}:/tmp/load-location-data.sql" | Out-Null
 
 Write-Host 'Loading location dataset into PostgreSQL...'
-docker exec -e PGPASSWORD=$dbPassword $containerId sh -lc "psql -v ON_ERROR_STOP=1 -U '$dbUser' -d '$dbName' -f /tmp/load-location-data.sql" | Out-Null
+$loadOutput = & docker exec -e PGPASSWORD=$dbPassword $containerId psql -v ON_ERROR_STOP=1 -U $dbUser -d $dbName -f /tmp/load-location-data.sql 2>&1
 if ($LASTEXITCODE -ne 0) {
-    throw 'Loading the location dataset failed.'
+    $details = if ($null -eq $loadOutput) { '' } else { "`n$($loadOutput -join "`n")" }
+    throw "Loading the location dataset failed.$details"
 }
 
 Write-Host 'Location dataset import finished.'

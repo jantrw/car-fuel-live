@@ -55,6 +55,16 @@ class LocationSearchRepositoryTests {
   }
 
   @Test
+  void should_returnSyntheticFoldedAliasLookup_when_umlautVariantMatches() {
+    final List<LocationSearchResult> results =
+        locationSearchRepository.searchPlaceAliasesExact("koln", 8);
+
+    assertThat(results).hasSize(1);
+    assertThat(results.getFirst().id()).isEqualTo("2886242");
+    assertThat(results.getFirst().label()).isEqualTo("Köln, Germany");
+  }
+
+  @Test
   void should_returnPostalCodeExactLookup_when_postalCodeMatches() {
     final List<LocationSearchResult> results =
         locationSearchRepository.searchGermanPostalCodesExact("10115", 8);

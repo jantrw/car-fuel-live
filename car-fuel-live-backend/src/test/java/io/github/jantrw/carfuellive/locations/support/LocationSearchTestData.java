@@ -29,7 +29,13 @@ public final class LocationSearchTestData {
                 population
             ) VALUES
                 ('DE', 2921044, 'Germany', 'germany', 'DEU', 276, 'Berlin', 'EU', 51.1657, 10.4515, 84000000),
-                ('BE', 2802361, 'Belgium', 'belgium', 'BEL', 56, 'Brussels', 'EU', 50.5039, 4.4699, 11500000)
+                ('BE', 2802361, 'Belgium', 'belgium', 'BEL', 56, 'Brussels', 'EU', 50.5039, 4.4699, 11500000),
+                ('CH', 2658434, 'Switzerland', 'switzerland', 'CHE', 756, 'Bern', 'EU', 46.8182, 8.2275, 8900000),
+                ('SE', 2661886, 'Sweden', 'sweden', 'SWE', 752, 'Stockholm', 'EU', 60.1282, 18.6435, 10500000),
+                ('DK', 2623032, 'Denmark', 'denmark', 'DNK', 208, 'Copenhagen', 'EU', 56.2639, 9.5018, 5900000),
+                ('PL', 798544, 'Poland', 'poland', 'POL', 616, 'Warsaw', 'EU', 51.9194, 19.1451, 38000000),
+                ('ES', 2510769, 'Spain', 'spain', 'ESP', 724, 'Madrid', 'EU', 40.4637, -3.7492, 47000000),
+                ('CZ', 3077311, 'Czechia', 'czechia', 'CZE', 203, 'Prague', 'EU', 49.8175, 15.473, 10900000)
             """)
         .update();
 
@@ -58,7 +64,15 @@ public final class LocationSearchTestData {
                 (2841648, 'DE', 'Sankt Augustin', 'Sankt Augustin', 'sankt augustin', 'sankt augustin', 50.77538, 7.197, 'P', 'PPLA4', '05', '05382', '05382056', '053820056056', 56094),
                 (6557568, 'DE', 'Sankt Augustin', 'Sankt Augustin', 'sankt augustin', 'sankt augustin', 50.77935, 7.18682, 'A', 'ADM4', '05', '05382', '05382056', '053820056056', 56521),
                 (2864067, 'DE', 'Neustadt', 'Neustadt', 'neustadt', 'neustadt', 53.55196, 9.98558, 'P', 'PPL', '03', '03359', '03359038', NULL, 12689),
-                (8379207, 'DE', 'Neustadt', 'Neustadt', 'neustadt', 'neustadt', 52.26799, 10.52001, 'P', 'PPL', '06', '03158', '03158037', NULL, 2386)
+                (8379207, 'DE', 'Neustadt', 'Neustadt', 'neustadt', 'neustadt', 52.26799, 10.52001, 'P', 'PPL', '06', '03158', '03158037', NULL, 2386),
+                (2886242, 'DE', 'Köln', 'Koeln', 'koeln', 'koeln', 50.93333, 6.95, 'P', 'PPL', '07', '05315', NULL, NULL, 963395),
+                (2867714, 'DE', 'München', 'Muenchen', 'muenchen', 'muenchen', 48.13743, 11.57549, 'P', 'PPLC', '02', '09162', NULL, NULL, 1260391),
+                (2657896, 'CH', 'Zürich', 'Zuerich', 'zuerich', 'zuerich', 47.36667, 8.55, 'P', 'PPLA', '25', NULL, NULL, NULL, 341730),
+                (2711537, 'SE', 'Göteborg', 'Goeteborg', 'goeteborg', 'goeteborg', 57.70716, 11.96679, 'P', 'PPLA', '28', NULL, NULL, NULL, 607882),
+                (2624652, 'DK', 'Århus', 'Arhus', 'arhus', 'arhus', 56.15674, 10.21076, 'P', 'PPLA', '18', NULL, NULL, NULL, 237551),
+                (3081368, 'PL', 'Wrocław', 'Wroclaw', 'wroc aw', 'wroclaw', 51.1, 17.03333, 'P', 'PPLA', '72', NULL, NULL, NULL, 634893),
+                (2510911, 'ES', 'Sevilla', 'Sevilla', 'sevilla', 'sevilla', 37.38283, -5.97317, 'P', 'PPLA', '51', NULL, NULL, NULL, 703206),
+                (3067696, 'CZ', 'Prague', 'Prague', 'prague', 'prague', 50.08804, 14.42076, 'P', 'PPLC', '52', NULL, NULL, NULL, 1165581)
             """)
         .update();
 
@@ -70,7 +84,13 @@ public final class LocationSearchTestData {
                 alias_name,
                 normalized_alias_name
             ) VALUES
-                (2950159, 'Berlino', 'berlino')
+                (2950159, 'Berlino', 'berlino'),
+                (2886242, 'koln', 'koln'),
+                (2867714, 'munchen', 'munchen'),
+                (2657896, 'zurich', 'zurich'),
+                (2711537, 'goteborg', 'goteborg'),
+                (2624652, 'Aarhus', 'aarhus'),
+                (3067696, 'Praha', 'praha')
             """)
         .update();
 

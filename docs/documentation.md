@@ -83,11 +83,13 @@
 - `location_countries` should store `country_code`, `geoname_id`, `name`, `normalized_name`, `iso3_code`, `numeric_code`, `capital_name`, `continent_code`, optional `latitude`/`longitude`, optional `population`, and `created_at`.
 - `location_places` should store `geoname_id`, `country_code`, `name`, `ascii_name`, `normalized_name`, `normalized_ascii_name`, `latitude`, `longitude`, `feature_class`, `feature_code`, optional `admin1_code` to `admin4_code`, `population`, optional `timezone`, optional `source_modified_on`, optional `alternate_names`, and `created_at`.
 - `location_place_aliases` should store `place_geoname_id`, `alias_name`, `normalized_alias_name`, and `created_at`.
+- Seeded aliases may include normalized transliteration variants when they preserve exact and prefix lookup semantics for existing place names.
 - `german_postal_codes` should store `country_code`, `postal_code`, `place_name`, `normalized_place_name`, optional `admin1_name` to `admin3_name`, `latitude`, `longitude`, optional `accuracy`, and `created_at`.
 - Manual search should start only after an explicit user action and query PostgreSQL for ranked matches first.
 - Ranking should favor city and place matches over country prefix matches for textual search, and an optional `countryCode` should act as a strong country-context preference across all supported countries without becoming a hard filter.
 - The country-context preference should weigh short or ambiguous prefixes more strongly than longer clear place names. For longer exact place-name searches, it should behave mainly as a tie-breaker between equally strong exact matches, while low-confidence exact micro-places without meaningful popularity must not suppress stronger local prefix results.
 - For prefix-style manual searches with `limit=8`, the backend should usually expose a mixed visible slice instead of an all-context list: up to `5` strong context-preferred continuations first, then up to `3` strong global direct or near-direct alternatives.
+- Manual search must also support normalized transliteration variants for seeded place names without runtime fuzzy SQL. Examples: `koeln` and `koln` resolve `Köln`, `muenchen` and `munchen` resolve `München`, `zuerich` and `zurich` resolve `Zürich`.
 - The frontend should clear stale visible results on edit, trigger backend lookup only on explicit search, and group the flat backend `items` list into visible sections for cities/places, countries, and postal codes.
 - For Germany, support local resolution of postal codes, cities, places, and the country itself from the seeded dataset.
 - When a selected or submitted city or region already exists in PostgreSQL, the backend should use the stored coordinates immediately and continue to Tankerkönig.
@@ -163,6 +165,7 @@
 - Run it once after provisioning a new or empty PostgreSQL database.
 - Run it again only after a database reset or a deliberate dataset refresh.
 - The script downloads the source data, prepares staging files, and loads the target PostgreSQL tables for countries, places, aliases, and German postal codes.
+- The script also materializes normalized alias variants for transliterated place-name search so exact and prefix lookups stay index-friendly.
 - The script does not create target schema tables. It fails if Flyway migration `V1` has not completed successfully.
 
 ### Frontend Foundation
