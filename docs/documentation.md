@@ -16,7 +16,7 @@
 - Users can manually enter a country, city, region, place, or German postal code. The backend resolves matching text to longitude and latitude from PostgreSQL before any Tankerkönig lookup.
 - Manual search must support countries, cities, regions, places, and German postal codes.
 - Explicit searches such as `Be` or `Ber` should return locally relevant matches from PostgreSQL, with the active country context used as a ranking preference across all supported countries.
-- The country-context preference should be strongest for short or ambiguous prefixes such as `Wi`, but must not override a clear exact place intent such as `Bern`. When multiple equally strong exact place matches compete, the active country context should break the tie, for example for multiple places named `Paris`.
+- The country-context preference should be strongest for short or ambiguous prefixes such as `Wi`, but must not override a clear exact place intent such as `Bern`. An obscure zero-population exact row such as `Berli` must not trap an unfinished local prefix like `Berlin`; the backend should still surface stronger local continuations first. When multiple equally strong exact place matches compete, the active country context should break the tie, for example for multiple places named `Paris`.
 - Selecting a city or region should use stored coordinates directly. Selecting a country should switch country context and load that country's default major-city results instead of querying Tankerkönig with a country centroid.
 - Users can filter results by fuel type: **E5**, **E10**, **Diesel**.
 - Users can filter results by distance: `1km`, `2km`, `5km`.
@@ -86,7 +86,8 @@
 - `german_postal_codes` should store `country_code`, `postal_code`, `place_name`, `normalized_place_name`, optional `admin1_name` to `admin3_name`, `latitude`, `longitude`, optional `accuracy`, and `created_at`.
 - Manual search should start only after an explicit user action and query PostgreSQL for ranked matches first.
 - Ranking should favor city and place matches over country prefix matches for textual search, and an optional `countryCode` should act as a strong country-context preference across all supported countries without becoming a hard filter.
-- The country-context preference should weigh short or ambiguous prefixes more strongly than longer clear place names. For longer exact place-name searches, it should behave mainly as a tie-breaker between equally strong exact matches.
+- The country-context preference should weigh short or ambiguous prefixes more strongly than longer clear place names. For longer exact place-name searches, it should behave mainly as a tie-breaker between equally strong exact matches, while low-confidence exact micro-places without meaningful popularity must not suppress stronger local prefix results.
+- For prefix-style manual searches with `limit=8`, the backend should usually expose a mixed visible slice instead of an all-context list: up to `5` strong context-preferred continuations first, then up to `3` strong global direct or near-direct alternatives.
 - The frontend should clear stale visible results on edit, trigger backend lookup only on explicit search, and group the flat backend `items` list into visible sections for cities/places, countries, and postal codes.
 - For Germany, support local resolution of postal codes, cities, places, and the country itself from the seeded dataset.
 - When a selected or submitted city or region already exists in PostgreSQL, the backend should use the stored coordinates immediately and continue to Tankerkönig.

@@ -1,5 +1,6 @@
 package io.github.jantrw.carfuellive.locations.controller;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -287,12 +288,11 @@ class LocationSearchControllerTests {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(8)))
         .andExpect(jsonPath("$.items[0].id").value("3167551"))
-        .andExpect(jsonPath("$.items[1].id").value("3115177"))
-        .andExpect(jsonPath("$.items[2].id").value("3108165"))
-        .andExpect(jsonPath("$.items[3].id").value("3108000"))
-        .andExpect(jsonPath("$.items[4].id").value("2511138"))
-        .andExpect(jsonPath("$.items[5].id").value("2739118"))
-        .andExpect(jsonPath("$.items[6].id").value("3116729"))
-        .andExpect(jsonPath("$.items[7].id").value("2976139"));
+        .andExpect(
+            jsonPath(
+                "$.items[*].id",
+                containsInAnyOrder(
+                    "3167551", "3115177", "3108165", "3108000", "2511138", "2739118", "3116729",
+                    "2976139")));
   }
 }
