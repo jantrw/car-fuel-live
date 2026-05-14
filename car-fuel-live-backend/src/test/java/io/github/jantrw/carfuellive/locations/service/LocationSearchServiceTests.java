@@ -103,6 +103,50 @@ class LocationSearchServiceTests {
   }
 
   @Test
+  void should_preferStrongLocalPrefixOverZeroPopulationExactMatch_when_queryIsStillIncomplete() {
+    when(locationSearchRepository.searchPlacesExactInCountry("berli", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlaceAliasesExactInCountry("berli", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlacesExact("berli", 64))
+        .thenReturn(List.of(place("8", "Berli, Russia", "RU", 0, 0)));
+    when(locationSearchRepository.searchPlaceAliasesExact("berli", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchCountriesExact("berli", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchPlacesInCountry("berli", "berli%", "DE", 64))
+        .thenReturn(
+            List.of(
+                place("2950159", "Berlin, Germany", "DE", 2, 3_426_354),
+                place("6547383", "Berlin Köpenick, Germany", "DE", 2, 59_561)));
+    when(locationSearchRepository.searchPlaceAliasesInCountry("berli", "berli%", "DE", 64))
+        .thenReturn(List.of());
+
+    final LocationSearchResponse response = locationSearchService.suggest("Berli", "DE", 8);
+
+    assertThat(response.items()).extracting("id").containsExactly("2950159", "6547383", "8");
+  }
+
+  @Test
+  void
+      should_preferStrongLocalPrefixOverZeroPopulationExactMatch_when_queryEqualsShortObscurePlace() {
+    when(locationSearchRepository.searchPlacesExactInCountry("berl", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlaceAliasesExactInCountry("berl", "DE", 64))
+        .thenReturn(List.of());
+    when(locationSearchRepository.searchPlacesExact("berl", 64))
+        .thenReturn(List.of(place("9", "Berl, Germany", "DE", 0, 0)));
+    when(locationSearchRepository.searchPlaceAliasesExact("berl", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchCountriesExact("berl", 64)).thenReturn(List.of());
+    when(locationSearchRepository.searchPlacesInCountry("berl", "berl%", "DE", 64))
+        .thenReturn(List.of(place("2950159", "Berlin, Germany", "DE", 2, 3_426_354)));
+    when(locationSearchRepository.searchPlaceAliasesInCountry("berl", "berl%", "DE", 64))
+        .thenReturn(List.of());
+
+    final LocationSearchResponse response = locationSearchService.suggest("Berl", "DE", 8);
+
+    assertThat(response.items()).extracting("id").containsExactly("2950159", "9");
+  }
+
+  @Test
   void should_notLetCountryPreferenceOverrideClearExactPlaceIntent_when_queryIsLonger() {
     when(locationSearchRepository.searchPlacesExactInCountry("bern", "DE", 64))
         .thenReturn(List.of());

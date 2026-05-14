@@ -54,7 +54,7 @@ public class LocationSearchService {
     }
 
     addExactResults(uniqueResults, normalizedQuery, candidateLimit, comparator, boostedCountryCode);
-    if (uniqueResults.isEmpty()) {
+    if (shouldAddPrefixFallback(uniqueResults.values(), normalizedQuery)) {
       addPrefixResults(
           uniqueResults,
           normalizedQuery,
@@ -66,6 +66,18 @@ public class LocationSearchService {
 
     return toSearchResponse(
         limitVisibleResults(uniqueResults.values().stream().sorted(comparator).toList(), limit));
+  }
+
+  // Exact lookups should usually short-circuit to stay index-friendly. Keep the prefix fallback
+  // only when the current exact set does not contain a clear full-intent match, otherwise
+  // unfinished input such as "berli" gets trapped behind obscure exact rows like "Berli".
+  private static boolean shouldAddPrefixFallback(
+      java.util.Collection<LocationSearchResult> exactResults, String normalizedQuery) {
+    if (exactResults.isEmpty()) {
+      return true;
+    }
+
+    return exactResults.stream().noneMatch(result -> isClearExactIntent(result, normalizedQuery));
   }
 
   // Numeric-only input should keep the PLZ prefix path for incremental search. Mixed input should
@@ -243,12 +255,29 @@ public class LocationSearchService {
   private static Comparator<LocationSearchResult> resultComparator(
       String normalizedQuery, Optional<String> boostedCountryCode) {
     return Comparator.<LocationSearchResult>comparingInt(
-            LocationSearchService::suggestionRankingRank)
+            result -> intentRank(result, normalizedQuery, boostedCountryCode))
+        .thenComparingInt(LocationSearchService::suggestionRankingRank)
         .thenComparingInt(result -> countryBoostRank(result, normalizedQuery, boostedCountryCode))
         .thenComparing(LocationSearchService::featureClassRank)
         .thenComparing(Comparator.comparingLong(LocationSearchResult::popularity).reversed())
         .thenComparing(LocationSearchResult::label)
         .thenComparing(LocationSearchResult::id);
+  }
+
+  // A literal exact row is not automatically clear user intent. Obscure zero-population places
+  // such as "Berli" should not outrank an unfinished local prefix such as "Berlin" just because
+  // GeoNames happens to contain the shorter exact string. Treat only exact countries, postal
+  // codes, and populated exact places as clear full-name intent; otherwise allow strong local
+  // prefix candidates to lead.
+  private static int intentRank(
+      LocationSearchResult result, String normalizedQuery, Optional<String> boostedCountryCode) {
+    if (isClearExactIntent(result, normalizedQuery)) {
+      return 0;
+    }
+    if (isContextPreferredPrefix(result, normalizedQuery, boostedCountryCode)) {
+      return 1;
+    }
+    return 2;
   }
 
   private static int suggestionRankingRank(LocationSearchResult result) {
@@ -280,6 +309,33 @@ public class LocationSearchService {
     }
 
     return 1;
+  }
+
+  private static boolean isClearExactIntent(LocationSearchResult result, String normalizedQuery) {
+    if ("postalCode".equals(result.type())) {
+      return normalizedQuery.equals(result.postalCode());
+    }
+    if ("country".equals(result.type())) {
+      return normalize(result.label()).equals(normalizedQuery);
+    }
+    if (!"place".equals(result.type())) {
+      return false;
+    }
+
+    return isExactNameMatch(result, normalizedQuery) && result.popularity() > 0;
+  }
+
+  private static boolean isContextPreferredPrefix(
+      LocationSearchResult result, String normalizedQuery, Optional<String> boostedCountryCode) {
+    if (boostedCountryCode.isEmpty()
+        || !"place".equals(result.type())
+        || !boostedCountryCode.get().equalsIgnoreCase(result.countryCode())) {
+      return false;
+    }
+
+    final String normalizedPrimaryName = normalize(primaryName(result));
+    return normalizedPrimaryName.startsWith(normalizedQuery)
+        && !normalizedPrimaryName.equals(normalizedQuery);
   }
 
   // The context country should strongly steer short ambiguous prefixes such as "Wi". For longer
