@@ -2,6 +2,7 @@
 # Scope: repository root
 
 ## Documentation Sources
+- Agent handoff status lives in `docs/agent-project-status.md`.
 - Product spec lives in `docs/documentation.md`.
 - Architecture lives in `docs/architecture.md`.
 - Backend rules live in `car-fuel-live-backend/AGENTS.md`.
