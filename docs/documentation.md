@@ -80,7 +80,7 @@
 - Text-only place searches suppress postal-code-by-place-name matches and collapse only same-place place/admin duplicates that share the same administrative hierarchy, preferring populated places over administrative rows while keeping distinct same-name towns selectable. When multiple German place results would otherwise share the same visible label, the backend appends the Bundesland name from `admin1_code` to those labels so users can distinguish them.
 - MVP no-match behavior is `200 OK` with `items: []`; the frontend shows an empty state instead of an error.
 - Do not add a broad second geocoding source. If a cache exists, keep it limited to canonical coordinates for the largest European cities and the most common German cities and warm it from PostgreSQL.
-- `location_countries` should store `country_code`, `geoname_id`, `name`, `normalized_name`, `iso3_code`, `numeric_code`, `capital_name`, `continent_code`, optional `latitude`/`longitude`, optional `population`, and `created_at`.
+- `location_countries` should store `country_code`, `geoname_id`, `name`, `normalized_name`, `iso3_code`, `numeric_code`, `capital_name`, stable optional `capital_place_geoname_id`, `continent_code`, optional `latitude`/`longitude`, optional `population`, and `created_at`.
 - `location_places` should store `geoname_id`, `country_code`, `name`, `ascii_name`, `normalized_name`, `normalized_ascii_name`, `latitude`, `longitude`, `feature_class`, `feature_code`, optional `admin1_code` to `admin4_code`, `population`, optional `timezone`, optional `source_modified_on`, optional `alternate_names`, and `created_at`.
 - `location_place_aliases` should store `place_geoname_id`, `alias_name`, `normalized_alias_name`, and `created_at`.
 - Seeded aliases may include normalized transliteration variants when they preserve exact and prefix lookup semantics for existing place names.
@@ -166,7 +166,8 @@
 - Run it again only after a database reset or a deliberate dataset refresh.
 - The script downloads the source data, prepares staging files, and loads the target PostgreSQL tables for countries, places, aliases, and German postal codes.
 - The script also materializes normalized alias variants for transliterated place-name search so exact and prefix lookups stay index-friendly.
-- The script does not create target schema tables. It fails if Flyway migration `V1` has not completed successfully.
+- The script does not create target schema tables. It fails if the required Flyway-managed location schema is missing.
+- During the seed transform, each imported country must resolve exactly one same-country capital place via a deterministic `PPLC` match on normalized capital name, ascii name, or alias. The seed must fail fast instead of guessing when that mapping is missing.
 
 ### Frontend Foundation
 - The frontend uses Vue 3 with TypeScript enabled.

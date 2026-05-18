@@ -26,7 +26,7 @@ SELECT
     place.longitude::DOUBLE PRECISION,
     NULLIF(stage.population, '')::BIGINT
 FROM location_country_stage stage
-LEFT JOIN location_place_stage place
+JOIN location_place_stage place
     ON place.geoname_id = stage.geoname_id
    AND place.feature_code = 'PCLI';
 
@@ -86,6 +86,86 @@ JOIN location_places place
     ON place.geoname_id = stage.place_geoname_id::BIGINT
 WHERE stage.alias_name <> ''
   AND stage.normalized_alias_name <> '';
+
+WITH capital_candidates AS (
+    SELECT
+        country.country_code,
+        place.geoname_id,
+        CASE
+            WHEN place.normalized_name = stage.normalized_capital_name THEN 0
+            WHEN place.normalized_ascii_name = stage.normalized_capital_name THEN 1
+            WHEN EXISTS (
+                SELECT 1
+                FROM location_place_aliases alias
+                WHERE alias.place_geoname_id = place.geoname_id
+                  AND alias.normalized_alias_name = stage.normalized_capital_name
+            ) THEN 2
+        END AS candidate_rank
+    FROM location_countries country
+    JOIN location_country_stage stage
+        ON stage.country_code = country.country_code
+    JOIN location_places place
+        ON place.country_code = country.country_code
+       AND place.feature_code = 'PPLC'
+    WHERE stage.normalized_capital_name <> ''
+      AND (
+          place.normalized_name = stage.normalized_capital_name
+          OR place.normalized_ascii_name = stage.normalized_capital_name
+          OR EXISTS (
+              SELECT 1
+              FROM location_place_aliases alias
+              WHERE alias.place_geoname_id = place.geoname_id
+                AND alias.normalized_alias_name = stage.normalized_capital_name
+          )
+      )
+),
+best_capital_candidate_ranks AS (
+    SELECT
+        country_code,
+        MIN(candidate_rank) AS best_rank
+    FROM capital_candidates
+    GROUP BY country_code
+),
+best_capital_candidates AS (
+    SELECT
+        candidate.country_code,
+        candidate.geoname_id
+    FROM capital_candidates candidate
+    JOIN best_capital_candidate_ranks best_rank
+        ON best_rank.country_code = candidate.country_code
+       AND best_rank.best_rank = candidate.candidate_rank
+    GROUP BY candidate.country_code, candidate.geoname_id
+),
+best_capital_candidate_counts AS (
+    SELECT
+        country_code,
+        COUNT(*) AS candidate_count
+    FROM best_capital_candidates
+    GROUP BY country_code
+)
+UPDATE location_countries country
+SET capital_place_geoname_id = candidate.geoname_id
+FROM best_capital_candidates candidate
+JOIN best_capital_candidate_counts candidate_count
+    ON candidate_count.country_code = candidate.country_code
+   AND candidate_count.candidate_count = 1
+WHERE country.country_code = candidate.country_code;
+
+DO $$
+DECLARE unresolved_countries TEXT;
+BEGIN
+    SELECT string_agg(country.country_code || ' (' || country.name || ')', ', ' ORDER BY country.country_code)
+    INTO unresolved_countries
+    FROM location_countries country
+    JOIN location_country_stage stage
+        ON stage.country_code = country.country_code
+    WHERE stage.capital_name <> ''
+      AND country.capital_place_geoname_id IS NULL;
+
+    IF unresolved_countries IS NOT NULL THEN
+        RAISE EXCEPTION 'Capital place mapping unresolved for: %', unresolved_countries;
+    END IF;
+END $$;
 
 INSERT INTO german_postal_codes (
     country_code,
