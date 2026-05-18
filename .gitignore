@@ -55,5 +55,6 @@ grill-me-session.md
 # Local test and agent artifacts
 .gradle-verification/
 .playwright-mcp/
+backups/
 playwright-*.yml
 tmp-*.log
