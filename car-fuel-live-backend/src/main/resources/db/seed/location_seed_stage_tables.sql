@@ -1,3 +1,8 @@
+DROP TABLE IF EXISTS location_country_stage;
+DROP TABLE IF EXISTS location_place_stage;
+DROP TABLE IF EXISTS location_place_alias_stage;
+DROP TABLE IF EXISTS german_postal_code_stage;
+
 CREATE TEMP TABLE location_country_stage (
     country_code TEXT,
     iso3_code TEXT,
@@ -5,6 +10,7 @@ CREATE TEMP TABLE location_country_stage (
     name TEXT,
     normalized_name TEXT,
     capital_name TEXT,
+    normalized_capital_name TEXT,
     population TEXT,
     continent_code TEXT,
     geoname_id TEXT

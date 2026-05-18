@@ -33,9 +33,11 @@ PostgreSQL 17 location dataset
 
 ## Current Data Layer
 
-- Flyway migration `V1__create_location_seed_schema.sql` creates `location_countries`, `location_places`, `location_place_aliases`, and `german_postal_codes`.
-- `import-location-data.ps1` downloads GeoNames files, filters Europe rows, generates TSV staging files, verifies that Flyway migration `V1` completed, and loads data into PostgreSQL.
+- Flyway migration `V1__create_location_seed_schema.sql` creates `location_countries`, `location_places`, `location_place_aliases`, and `german_postal_codes`. Migration `V2__add_country_capital_place_mapping.sql` adds the stable `location_countries.capital_place_geoname_id` foreign key.
+- `import-location-data.ps1` downloads GeoNames files, filters Europe rows, generates TSV staging files, verifies that the required Flyway-managed location schema exists, and loads data into PostgreSQL.
 - The seeded dataset stores normalized search text plus latitude and longitude so manual search can resolve text locally from the database. The seed also materializes transliteration variants such as expanded and folded umlaut forms into alias search rows instead of relying on runtime SQL string functions.
+- The seed transform resolves one stable capital-place reference per imported country by matching the country's normalized capital name only against same-country `PPLC` rows through primary name, ascii name, or alias. If that mapping is not unique and complete, the seed fails instead of falling back to runtime fuzzy matching.
+- The backend repository now has a dedicated read path from `country_code` to the resolved capital place via `capital_place_geoname_id`, so later country-driven price flows can skip text search entirely.
 - The location search repository uses JDBC read queries against the seeded tables. It runs separate searches for countries, places, aliases, and German postal codes, then the service overfetches a bounded candidate window, de-duplicates across query families, ranks, and applies the final visible limit.
 - Location search uses exact-match queries first so full city, country, alias, and postal-code inputs can use existing B-tree indexes. Prefix queries run only when exact matching returns no result.
 - No live geocoding provider is part of the current architecture.
@@ -59,7 +61,7 @@ PostgreSQL 17 location dataset
 ## PostgreSQL Schema
 
 - `location_countries`
-  Holds one row per seeded European country. Primary key is `country_code`. Columns: `geoname_id`, `name`, `normalized_name`, `iso3_code`, `numeric_code`, `capital_name`, `continent_code`, optional `latitude`/`longitude`, optional `population`, and `created_at`.
+  Holds one row per seeded European country with a current `PCLI` source row. Primary key is `country_code`. Columns: `geoname_id`, `name`, `normalized_name`, `iso3_code`, `numeric_code`, `capital_name`, optional `capital_place_geoname_id`, `continent_code`, optional `latitude`/`longitude`, optional `population`, and `created_at`.
 - `location_places`
   Holds GeoNames administrative and populated place rows. Primary key is `geoname_id`. Foreign key `country_code -> location_countries.country_code`. Columns: `name`, `ascii_name`, `normalized_name`, `normalized_ascii_name`, `latitude`, `longitude`, `feature_class`, `feature_code`, optional `admin1_code` to `admin4_code`, `population`, optional `timezone`, optional `source_modified_on`, optional `alternate_names`, and `created_at`.
 - `location_place_aliases`
@@ -70,6 +72,7 @@ PostgreSQL 17 location dataset
 ## Search-Relevant Indexes
 
 - `location_countries.normalized_name` for country-name lookup.
+- `location_countries.capital_place_geoname_id` for direct country-to-capital joins.
 - `location_places.country_code` for country-scoped place queries.
 - `location_places.normalized_name` and `location_places.normalized_ascii_name` for primary place search.
 - `location_places.feature_code` for filtering by GeoNames feature type.

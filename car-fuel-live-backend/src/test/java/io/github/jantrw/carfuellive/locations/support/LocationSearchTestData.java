@@ -7,6 +7,7 @@ public final class LocationSearchTestData {
   private LocationSearchTestData() {}
 
   public static void resetDefaultFixture(JdbcClient jdbcClient) {
+    jdbcClient.sql("UPDATE location_countries SET capital_place_geoname_id = NULL").update();
     jdbcClient.sql("DELETE FROM location_place_aliases").update();
     jdbcClient.sql("DELETE FROM german_postal_codes").update();
     jdbcClient.sql("DELETE FROM location_places").update();
@@ -23,19 +24,20 @@ public final class LocationSearchTestData {
                 iso3_code,
                 numeric_code,
                 capital_name,
+                capital_place_geoname_id,
                 continent_code,
                 latitude,
                 longitude,
                 population
             ) VALUES
-                ('DE', 2921044, 'Germany', 'germany', 'DEU', 276, 'Berlin', 'EU', 51.1657, 10.4515, 84000000),
-                ('BE', 2802361, 'Belgium', 'belgium', 'BEL', 56, 'Brussels', 'EU', 50.5039, 4.4699, 11500000),
-                ('CH', 2658434, 'Switzerland', 'switzerland', 'CHE', 756, 'Bern', 'EU', 46.8182, 8.2275, 8900000),
-                ('SE', 2661886, 'Sweden', 'sweden', 'SWE', 752, 'Stockholm', 'EU', 60.1282, 18.6435, 10500000),
-                ('DK', 2623032, 'Denmark', 'denmark', 'DNK', 208, 'Copenhagen', 'EU', 56.2639, 9.5018, 5900000),
-                ('PL', 798544, 'Poland', 'poland', 'POL', 616, 'Warsaw', 'EU', 51.9194, 19.1451, 38000000),
-                ('ES', 2510769, 'Spain', 'spain', 'ESP', 724, 'Madrid', 'EU', 40.4637, -3.7492, 47000000),
-                ('CZ', 3077311, 'Czechia', 'czechia', 'CZE', 203, 'Prague', 'EU', 49.8175, 15.473, 10900000)
+                ('DE', 2921044, 'Germany', 'germany', 'DEU', 276, 'Berlin', NULL, 'EU', 51.1657, 10.4515, 84000000),
+                ('BE', 2802361, 'Belgium', 'belgium', 'BEL', 56, 'Brussels', NULL, 'EU', 50.5039, 4.4699, 11500000),
+                ('CH', 2658434, 'Switzerland', 'switzerland', 'CHE', 756, 'Bern', NULL, 'EU', 46.8182, 8.2275, 8900000),
+                ('SE', 2661886, 'Sweden', 'sweden', 'SWE', 752, 'Stockholm', NULL, 'EU', 60.1282, 18.6435, 10500000),
+                ('DK', 2623032, 'Denmark', 'denmark', 'DNK', 208, 'Copenhagen', NULL, 'EU', 56.2639, 9.5018, 5900000),
+                ('PL', 798544, 'Poland', 'poland', 'POL', 616, 'Warsaw', NULL, 'EU', 51.9194, 19.1451, 38000000),
+                ('ES', 2510769, 'Spain', 'spain', 'ESP', 724, 'Madrid', NULL, 'EU', 40.4637, -3.7492, 47000000),
+                ('CZ', 3077311, 'Czechia', 'czechia', 'CZE', 203, 'Prague', NULL, 'EU', 49.8175, 15.473, 10900000)
             """)
         .update();
 
@@ -79,6 +81,24 @@ public final class LocationSearchTestData {
     jdbcClient
         .sql(
             """
+            UPDATE location_countries
+            SET capital_place_geoname_id = 2950159
+            WHERE geoname_id = 2921044
+            """)
+        .update();
+
+    jdbcClient
+        .sql(
+            """
+            UPDATE location_countries
+            SET capital_place_geoname_id = 3067696
+            WHERE geoname_id = 3077311
+            """)
+        .update();
+
+    jdbcClient
+        .sql(
+            """
             INSERT INTO location_place_aliases (
                 place_geoname_id,
                 alias_name,
@@ -114,6 +134,7 @@ public final class LocationSearchTestData {
   }
 
   public static void resetAliasOverflowFixture(JdbcClient jdbcClient) {
+    jdbcClient.sql("UPDATE location_countries SET capital_place_geoname_id = NULL").update();
     jdbcClient.sql("DELETE FROM location_place_aliases").update();
     jdbcClient.sql("DELETE FROM german_postal_codes").update();
     jdbcClient.sql("DELETE FROM location_places").update();
@@ -130,15 +151,16 @@ public final class LocationSearchTestData {
                 iso3_code,
                 numeric_code,
                 capital_name,
+                capital_place_geoname_id,
                 continent_code,
                 latitude,
                 longitude,
                 population
             ) VALUES
-                ('IT', 3175395, 'Italy', 'italy', 'ITA', 380, 'Rome', 'EU', 41.8719, 12.5674, 59000000),
-                ('FR', 3017382, 'France', 'france', 'FRA', 250, 'Paris', 'EU', 46.2276, 2.2137, 68000000),
-                ('ES', 2510769, 'Spain', 'spain', 'ESP', 724, 'Madrid', 'EU', 40.4637, -3.7492, 47000000),
-                ('PT', 2264397, 'Portugal', 'portugal', 'PRT', 620, 'Lisbon', 'EU', 39.3999, -8.2245, 10300000)
+                ('IT', 3175395, 'Italy', 'italy', 'ITA', 380, 'Rome', NULL, 'EU', 41.8719, 12.5674, 59000000),
+                ('FR', 3017382, 'France', 'france', 'FRA', 250, 'Paris', NULL, 'EU', 46.2276, 2.2137, 68000000),
+                ('ES', 2510769, 'Spain', 'spain', 'ESP', 724, 'Madrid', NULL, 'EU', 40.4637, -3.7492, 47000000),
+                ('PT', 2264397, 'Portugal', 'portugal', 'PRT', 620, 'Lisbon', NULL, 'EU', 39.3999, -8.2245, 10300000)
             """)
         .update();
 

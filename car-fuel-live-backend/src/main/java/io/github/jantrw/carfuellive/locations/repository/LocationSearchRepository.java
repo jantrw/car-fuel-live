@@ -1,7 +1,9 @@
 package io.github.jantrw.carfuellive.locations.repository;
 
+import io.github.jantrw.carfuellive.locations.model.CountryCapitalPlace;
 import io.github.jantrw.carfuellive.locations.model.LocationSearchResult;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -492,6 +494,31 @@ public class LocationSearchRepository {
         .list();
   }
 
+  // Future country-driven flows must not re-run a fuzzy capital-name search. Resolve the seeded
+  // stable place reference with one indexed country lookup and one direct place join.
+  public Optional<CountryCapitalPlace> findCapitalPlaceByCountryCode(String countryCode) {
+    return jdbcClient
+        .sql(
+            """
+            SELECT
+                country.country_code,
+                country.name AS country_name,
+                place.geoname_id AS place_geoname_id,
+                place.name AS place_name,
+                place.latitude,
+                place.longitude
+            FROM location_countries country
+            JOIN location_places place
+                ON place.geoname_id = country.capital_place_geoname_id
+            WHERE TRIM(CAST(country.country_code AS VARCHAR)) = :countryCode
+            """)
+        .param("countryCode", countryCode)
+        .query(LocationSearchRepository::mapCountryCapitalPlace)
+        .list()
+        .stream()
+        .findFirst();
+  }
+
   private static LocationSearchResult mapLocationSearchResult(
       java.sql.ResultSet resultSet, int rowNumber) throws java.sql.SQLException {
     return new LocationSearchResult(
@@ -509,5 +536,16 @@ public class LocationSearchRepository {
         resultSet.getString("admin4_code"),
         resultSet.getInt("match_rank"),
         resultSet.getLong("popularity"));
+  }
+
+  private static CountryCapitalPlace mapCountryCapitalPlace(
+      java.sql.ResultSet resultSet, int rowNumber) throws java.sql.SQLException {
+    return new CountryCapitalPlace(
+        resultSet.getString("country_code"),
+        resultSet.getString("country_name"),
+        resultSet.getLong("place_geoname_id"),
+        resultSet.getString("place_name"),
+        resultSet.getDouble("latitude"),
+        resultSet.getDouble("longitude"));
   }
 }
