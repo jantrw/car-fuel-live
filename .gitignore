@@ -51,3 +51,9 @@ todo.md
 lessons.md
 grill-me-session.md
 /docs/slice-1-manual-search-plan.md
+
+# Local test and agent artifacts
+.gradle-verification/
+.playwright-mcp/
+playwright-*.yml
+tmp-*.log
