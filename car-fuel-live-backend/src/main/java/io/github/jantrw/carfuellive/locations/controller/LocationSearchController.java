@@ -15,6 +15,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * HTTP entry point for seeded location suggestions.
+ *
+ * <p>The controller validates the public query contract and delegates the actual ranking and data
+ * access to {@link LocationSearchService}.
+ */
 @RestController
 @RequestMapping("/api/v1/locations")
 @Validated

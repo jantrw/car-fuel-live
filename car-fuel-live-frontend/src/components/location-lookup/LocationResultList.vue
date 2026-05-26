@@ -9,6 +9,7 @@ const props = defineProps<{
   groups: LocationSuggestionGroup[]
   status: string
   query: string
+  validationMessage: 'QUERY_TOO_SHORT' | 'QUERY_TOO_LONG' | null
   messages: LocationLookupMessages
 }>()
 
@@ -37,7 +38,9 @@ const emit = defineEmits<{
       v-if="props.status === 'validation'"
       class="mt-3 text-sm font-medium text-amber-700"
     >
-      {{ props.messages.validationMessage.QUERY_TOO_SHORT }}
+      {{ props.validationMessage === null
+        ? props.messages.validationMessage.QUERY_TOO_SHORT
+        : props.messages.validationMessage[props.validationMessage] }}
     </p>
 
     <p v-else-if="props.status === 'noResults'" class="mt-3 text-sm text-slate-600">

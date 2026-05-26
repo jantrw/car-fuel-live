@@ -6,6 +6,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+/**
+ * Shared normalization rules for location search input and stored aliases.
+ *
+ * <p>The utility keeps user input, primary names, and alternate spellings comparable across
+ * accents, umlauts, digraphs, and punctuation differences.
+ */
 final class LocationSearchNormalizer {
 
   private LocationSearchNormalizer() {}
@@ -18,6 +24,8 @@ final class LocationSearchNormalizer {
     return normalizeInternal(value, false);
   }
 
+  // Some searches should match both digraph-preserving and fully folded variants, for example
+  // "muenchen" and "munchen".
   static List<String> searchVariants(String value) {
     final Set<String> variants = new LinkedHashSet<>();
     addVariant(variants, normalize(value));

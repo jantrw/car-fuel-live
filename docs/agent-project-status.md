@@ -6,14 +6,15 @@
 ## Current Product Slice
 
 - Public no-auth web app for fuel-price lookup by location.
-- No live fuel-price integration yet. Tankerkönig contract and constraints are documented, but no client or result flow is implemented.
-- Current implemented frontend slice is a manual local-search foundation:
+- Current implemented frontend slice is a manual local-search plus live price MVP:
   - active country context derived from `localStorage`, browser locale, or time zone
   - explicit search only, no live autocomplete while typing
   - grouped local search results from PostgreSQL
-  - selecting a result currently only fills the input and clears the list
-- Current implemented backend slice is a PostgreSQL-only location lookup:
+  - selecting a `place` or `postalCode` result loads nearby live prices
+  - selecting a `country` result updates only the country context for now
+- Current implemented backend slice combines PostgreSQL location lookup with live Tankerkönig station lookup:
   - `GET /api/v1/locations/suggestions`
+  - `GET /api/v1/gas-stations`
   - result types: `country`, `place`, `postalCode`
   - country context affects ranking, not filtering
   - no external geocoding provider in runtime
@@ -29,7 +30,7 @@
 - Search supports normalized transliteration variants without runtime fuzzy SQL.
 - `location_countries.capital_place_geoname_id` now provides a stable country-to-capital reference for later country-driven flows.
 
-## Delivered Work By Closed Issues
+## Delivered Work Mapped To Issues
 
 ### Core Location Dataset
 
@@ -48,6 +49,11 @@
 
 - `#40` preserved distinct same-name places instead of collapsing them incorrectly.
 - `#41` applied the visible result limit after semantic deduplication instead of before.
+
+### Live Price MVP
+
+- `#52` tracks the first location-to-price MVP and is still open, but the current worktree already implements the slice:
+  `place` and `postalCode` selections call the backend Tankerkönig integration and render live fuel prices in the frontend with explicit state handling.
 
 ### Deliberately Closed Without Implementation
 
@@ -70,12 +76,16 @@
   - Vue 3 + TypeScript + Vite
   - lookup UI in `car-fuel-live-frontend/src/components/location-lookup`
   - lookup orchestration in `src/composables/useLocationLookup.ts`
+  - gas-station result orchestration in `src/composables/useGasStationResults.ts`
   - country context state in `src/stores/locationCountryContext.ts`
   - backend access in `src/api/locationSearch.ts`
+  - gas-station backend access in `src/api/gasStations.ts`
 - Backend:
   - Spring Boot
   - public stateless API
   - location feature grouped under `car-fuel-live-backend/src/main/java/io/github/jantrw/carfuellive/locations`
+  - gas-station lookup grouped under `stations/`
+  - Tankerkönig client grouped under `tankerkoenig/`
 - Database:
   - PostgreSQL 17
   - Flyway owns schema
@@ -91,15 +101,20 @@
 
 ## Open Follow-Ups
 
-- Location-to-price MVP is still missing and should be treated as the next core product step:
-  the app currently stops at local location search, but the core product value is still not implemented. 
-  The next MVP should accept the same manual place/city/country-style search flow, let the user choose the intended result, send that result's latitude and longitude to the Tankerkönig backend integration, and render fuel prices in the frontend. The implementation should prioritize strong UX and fast perceived performance.
 - `#48` is still open:
   alias/ascii prefix ranking in the backend needs a structural improvement so matches found via `normalized_ascii_name` or `normalized_alias_name` are treated as strong continuations during ranking.
 - Naming cleanup remains open:
   internal names such as `suggest`, `locationSuggestions`, and `suggestionGroupTitle` still reflect the older autocomplete terminology.
-- Country-driven default result flow is still not implemented:
-  the stable capital mapping exists, but no user-facing flow consumes it yet.
+- `#51` is open:
+  station detail remains a separate follow-up slice and has not been planned in depth yet.
+- `#53` is open:
+  the first MVP still uses fixed backend defaults and has no filter UI for fuel type, radius, or sorting.
+- `#54` is open:
+  country-driven default result flow is still not implemented; the stable capital mapping exists, but no user-facing country price-default flow consumes it yet.
+- `#55` is open:
+  broader public rate limiting and further Tankerkönig consumption hardening are still missing. The current worktree already rate-limits `GET /api/v1/gas-stations`.
+- `#56` is open:
+  the opt-in `Use my city` geolocation flow is still not implemented.
 
 ## Recommended Starting Points For The Next Agent
 

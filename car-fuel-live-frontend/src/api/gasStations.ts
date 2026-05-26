@@ -1,0 +1,126 @@
+export interface GasStationResult {
+  id: string
+  name: string
+  brand: string | null
+  street: string | null
+  houseNumber: string | null
+  postCode: string | null
+  place: string | null
+  latitude: number
+  longitude: number
+  distanceKm: number | null
+  isOpen: boolean | null
+  e5: number | null
+  e10: number | null
+  diesel: number | null
+}
+
+export interface GasStationSearchResponse {
+  items: GasStationResult[]
+}
+
+interface SearchGasStationsOptions {
+  signal?: AbortSignal
+  fetcher?: typeof fetch
+}
+
+// Keep gas-station requests behind the shared API layer so location selection logic stays decoupled
+// from the transport details and can evolve with later filter support.
+export async function searchGasStations(
+  latitude: number,
+  longitude: number,
+  options: SearchGasStationsOptions = {},
+): Promise<GasStationSearchResponse> {
+  const params = new URLSearchParams({
+    lat: latitude.toString(),
+    lng: longitude.toString(),
+  })
+
+  const response = await (options.fetcher ?? fetch)(
+    `/api/v1/gas-stations?${params.toString()}`,
+    { signal: options.signal },
+  )
+
+  if (!response.ok) {
+    throw new Error('Gas station lookup failed.')
+  }
+
+  return parseGasStationSearchResponse(await response.json())
+}
+
+function parseGasStationSearchResponse(value: unknown): GasStationSearchResponse {
+  if (!isRecord(value) || !Array.isArray(value.items)) {
+    throw new Error('Invalid gas station lookup response.')
+  }
+
+  return {
+    items: value.items.map(parseGasStationResult),
+  }
+}
+
+function parseGasStationResult(value: unknown): GasStationResult {
+  if (!isRecord(value)) {
+    throw new Error('Invalid gas station lookup result.')
+  }
+
+  return {
+    id: parseString(value.id, 'id'),
+    name: parseString(value.name, 'name'),
+    brand: parseNullableString(value.brand, 'brand'),
+    street: parseNullableString(value.street, 'street'),
+    houseNumber: parseNullableString(value.houseNumber, 'houseNumber'),
+    postCode: parseNullableString(value.postCode, 'postCode'),
+    place: parseNullableString(value.place, 'place'),
+    latitude: parseNumber(value.latitude, 'latitude'),
+    longitude: parseNumber(value.longitude, 'longitude'),
+    distanceKm: parseNullableNumber(value.distanceKm, 'distanceKm'),
+    isOpen: parseNullableBoolean(value.isOpen, 'isOpen'),
+    e5: parseNullableNumber(value.e5, 'e5'),
+    e10: parseNullableNumber(value.e10, 'e10'),
+    diesel: parseNullableNumber(value.diesel, 'diesel'),
+  }
+}
+
+function parseString(value: unknown, field: string): string {
+  if (typeof value === 'string' && value.length > 0) {
+    return value
+  }
+
+  throw new Error(`Invalid gas station lookup ${field}.`)
+}
+
+function parseNullableString(value: unknown, field: string): string | null {
+  if (value === null || typeof value === 'string') {
+    return value
+  }
+
+  throw new Error(`Invalid gas station lookup ${field}.`)
+}
+
+function parseNumber(value: unknown, field: string): number {
+  if (typeof value === 'number') {
+    return value
+  }
+
+  throw new Error(`Invalid gas station lookup ${field}.`)
+}
+
+function parseNullableNumber(value: unknown, field: string): number | null {
+  if (value === null || typeof value === 'number') {
+    return value
+  }
+
+  throw new Error(`Invalid gas station lookup ${field}.`)
+}
+
+function parseNullableBoolean(value: unknown, field: string): boolean | null {
+  if (value === null || typeof value === 'boolean') {
+    return value
+  }
+
+  throw new Error(`Invalid gas station lookup ${field}.`)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}

@@ -16,6 +16,12 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Orchestrates location suggestion lookup across exact, prefix, alias, and postal-code paths.
+ *
+ * <p>The service merges repository result sets, applies cross-query ranking rules, and removes
+ * semantic duplicates before projecting the final public response.
+ */
 @Service
 public class LocationSearchService {
 
@@ -423,6 +429,8 @@ public class LocationSearchService {
     return separatorIndex < 0 ? result.label() : result.label().substring(0, separatorIndex);
   }
 
+  // German same-label places need one extra disambiguator in the visible label; other countries
+  // already remain understandable with the default place + country text.
   private static LocationSearchResponse toSearchResponse(List<LocationSearchResult> results) {
     final Map<String, Long> visibleGermanPlaceCounts = visibleGermanPlaceCounts(results);
     final List<LocationSearchResultResponse> items =
@@ -723,6 +731,8 @@ public class LocationSearchService {
     return "place".equals(result.type()) && "DE".equals(result.countryCode());
   }
 
+  // GeoNames admin1 codes are terse numeric strings for Germany. Expand them only when they are
+  // needed to distinguish same-label visible results.
   private static Map<String, String> germanAdmin1Names() {
     final Map<String, String> admin1Names = new HashMap<>();
     admin1Names.put("01", "Baden-Württemberg");
@@ -761,6 +771,8 @@ public class LocationSearchService {
     return Optional.of(normalized);
   }
 
+  // Prefix search still relies on SQL LIKE. Escape wildcard characters so literal user input does
+  // not silently widen the query.
   private static String escapeLikePattern(String value) {
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
