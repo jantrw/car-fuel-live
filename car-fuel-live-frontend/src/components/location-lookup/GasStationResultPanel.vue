@@ -7,7 +7,14 @@ import type { LocationLookupMessages } from '@/i18n/locationLookupMessages'
 
 const props = defineProps<{
   stations: readonly GasStationResult[]
-  status: 'idle' | 'loading' | 'results' | 'empty' | 'error' | 'countrySelected'
+  status:
+    | 'idle'
+    | 'loading'
+    | 'results'
+    | 'empty'
+    | 'error'
+    | 'rateLimited'
+    | 'countrySelected'
   selectedLocationLabel: string
   messages: LocationLookupMessages
 }>()
@@ -109,6 +116,13 @@ function openStateLabel(isOpen: boolean | null) {
         {{ props.messages.stationErrorTitle }}
       </span>
       {{ props.messages.stationErrorBody }}
+    </p>
+
+    <p v-else-if="props.status === 'rateLimited'" class="mt-4 text-sm text-amber-700">
+      <span class="block font-semibold text-amber-900">
+        {{ props.messages.stationRateLimitedTitle }}
+      </span>
+      {{ props.messages.stationRateLimitedBody }}
     </p>
 
     <div v-else class="mt-4 grid gap-3">

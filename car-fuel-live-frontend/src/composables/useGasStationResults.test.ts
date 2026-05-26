@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { GasStationLookupError } from '@/api/gasStations'
+
 import { useGasStationResults } from './useGasStationResults'
 
 describe('useGasStationResults', () => {
@@ -100,5 +102,29 @@ describe('useGasStationResults', () => {
     expect(gasStationResults.status.value).toBe('idle')
     expect(gasStationResults.stations.value).toEqual([])
     expect(gasStationResults.selectedLocationLabel.value).toBe('')
+  })
+
+  it('should expose a dedicated rate-limited state for backend 429 responses', async () => {
+    const search = vi.fn(async () => {
+      throw new GasStationLookupError(
+        'Too many fuel price requests from this client.',
+        429,
+        'RATE_LIMITED',
+      )
+    })
+    const gasStationResults = useGasStationResults({ search })
+
+    await gasStationResults.loadForSelection({
+      type: 'place',
+      id: '2950159',
+      label: 'Berlin, Germany',
+      countryCode: 'DE',
+      latitude: 52.52437,
+      longitude: 13.41053,
+      postalCode: null,
+    })
+
+    expect(gasStationResults.status.value).toBe('rateLimited')
+    expect(gasStationResults.stations.value).toEqual([])
   })
 })

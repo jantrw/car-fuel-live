@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { searchGasStations } from './gasStations'
+import { GasStationLookupError, searchGasStations } from './gasStations'
 
 describe('searchGasStations', () => {
   it('should call the backend gas station endpoint with coordinates', async () => {
@@ -55,5 +55,27 @@ describe('searchGasStations', () => {
     await expect(
       searchGasStations(52.52437, 13.41053, { fetcher }),
     ).rejects.toThrow('Invalid gas station lookup name.')
+  })
+
+  it('should preserve 429 rate-limit details from the backend', async () => {
+    const fetcher = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          code: 'RATE_LIMITED',
+          message: 'Too many fuel price requests from this client.',
+          details: [],
+        }),
+        { status: 429 },
+      )
+    })
+
+    await expect(
+      searchGasStations(52.52437, 13.41053, { fetcher }),
+    ).rejects.toMatchObject({
+      name: 'GasStationLookupError',
+      status: 429,
+      code: 'RATE_LIMITED',
+      message: 'Too many fuel price requests from this client.',
+    })
   })
 })

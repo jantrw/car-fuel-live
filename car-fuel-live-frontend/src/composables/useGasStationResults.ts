@@ -1,6 +1,7 @@
 import { readonly, shallowRef } from 'vue'
 
 import {
+  GasStationLookupError,
   searchGasStations,
   type GasStationResult,
   type GasStationSearchResponse,
@@ -13,6 +14,7 @@ export type GasStationResultsStatus =
   | 'results'
   | 'empty'
   | 'error'
+  | 'rateLimited'
   | 'countrySelected'
 
 interface UseGasStationResultsOptions {
@@ -72,13 +74,18 @@ export function useGasStationResults(options: UseGasStationResultsOptions = {}) 
 
       stations.value = response.items
       status.value = response.items.length > 0 ? 'results' : 'empty'
-    } catch {
+    } catch (error) {
       if (controller.signal.aborted || currentController !== controller) {
         return
       }
 
       stations.value = []
-      status.value = 'error'
+      status.value =
+        error instanceof GasStationLookupError &&
+        error.status === 429 &&
+        error.code === 'RATE_LIMITED'
+          ? 'rateLimited'
+          : 'error'
     } finally {
       if (currentController === controller) {
         currentController = null

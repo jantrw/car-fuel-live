@@ -26,6 +26,8 @@ export interface LocationLookupMessages {
   stationEmptyBody: string
   stationErrorTitle: string
   stationErrorBody: string
+  stationRateLimitedTitle: string
+  stationRateLimitedBody: string
   countrySelectionTitle: string
   countrySelectionBody: string
   stationAttribution: string
@@ -80,6 +82,9 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     stationErrorTitle: 'Fuel prices unavailable',
     stationErrorBody:
       'The upstream fuel price service did not return usable station data.',
+    stationRateLimitedTitle: 'Too many price requests',
+    stationRateLimitedBody:
+      'You have reached the current request limit for live fuel prices. Please wait a moment and try again.',
     countrySelectionTitle: 'Country selected',
     countrySelectionBody:
       'This MVP loads live prices only for cities, places, and postal codes with coordinates. Choose a concrete place next.',
@@ -145,6 +150,9 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     stationErrorTitle: 'Kraftstoffpreise nicht verfügbar',
     stationErrorBody:
       'Der Upstream-Dienst für Kraftstoffpreise hat keine nutzbaren Stationsdaten geliefert.',
+    stationRateLimitedTitle: 'Zu viele Preisabfragen',
+    stationRateLimitedBody:
+      'Du hast das aktuelle Anfrage-Limit für Live-Kraftstoffpreise erreicht. Warte kurz und versuche es dann erneut.',
     countrySelectionTitle: 'Land ausgewählt',
     countrySelectionBody:
       'Dieses MVP lädt Live-Preise nur für Städte, Orte und Postleitzahlen mit Koordinaten. Wähle als Nächstes einen konkreten Ort.',

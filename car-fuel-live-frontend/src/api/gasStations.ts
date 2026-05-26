@@ -19,9 +19,26 @@ export interface GasStationSearchResponse {
   items: GasStationResult[]
 }
 
+interface ApiErrorResponse {
+  code: string
+  message: string
+}
+
 interface SearchGasStationsOptions {
   signal?: AbortSignal
   fetcher?: typeof fetch
+}
+
+export class GasStationLookupError extends Error {
+  readonly status: number
+  readonly code: string | null
+
+  constructor(message: string, status: number, code: string | null = null) {
+    super(message)
+    this.name = 'GasStationLookupError'
+    this.status = status
+    this.code = code
+  }
 }
 
 // Keep gas-station requests behind the shared API layer so location selection logic stays decoupled
@@ -42,10 +59,28 @@ export async function searchGasStations(
   )
 
   if (!response.ok) {
-    throw new Error('Gas station lookup failed.')
+    throw await toGasStationLookupError(response)
   }
 
   return parseGasStationSearchResponse(await response.json())
+}
+
+async function toGasStationLookupError(
+  response: Response,
+): Promise<GasStationLookupError> {
+  let apiErrorResponse: ApiErrorResponse | null = null
+
+  try {
+    apiErrorResponse = parseApiErrorResponse(await response.json())
+  } catch {
+    apiErrorResponse = null
+  }
+
+  return new GasStationLookupError(
+    apiErrorResponse?.message ?? 'Gas station lookup failed.',
+    response.status,
+    apiErrorResponse?.code ?? null,
+  )
 }
 
 function parseGasStationSearchResponse(value: unknown): GasStationSearchResponse {
@@ -119,6 +154,17 @@ function parseNullableBoolean(value: unknown, field: string): boolean | null {
   }
 
   throw new Error(`Invalid gas station lookup ${field}.`)
+}
+
+function parseApiErrorResponse(value: unknown): ApiErrorResponse {
+  if (!isRecord(value)) {
+    throw new Error('Invalid gas station lookup error response.')
+  }
+
+  return {
+    code: parseString(value.code, 'code'),
+    message: parseString(value.message, 'message'),
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
