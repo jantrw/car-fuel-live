@@ -4,6 +4,7 @@ import io.github.jantrw.carfuellive.common.exception.FuelPriceLookupException;
 import io.github.jantrw.carfuellive.stations.model.GasStation;
 import io.github.jantrw.carfuellive.tankerkoenig.config.TankerkoenigProperties;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -120,7 +121,7 @@ public class TankerkoenigRestClient implements TankerkoenigStationSearchClient {
         nullableText(stationNode, "brand"),
         nullableText(stationNode, "street"),
         nullableText(stationNode, "houseNumber"),
-        nullableText(stationNode, "postCode"),
+        nullablePostCode(stationNode),
         nullableText(stationNode, "place"),
         requireNumber(stationNode, "lat").doubleValue(),
         requireNumber(stationNode, "lng").doubleValue(),
@@ -157,6 +158,35 @@ public class TankerkoenigRestClient implements TankerkoenigStationSearchClient {
 
     final String trimmedValue = value.trim();
     return trimmedValue.isEmpty() ? null : trimmedValue;
+  }
+
+  // Tankerkönig can send postcodes as JSON numbers. Preserve German leading zeros instead of
+  // routing that path through generic Number.toString().
+  private static String nullablePostCode(Map<?, ?> stationNode) {
+    final Object field = stationNode.get("postCode");
+    if (field == null) {
+      return null;
+    }
+    if (field instanceof String stringValue) {
+      final String trimmedValue = stringValue.trim();
+      return trimmedValue.isEmpty() ? null : trimmedValue;
+    }
+    if (!(field instanceof Number numberValue)) {
+      throw new FuelPriceLookupException("Tankerkönig field 'postCode' is invalid.");
+    }
+
+    final BigDecimal decimalPostCode = new BigDecimal(numberValue.toString());
+    if (decimalPostCode.scale() > 0 && decimalPostCode.stripTrailingZeros().scale() > 0) {
+      throw new FuelPriceLookupException("Tankerkönig field 'postCode' is invalid.");
+    }
+
+    final BigInteger integralPostCode = decimalPostCode.toBigIntegerExact();
+    if (integralPostCode.signum() < 0
+        || integralPostCode.compareTo(BigInteger.valueOf(99_999)) > 0) {
+      throw new FuelPriceLookupException("Tankerkönig field 'postCode' is invalid.");
+    }
+
+    return "%05d".formatted(integralPostCode.longValueExact());
   }
 
   private static BigDecimal requireNumber(Map<?, ?> parentNode, String fieldName) {

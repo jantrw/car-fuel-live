@@ -70,6 +70,47 @@ class TankerkoenigRestClientTests {
   }
 
   @Test
+  void should_preserveLeadingZero_when_upstreamPostCodeIsNumeric() {
+    final TankerkoenigProperties properties = tankerkoenigProperties();
+
+    final RestClient.Builder builder = RestClient.builder();
+    final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    final TankerkoenigRestClient client =
+        new TankerkoenigRestClient(builder.baseUrl(properties.baseUrl()).build(), properties);
+
+    server
+        .expect(requestTo(org.hamcrest.Matchers.containsString("/json/list.php")))
+        .andExpect(method(HttpMethod.GET))
+        .andRespond(
+            withSuccess(
+                """
+                {
+                  "ok": true,
+                  "stations": [
+                    {
+                      "id": "station-2",
+                      "name": "Altstadt Fuel",
+                      "postCode": 1067,
+                      "place": "Dresden",
+                      "lat": 51.0504,
+                      "lng": 13.7373,
+                      "e5": 1.799,
+                      "e10": 1.739,
+                      "diesel": 1.629
+                    }
+                  ]
+                }
+                """,
+                MediaType.APPLICATION_JSON));
+
+    final List<io.github.jantrw.carfuellive.stations.model.GasStation> stations =
+        client.searchStations(51.0504, 13.7373);
+
+    assertEquals("01067", stations.getFirst().postCode());
+    server.verify();
+  }
+
+  @Test
   void should_throwFuelPriceLookupException_when_upstreamReportsFailure() {
     final TankerkoenigProperties properties = tankerkoenigProperties();
 
