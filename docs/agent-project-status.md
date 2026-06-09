@@ -52,7 +52,7 @@
 
 ### Live Price MVP
 
-- `#52` tracks the first location-to-price MVP and is still open, but the current worktree already implements the slice:
+- `#52` implemented the first location-to-price MVP:
   `place` and `postalCode` selections call the backend Tankerkönig integration and render live fuel prices in the frontend with explicit state handling.
 
 ### Deliberately Closed Without Implementation
