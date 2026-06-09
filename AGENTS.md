@@ -9,6 +9,7 @@
 - Frontend rules live in `car-fuel-live-frontend/AGENTS.md`.
 
 ## Repo Workflow
+- If a prompt is unclear, **always** ask questions to gather needed information.
 - Enter plan mode for any non-trivial task (3+ steps or architectural decisions).
 - If something goes sideways, stop and re-plan immediately.
 - Use plan mode for verification steps, not just building.
@@ -52,6 +53,7 @@
 ## Functionality & Verification
 - Always prove functionality.
 - Every task needs to be tested before finishing it.
+- **(IMPORTANT)** Do not add tests which simply restate the implementation. These provide zero confidence.
 - Never mark a task complete without proving it works.
 - Ask yourself: "Would a staff engineer approve this?"
 
@@ -79,25 +81,6 @@
 - Do not modify unrelated files.
 - Always test the code after implementing new features or code changes.
 
-### Git
-- Every issue or feature must live in its own dedicated branch. Do not combine unrelated changes in one branch.
-- Branch names must follow `<type>/<issue-id>-<short-description>` using lowercase and hyphens only.
-- All work branches must merge into `dev` first. `dev` may only merge into `main` after explicit approval.
-- After every merged `dev` -> `main` PR, sync `dev` back to the current `main` state immediately so `dev` never falls behind `main`.
-- Never open a pull request or merge a branch without asking first.
-
-#### Commit Scopes
-`api` | `db` | `map` | `prices` | `auth` | `docker` | `config`
-
-Examples:
-`feat(api): add Tankerkönig price polling endpoint`
-`fix(db): correct station coordinate mapping on insert`
-`refactor(map): extract marker logic into composable`
-`chore(docker): pin postgres image to 17.2`
-
-#### Issue Labels
-- In addition to global labels: `map` | `polling`
-
 #### .gitignore
 - Always ask before removing something from `.gitignore`.
 - Add necessary files and folders to `.gitignore` using public repository best practices.
@@ -114,3 +97,8 @@ Examples:
 - Frontend formatting: ESLint + Prettier.
 - Backend formatting: Spotless.
 - Do not introduce new formatting rules.
+
+## Core Principles
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- Keep READMEs, commits, issues, PRs, docs, and other project text simple, understandable to third parties, easy to follow, and free of unnecessary complexity.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.

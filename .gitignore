@@ -57,4 +57,6 @@ grill-me-session.md
 .playwright-mcp/
 backups/
 playwright-*.yml
+tmp-*.err
 tmp-*.log
+tmp-*.ps1

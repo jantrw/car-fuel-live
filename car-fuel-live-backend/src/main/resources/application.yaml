@@ -4,3 +4,16 @@ spring:
   datasource:
     hikari:
       maximum-pool-size: 10
+
+server:
+  error:
+    include-exception: false
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+
+tankerkoenig:
+  base-url: https://creativecommons.tankerkoenig.de
+  api-key: ${TANKERKOENIG_API_KEY:}
+  connect-timeout: 3s
+  read-timeout: 5s

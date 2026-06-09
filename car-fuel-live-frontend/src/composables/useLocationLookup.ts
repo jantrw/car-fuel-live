@@ -112,6 +112,8 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
       return
     }
 
+    // Submit-triggered hints and visible results must disappear on the next edit so the UI does
+    // not keep showing stale state while the user refines the query.
     currentController?.abort()
     currentController = null
     results.value = []

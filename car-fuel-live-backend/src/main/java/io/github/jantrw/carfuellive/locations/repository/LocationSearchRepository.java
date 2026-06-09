@@ -7,6 +7,12 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+/**
+ * JDBC-backed access layer for the seeded location search dataset.
+ *
+ * <p>Each query returns {@link LocationSearchResult} rows with enough metadata for the service to
+ * merge exact, prefix, alias, country, and postal-code candidates into one ranked result list.
+ */
 @Repository
 public class LocationSearchRepository {
 
@@ -538,6 +544,8 @@ public class LocationSearchRepository {
         resultSet.getLong("popularity"));
   }
 
+  // Country-driven default flows need a direct capital lookup result, not the broader search
+  // metadata carried by LocationSearchResult.
   private static CountryCapitalPlace mapCountryCapitalPlace(
       java.sql.ResultSet resultSet, int rowNumber) throws java.sql.SQLException {
     return new CountryCapitalPlace(
