@@ -24,7 +24,7 @@
 - Planned post-MVP: users can order results by price.
 - Planned follow-up: each gas station entry should link to more details.
 - No login, no authentication, no user accounts.
-- The backend should deduplicate identical in-flight location lookups and identical in-flight Tankerkönig requests so concurrent users share one active computation per application node. The current worktree already deduplicates identical in-flight Tankerkönig list lookups for `GET /api/v1/gas-stations`.
+- The backend deduplicates identical in-flight location lookups. Tankerkönig list lookups are rate-limited and can add in-flight deduplication later if measured duplicate pressure requires it.
 - The backend may keep a small in-memory coordinate cache for the largest European cities and the most common German cities so repeated known-city searches can skip unnecessary PostgreSQL lookups.
 - Do not rely on long-lived fuel-price result caching by default. Price freshness matters more.
 - Public search endpoints should enforce throttling and request limits so abusive traffic is rejected before it can spam the database or Tankerkönig. The current worktree already rate-limits `GET /api/v1/gas-stations`; equivalent protection for the remaining public endpoints is still a follow-up.

@@ -27,11 +27,11 @@ public class GasStationRateLimitFilter extends OncePerRequestFilter {
       """;
 
   private final ClientAddressResolver clientAddressResolver;
-  private final GasStationRequestRateLimiter gasStationRequestRateLimiter;
+  private final InMemoryGasStationRequestRateLimiter gasStationRequestRateLimiter;
 
   public GasStationRateLimitFilter(
       ClientAddressResolver clientAddressResolver,
-      GasStationRequestRateLimiter gasStationRequestRateLimiter) {
+      InMemoryGasStationRequestRateLimiter gasStationRequestRateLimiter) {
     this.clientAddressResolver = clientAddressResolver;
     this.gasStationRequestRateLimiter = gasStationRequestRateLimiter;
   }

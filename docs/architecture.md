@@ -35,7 +35,7 @@ PostgreSQL 17 location dataset
 - Backend currently contains the Spring Boot entrypoint, stateless `permitAll` security configuration, structured validation error handling, the local location search feature, the live gas-station lookup feature, and a proxy-aware rate-limit filter for `GET /api/v1/gas-stations`.
 - The backend location search feature is grouped under `locations/`; the live price lookup is grouped under `stations/` and `tankerkoenig/`.
 - The Tankerkönig client uses fixed MVP defaults (`rad=5`, `type=all`, `sort=dist`), validates the upstream `ok` flag, maps station fields into internal DTOs, and treats unsupported fuel values encoded as `false` as unavailable prices.
-- The gas-station service deduplicates identical in-flight coordinate lookups per application node so concurrent callers share one fresh upstream request.
+- The gas-station service calls the Tankerkönig client on demand after controller validation and endpoint rate limiting.
 - No geolocation flow or country-driven default result flow is implemented yet. Public rate limiting currently exists for `GET /api/v1/gas-stations`; equivalent protection for the remaining public endpoints is still a follow-up.
 
 ## Current Data Layer

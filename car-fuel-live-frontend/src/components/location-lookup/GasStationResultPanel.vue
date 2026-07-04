@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { Fuel, MapPinned, TriangleAlert } from 'lucide-vue-next'
 
 import type { GasStationResult } from '@/api/gasStations'
@@ -18,8 +17,6 @@ const props = defineProps<{
   selectedLocationLabel: string
   messages: LocationLookupMessages
 }>()
-
-const visibleStations = computed(() => props.stations)
 
 function formatPrice(value: number | null) {
   if (value === null) {
@@ -45,10 +42,14 @@ function formatDistance(value: number | null) {
 
 function formatAddress(station: GasStationResult) {
   const streetLine = [station.street, station.houseNumber]
-    .filter((segment): segment is string => segment !== null && segment.length > 0)
+    .filter(
+      (segment): segment is string => segment !== null && segment.length > 0,
+    )
     .join(' ')
   const placeLine = [station.postCode, station.place]
-    .filter((segment): segment is string => segment !== null && segment.length > 0)
+    .filter(
+      (segment): segment is string => segment !== null && segment.length > 0,
+    )
     .join(' ')
 
   const address = [streetLine, placeLine]
@@ -78,7 +79,9 @@ function openStateLabel(isOpen: boolean | null) {
   >
     <div class="flex items-center justify-between gap-3">
       <div>
-        <p class="text-xs font-semibold tracking-[0.24em] text-emerald-700 uppercase">
+        <p
+          class="text-xs font-semibold tracking-[0.24em] text-emerald-700 uppercase"
+        >
           {{ props.messages.stationResultsEyebrow }}
         </p>
         <h2 class="mt-1 text-lg font-semibold text-slate-950">
@@ -97,7 +100,10 @@ function openStateLabel(isOpen: boolean | null) {
       {{ props.messages.stationLoading }}
     </p>
 
-    <p v-else-if="props.status === 'countrySelected'" class="mt-4 text-sm text-amber-700">
+    <p
+      v-else-if="props.status === 'countrySelected'"
+      class="mt-4 text-sm text-amber-700"
+    >
       <span class="block font-semibold text-amber-900">
         {{ props.messages.countrySelectionTitle }}
       </span>
@@ -118,7 +124,10 @@ function openStateLabel(isOpen: boolean | null) {
       {{ props.messages.stationErrorBody }}
     </p>
 
-    <p v-else-if="props.status === 'rateLimited'" class="mt-4 text-sm text-amber-700">
+    <p
+      v-else-if="props.status === 'rateLimited'"
+      class="mt-4 text-sm text-amber-700"
+    >
       <span class="block font-semibold text-amber-900">
         {{ props.messages.stationRateLimitedTitle }}
       </span>
@@ -128,7 +137,7 @@ function openStateLabel(isOpen: boolean | null) {
     <div v-else class="mt-4 grid gap-3">
       <div class="grid gap-3 xl:grid-cols-2">
         <article
-          v-for="station in visibleStations"
+          v-for="station in props.stations"
           :key="station.id"
           class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
         >
@@ -143,7 +152,9 @@ function openStateLabel(isOpen: boolean | null) {
                   {{ formatAddress(station) }}
                 </p>
               </div>
-              <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <div
+                class="flex flex-wrap items-center gap-2 text-xs font-semibold"
+              >
                 <span
                   class="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-900"
                 >
@@ -159,8 +170,12 @@ function openStateLabel(isOpen: boolean | null) {
           </div>
 
           <div class="grid gap-2 px-4 py-4 sm:grid-cols-3">
-            <div class="rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-200">
-              <div class="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase">
+            <div
+              class="rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-200"
+            >
+              <div
+                class="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase"
+              >
                 <Fuel class="size-3.5" aria-hidden="true" />
                 E5
               </div>
@@ -168,8 +183,12 @@ function openStateLabel(isOpen: boolean | null) {
                 {{ formatPrice(station.e5) }}
               </p>
             </div>
-            <div class="rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-200">
-              <div class="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase">
+            <div
+              class="rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-200"
+            >
+              <div
+                class="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase"
+              >
                 <Fuel class="size-3.5" aria-hidden="true" />
                 E10
               </div>
@@ -177,8 +196,12 @@ function openStateLabel(isOpen: boolean | null) {
                 {{ formatPrice(station.e10) }}
               </p>
             </div>
-            <div class="rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-200">
-              <div class="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase">
+            <div
+              class="rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-200"
+            >
+              <div
+                class="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase"
+              >
                 <Fuel class="size-3.5" aria-hidden="true" />
                 Diesel
               </div>

@@ -10,9 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.jantrw.carfuellive.common.exception.FuelPriceLookupException;
-import io.github.jantrw.carfuellive.common.security.GasStationRequestRateLimiter;
-import io.github.jantrw.carfuellive.stations.dto.GasStationResponseItem;
+import io.github.jantrw.carfuellive.common.security.InMemoryGasStationRequestRateLimiter;
 import io.github.jantrw.carfuellive.stations.dto.GasStationSearchResponse;
+import io.github.jantrw.carfuellive.stations.model.GasStation;
 import io.github.jantrw.carfuellive.stations.service.GasStationSearchService;
 import java.math.BigDecimal;
 import java.util.List;
@@ -31,7 +31,7 @@ class GasStationControllerTests {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private GasStationSearchService gasStationSearchService;
-  @MockitoBean private GasStationRequestRateLimiter gasStationRequestRateLimiter;
+  @MockitoBean private InMemoryGasStationRequestRateLimiter gasStationRequestRateLimiter;
 
   @BeforeEach
   void allowRequestsByDefault() {
@@ -44,7 +44,7 @@ class GasStationControllerTests {
         .thenReturn(
             new GasStationSearchResponse(
                 List.of(
-                    new GasStationResponseItem(
+                    new GasStation(
                         "station-1",
                         "Fuel Stop",
                         "Brand",

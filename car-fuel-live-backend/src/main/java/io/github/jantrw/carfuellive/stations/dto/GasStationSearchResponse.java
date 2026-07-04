@@ -1,5 +1,6 @@
 package io.github.jantrw.carfuellive.stations.dto;
 
+import io.github.jantrw.carfuellive.stations.model.GasStation;
 import java.util.List;
 
 /**
@@ -8,4 +9,4 @@ import java.util.List;
  * <p>The payload stays intentionally narrow so the frontend can render nearby stations without
  * inheriting Tankerkönig's raw response shape.
  */
-public record GasStationSearchResponse(List<GasStationResponseItem> items) {}
+public record GasStationSearchResponse(List<GasStation> items) {}

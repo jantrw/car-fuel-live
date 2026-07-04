@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * and minute window, plus opportunistic cleanup to keep the map bounded.
  */
 @Component
-public class InMemoryGasStationRequestRateLimiter implements GasStationRequestRateLimiter {
+public class InMemoryGasStationRequestRateLimiter {
 
   private static final long WINDOW_SECONDS = 60;
   private static final int MAX_REQUESTS_PER_WINDOW = 15;
@@ -34,7 +34,6 @@ public class InMemoryGasStationRequestRateLimiter implements GasStationRequestRa
     this.clock = clock;
   }
 
-  @Override
   public boolean allowRequest(String clientAddress) {
     final long currentWindow = currentWindow();
     cleanupExpiredWindows(currentWindow);

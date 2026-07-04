@@ -15,19 +15,12 @@ import org.springframework.web.client.RestClient;
 public class TankerkoenigClientConfig {
 
   @Bean
-  RestClient.Builder tankerkoenigRestClientBuilder() {
-    return RestClient.builder();
-  }
-
-  @Bean
-  RestClient tankerkoenigApiRestClient(
-      RestClient.Builder tankerkoenigRestClientBuilder,
-      TankerkoenigProperties tankerkoenigProperties) {
+  RestClient tankerkoenigApiRestClient(TankerkoenigProperties tankerkoenigProperties) {
     final SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
     requestFactory.setConnectTimeout((int) tankerkoenigProperties.connectTimeout().toMillis());
     requestFactory.setReadTimeout((int) tankerkoenigProperties.readTimeout().toMillis());
 
-    return tankerkoenigRestClientBuilder
+    return RestClient.builder()
         .baseUrl(tankerkoenigProperties.baseUrl())
         .requestFactory(requestFactory)
         .build();

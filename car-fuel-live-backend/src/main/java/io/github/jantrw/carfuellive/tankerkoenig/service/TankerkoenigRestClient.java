@@ -23,7 +23,7 @@ import org.springframework.web.client.RestClientException;
  * the usable station data into {@link GasStation} records for the backend.
  */
 @Component
-public class TankerkoenigRestClient implements TankerkoenigStationSearchClient {
+public class TankerkoenigRestClient {
 
   private static final int DEFAULT_RADIUS_KM = 5;
   private static final String DEFAULT_TYPE = "all";
@@ -40,7 +40,6 @@ public class TankerkoenigRestClient implements TankerkoenigStationSearchClient {
     this.tankerkoenigProperties = tankerkoenigProperties;
   }
 
-  @Override
   public List<GasStation> searchStations(double latitude, double longitude) {
     final String apiKey = tankerkoenigProperties.apiKey().trim();
     if (apiKey.isEmpty()) {
