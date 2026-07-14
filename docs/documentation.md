@@ -156,6 +156,7 @@
 - Set at least `DB_USER`, `DB_PASSWORD`, and `DB_NAME` in `car-fuel-live-backend/.env`.
 - Set `TANKERKOENIG_API_KEY` before verifying the live price flow locally.
 - Database: `docker compose --env-file .\car-fuel-live-backend\.env -f .\car-fuel-live-backend\docker-compose.yml up -d`
+- Backend live-price env var: `$env:TANKERKOENIG_API_KEY = '<your-api-key>'`
 - Backend: `.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun`
 - The bundled PostgreSQL container binds to `127.0.0.1:3307` only for local development.
 - Initial location seed for a new or empty local database: `.\car-fuel-live-backend\scripts\import-location-data.ps1`

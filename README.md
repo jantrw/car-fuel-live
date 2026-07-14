@@ -32,6 +32,7 @@ Start local services from the repository root:
 
 ```powershell
 docker compose --env-file .\car-fuel-live-backend\.env -f .\car-fuel-live-backend\docker-compose.yml up -d
+$env:TANKERKOENIG_API_KEY = '<your-api-key>'
 .\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun
 npm --prefix .\car-fuel-live-frontend run dev
 ```

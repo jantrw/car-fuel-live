@@ -4,13 +4,12 @@ spring:
   datasource:
     hikari:
       maximum-pool-size: 10
-
-server:
-  error:
-    include-exception: false
-    include-message: never
-    include-binding-errors: never
-    include-stacktrace: never
+  web:
+    error:
+      include-exception: false
+      include-message: never
+      include-binding-errors: never
+      include-stacktrace: never
 
 tankerkoenig:
   base-url: https://creativecommons.tankerkoenig.de
