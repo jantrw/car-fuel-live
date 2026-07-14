@@ -1,18 +1,28 @@
-import type { LocationSearchResult, LocationSearchResultType } from '@/api/locationSearch'
+import type {
+  LocationSearchResult,
+  LocationSearchResultType,
+} from '@/api/locationSearch'
 
 export interface LocationSuggestionGroup {
   type: LocationSearchResultType
   items: LocationSearchResult[]
 }
 
-const GROUP_ORDER: LocationSearchResultType[] = ['place', 'country', 'postalCode']
+const GROUP_ORDER: LocationSearchResultType[] = [
+  'place',
+  'country',
+  'postalCode',
+]
 
 // Backend ranking stays flat. The UI groups visible search results by type while preserving each
 // type's relative order from the API response.
 export function groupLocationSuggestions(
   results: readonly LocationSearchResult[],
 ): LocationSuggestionGroup[] {
-  const groupedResults = new Map<LocationSearchResultType, LocationSearchResult[]>()
+  const groupedResults = new Map<
+    LocationSearchResultType,
+    LocationSearchResult[]
+  >()
 
   for (const result of results) {
     const items = groupedResults.get(result.type) ?? []

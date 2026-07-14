@@ -1,3 +1,5 @@
+import { getBrowserLanguages } from '@/lib/locationCountryContext'
+
 export interface LocationLookupMessages {
   locale: 'en' | 'de'
   eyebrow: string
@@ -52,8 +54,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     locale: 'en',
     eyebrow: 'Cheap & Fast',
     title: 'Find the nearest fair fuel price',
-    intro:
-      'Search a place once and load live your fuel prices nearby.',
+    intro: 'Search a place once and load live fuel prices nearby.',
     mvpCatchPhrase:
       'Compare real prices in seconds before you pick the next station.',
     currentCountryLabel: 'Country context',
@@ -73,7 +74,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     errorBody: 'The location service did not return usable results.',
     privacyNotice:
       'This UI uses local seed data for place lookup and loads live fuel prices after you choose a result. It stores the selected country context, but not coordinates.',
-    stationResultsEyebrow: 'Tankerkönig prices',
+    stationResultsEyebrow: 'Tankerkonig prices',
     stationResultsTitle: 'Fuel prices nearby',
     stationResultsSelectionPrefix: 'Selected location',
     stationLoading: 'Loading nearby fuel prices...',
@@ -89,7 +90,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     countrySelectionBody:
       'This MVP loads live prices only for cities, places, and postal codes with coordinates. Choose a concrete place next.',
     stationAttribution:
-      'Fuel price data provided via Tankerkönig under CC BY 4.0 and subject to MTS-K usage rules.',
+      'Fuel price data provided via Tankerkonig under CC BY 4.0 and subject to MTS-K usage rules.',
     stationFreshnessNotice:
       'Prices are loaded on demand for the selected location and are not kept in a long-lived cache.',
     stationPriceUnavailable: 'Not offered',
@@ -120,8 +121,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     title: 'Finde deinen nächsten fairen Spritpreis',
     intro:
       'Suche einen Ort und lade sofort echte Kraftstoffpreise in deiner Nähe.',
-    mvpCatchPhrase:
-      'Preise vergleichen, besser tanken.',
+    mvpCatchPhrase: 'Preise vergleichen, besser tanken.',
     currentCountryLabel: 'Länderkontext',
     currentCountryHint:
       'Suchergebnisse bevorzugen Treffer aus diesem Land, greifen bei Bedarf aber weiter länderübergreifend.',
@@ -140,7 +140,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     errorBody: 'Der Standortdienst hat keine nutzbaren Ergebnisse geliefert.',
     privacyNotice:
       'Diese UI nutzt lokale Seed-Daten für die Ortssuche und lädt Live-Kraftstoffpreise nach deiner Auswahl. Gespeichert wird nur der Länderkontext, keine Koordinaten.',
-    stationResultsEyebrow: 'Tankerkönig-Preise',
+    stationResultsEyebrow: 'Tankerkonig-Preise',
     stationResultsTitle: 'Kraftstoffpreise in der Nähe',
     stationResultsSelectionPrefix: 'Ausgewählter Ort',
     stationLoading: 'Nahe Kraftstoffpreise werden geladen...',
@@ -157,7 +157,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     countrySelectionBody:
       'Dieses MVP lädt Live-Preise nur für Städte, Orte und Postleitzahlen mit Koordinaten. Wähle als Nächstes einen konkreten Ort.',
     stationAttribution:
-      'Kraftstoffpreisdaten kommen über Tankerkönig unter CC BY 4.0 und unterliegen den MTS-K-Nutzungsbedingungen.',
+      'Kraftstoffpreisdaten kommen über Tankerkonig unter CC BY 4.0 und unterliegen den MTS-K-Nutzungsbedingungen.',
     stationFreshnessNotice:
       'Preise werden bei Bedarf für den gewählten Ort geladen und nicht über lange Zeit zwischengespeichert.',
     stationPriceUnavailable: 'Nicht angeboten',
@@ -186,22 +186,11 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
 
 // The MVP only needs app chrome localization; GeoNames labels stay canonical from the database.
 export function resolveLocationLookupMessages(
-  languages: readonly string[] = getBrowserLanguages(),
+  languages: readonly string[] = getBrowserLanguages(['en']),
 ): LocationLookupMessages {
   const primaryLanguage = languages
     .map((language) => language.toLowerCase())
     .find((language) => language.startsWith('de') || language.startsWith('en'))
 
   return primaryLanguage?.startsWith('de') ? messages.de : messages.en
-}
-
-// Tests and server-side tooling may not provide navigator, so keep message resolution browser-safe.
-function getBrowserLanguages(): readonly string[] {
-  if (typeof navigator === 'undefined') {
-    return ['en']
-  }
-
-  return navigator.languages.length > 0
-    ? navigator.languages
-    : [navigator.language]
 }

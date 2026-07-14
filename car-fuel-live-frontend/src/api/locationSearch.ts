@@ -1,3 +1,5 @@
+import { normalizeCountryCode } from '@/lib/locationCountryContext'
+
 export type LocationSearchResultType = 'country' | 'place' | 'postalCode'
 
 export interface LocationSearchResult {
@@ -120,13 +122,4 @@ function parseNullableNumber(value: unknown, field: string): number | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
-}
-
-function normalizeCountryCode(value: string | null | undefined): string | null {
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const normalizedValue = value.trim().toUpperCase()
-  return normalizedValue.length === 2 ? normalizedValue : null
 }

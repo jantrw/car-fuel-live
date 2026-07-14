@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { GasStationLookupError, searchGasStations } from './gasStations'
+import { searchGasStations } from './gasStations'
 
 describe('searchGasStations', () => {
   it('should call the backend gas station endpoint with coordinates', async () => {

@@ -15,7 +15,9 @@ export type LocationLookupStatus =
   | 'error'
   | 'validation'
 
-export type LocationLookupValidationMessage = 'QUERY_TOO_SHORT' | 'QUERY_TOO_LONG'
+export type LocationLookupValidationMessage =
+  | 'QUERY_TOO_SHORT'
+  | 'QUERY_TOO_LONG'
 
 interface UseLocationLookupOptions {
   countryCode?: Ref<string>
@@ -42,7 +44,9 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
   const query = shallowRef('')
   const results = shallowRef<LocationSearchResult[]>([])
   const status = shallowRef<LocationLookupStatus>('idle')
-  const validationMessage = shallowRef<LocationLookupValidationMessage | null>(null)
+  const validationMessage = shallowRef<LocationLookupValidationMessage | null>(
+    null,
+  )
   const lastSubmittedQuery = shallowRef('')
   let currentController: AbortController | null = null
 

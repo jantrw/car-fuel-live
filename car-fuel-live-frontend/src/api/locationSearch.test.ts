@@ -65,8 +65,8 @@ describe('searchLocations', () => {
       return new Response(JSON.stringify({ items: [{ type: 'region' }] }))
     })
 
-    await expect(
-      searchLocations('Berlin', { fetcher }),
-    ).rejects.toThrow('Invalid location lookup result type.')
+    await expect(searchLocations('Berlin', { fetcher })).rejects.toThrow(
+      'Invalid location lookup result type.',
+    )
   })
 })

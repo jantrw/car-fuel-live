@@ -2,7 +2,6 @@ package io.github.jantrw.carfuellive.locations.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.jantrw.carfuellive.locations.model.CountryCapitalPlace;
 import io.github.jantrw.carfuellive.locations.model.LocationSearchResult;
 import io.github.jantrw.carfuellive.locations.support.LocationSearchTestData;
 import java.util.List;
@@ -73,23 +72,5 @@ class LocationSearchRepositoryTests {
     assertThat(results).hasSize(1);
     assertThat(results.getFirst().postalCode()).isEqualTo("10115");
     assertThat(results.getFirst().label()).isEqualTo("10115 Berlin, Germany");
-  }
-
-  @Test
-  void should_returnCapitalPlaceByCountryCode_whenStableMappingExists() {
-    final CountryCapitalPlace result =
-        locationSearchRepository.findCapitalPlaceByCountryCode("DE").orElseThrow();
-
-    assertThat(result.countryCode()).isEqualTo("DE");
-    assertThat(result.countryName()).isEqualTo("Germany");
-    assertThat(result.placeGeonameId()).isEqualTo(2950159L);
-    assertThat(result.placeName()).isEqualTo("Berlin");
-    assertThat(result.latitude()).isEqualTo(52.52437d);
-    assertThat(result.longitude()).isEqualTo(13.41053d);
-  }
-
-  @Test
-  void should_returnEmptyCapitalPlace_whenStableMappingDoesNotExist() {
-    assertThat(locationSearchRepository.findCapitalPlaceByCountryCode("BE")).isEmpty();
   }
 }

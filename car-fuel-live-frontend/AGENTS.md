@@ -1,142 +1,41 @@
 # Frontend Agent Instructions
 # Scope: car-fuel-live-frontend/
 
----
-
 ## Stack
-| Technology   | Version              |
-|--------------|----------------------|
-| Vue.js       | 3.5.29               |
-| TypeScript   | 5.9.3                |
-| Tailwind CSS | 4.2.1                |
-| shadcn-vue   | 2.4.3                |
-| pinia        | 3.0.4                |
+- Vue 3
+- TypeScript
+- Vite
+- Tailwind CSS 4
+- Vitest
 
-## Vue.js Style
+## Vue And TypeScript
+- Use Composition API with `<script setup lang="ts">`.
+- Apply `.codex/skills/vue-best-practices/SKILL.md` for Vue work.
+- Components live in `src/components/`; composables live in `src/composables/` and start with `use`.
+- Backend calls live in `src/api/` only. Components do not call `fetch` directly.
+- Use typed props and emits.
+- Validate external API responses at runtime.
+- Prefer `unknown` over `any`; justify any escape hatch with an ESLint-disable comment.
 
-- Single-responsibility components — one concern per file.
-- Filenames / component names: **PascalCase** in code (`StationCard.vue`), **kebab-case** in templates (`<station-card />`).
-- Composition API for all components. Always use `<script setup lang="ts">`.
-- Always apply `.codex/skills/vue-best-practices/SKILL.md` for Vue work.
-- Keep templates simple — move all logic into `setup()` or composables.
-- Composables live in `src/composables/`, prefixed with `use` (e.g., `useGasPrices.ts`).
-- All fetch calls to the backend live in `src/api/` only. Components and composables never call `fetch` directly.
-- Explicit `props` validation on every component — no untyped props.
-- Use pinia stores.
-
-### Tooling & Enforcement
-- ESLint + `eslint-plugin-vue` + `@typescript-eslint` + Prettier + Volar.
-- `eslint --fix` and Prettier run in CI and on pre-commit.
-
----
-## UI Components (shadcn-vue)
-
-- Use shadcn-vue as the primary component library.
-- Add components via CLI only: `npx shadcn-vue@latest add <component>`.
-- Never modify files inside `src/components/ui/` — these are auto-generated.
-- Custom logic goes into wrapper components in `src/components/`, not into ui/ files.
-- Use shadcn-vue components as building blocks — style via Tailwind utility classes on the wrapper, not by editing the component source.
----
-
-## Tailwind CSS v4.0
-
-- Utility classes exclusively. No custom CSS unless a utility genuinely cannot cover the case.
-- Design tokens (colors, spacing, typography) configured via `@theme` in the root CSS file — do not hardcode values inline.
-- No inline `style=""` attributes for anything Tailwind can express.
-- Class ordering enforced automatically by `prettier-plugin-tailwindcss`.
-
----
-
-## TypeScript
-
-- `tsconfig.json` must enable strict mode — no exceptions.
-- Prefer `unknown` over `any`. Restrict `any` to documented exceptions with an explicit `// eslint-disable-next-line` comment explaining why.
-- Use `interface` for public shapes and DTOs; use `type` for unions or complex compositions.
-- Validate all external inputs at runtime (API responses, URL params) even when TypeScript types exist.
-- Never use `as unknown as X` casts without a comment justifying the bypass.
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "moduleResolution": "bundler",
-    "esModuleInterop": true,
-    "skipLibCheck": true
-  }
-}
-```
-
----
+## Styling
+- Use Tailwind utilities first.
+- Keep shared CSS in `src/assets/main.css`.
+- Do not reintroduce shadcn-vue or generated `src/components/ui/` scaffolding unless explicitly requested.
+- Do not reintroduce Pinia for single-screen state; prefer composables/module-level refs until app-wide state is real.
 
 ## Localization
+- All user-facing copy must exist in German (`de`) and English (`en`).
+- Keep reusable copy in `src/i18n/locationLookupMessages.ts` or the relevant shared message source.
+- Do not hardcode new user-facing strings in components when a message source exists.
 
-- Frontend must support German (`de`) and English (`en`) for all user-facing text.
-- Do not hardcode user-facing copy directly inside components when a shared translation layer or message source is available.
-- New features must ship both German and English copy together. Do not leave one language incomplete.
-
----
+## Privacy And API
+- On first visit, derive country fallback from browser locale and time zone only.
+- Never trigger browser geolocation automatically.
+- If geolocation is added, it must be user-triggered, low accuracy, timeout-bounded, and fall back to manual search.
+- Persist only selected country in `localStorage`; never raw coordinates.
+- Never expose Tankerkonig keys or upstream URLs in frontend code.
 
 ## Testing
-
-### Test Naming Convention
-Pattern: `should X when Y`
-
-```typescript
-describe('useGasPrices', () => {
-  it('should return stations when valid coordinates are provided', () => { ... })
-  it('should return empty array when no stations are in radius', () => { ... })
-  it('should throw error when API call fails', () => { ... })
-})
-```
-
-- No abbreviations in test names.
-- Failing test name alone must identify the problem.
-- Arrange / Act / Assert inside every test body, separated by blank lines.
-
----
-
-## Security
-
-### Geolocation — Client-Side Rules
-- On first visit, derive the fallback country from `navigator.language` / `Accept-Language` plus `Intl.DateTimeFormat().resolvedOptions().timeZone`.
-- If the locale has no region, default the fallback country to Germany.
-- Request **low accuracy only** (`enableHighAccuracy: false`). City-level radius is sufficient — high accuracy is unnecessary and more invasive under GDPR.
-- Always use sensible timeout and `maximumAge`:
-```typescript
-navigator.geolocation.getCurrentPosition(
-  onSuccess,
-  onError,
-  { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
-)
-```
-- Handle all three error cases explicitly with user-friendly messages:
-  - `PERMISSION_DENIED` → show manual search, no error state
-  - `POSITION_UNAVAILABLE` → show manual search with message
-  - `TIMEOUT` → show manual search with retry option
-- Never store raw coordinates in component state longer than needed for the current request.
-- Never send coordinates to any third party. All geo queries go to the Spring Boot backend only.
-- Display a clear in-app consent step before calling `navigator.geolocation.getCurrentPosition()`. Never trigger browser geolocation automatically on page load; call it only after the user actively chooses a location action.
-- The explicit location action should be phrased as `Use my city` or an equivalent user-facing label.
-- Fall back to manual city search gracefully when permission is denied — no silent IP-based fallback.
-
-### GDPR — Frontend Rules
-- Do not persist raw coordinates in `localStorage`, `sessionStorage`, Pinia, or any other client-side store.
-- Coordinates are used only to trigger a backend request, then discarded.
-- Automatic persistence is limited to the selected country in `localStorage` so later visits can reuse the last country context. Never persist exact geolocation coordinates.
-- Display a minimal privacy notice stating what location data is used for and that it is not stored.
-
-### API Communication
-- All backend calls go through `src/api/` — never call the backend directly from components.
-- Use shared `fetch` wrappers in `src/api/` for all backend communication.
-- Never expose or log any API keys. The Tankerkönig key lives on the backend only and must never appear in frontend code, network requests, or browser DevTools.
-- Handle API error responses with structured error handling — never display raw error messages from the backend to the user.
-
----
-
-## Design
-- Every UI must be responsive and scalable.
-- Always follow `.codex/skills/frontend-design/SKILL.md` when implementing new features or creating UI.
+- Test names use `should X when Y`.
+- Cover behavior at the composable/API boundary when possible.
+- Run lint, Vitest, and production build after frontend changes.

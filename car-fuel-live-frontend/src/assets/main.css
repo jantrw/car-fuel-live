@@ -1,4 +1,4 @@
-@import './base.css';
+@import 'tailwindcss';
 
 #app {
   min-height: 100vh;
@@ -7,4 +7,15 @@
 
 a {
   color: inherit;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
 }

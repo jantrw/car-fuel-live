@@ -43,7 +43,10 @@ const emit = defineEmits<{
         : props.messages.validationMessage[props.validationMessage] }}
     </p>
 
-    <p v-else-if="props.status === 'noResults'" class="mt-3 text-sm text-slate-600">
+    <p
+      v-else-if="props.status === 'noResults'"
+      class="mt-3 text-sm text-slate-600"
+    >
       <span class="block font-semibold text-slate-950">
         {{ props.messages.noResultsTitle }}
       </span>
@@ -63,8 +66,14 @@ const emit = defineEmits<{
     </p>
 
     <div v-else-if="props.groups.length > 0" class="mt-3 grid gap-4">
-      <section v-for="group in props.groups" :key="group.type" class="grid gap-2">
-        <h3 class="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase">
+      <section
+        v-for="group in props.groups"
+        :key="group.type"
+        class="grid gap-2"
+      >
+        <h3
+          class="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase"
+        >
           {{ props.messages.suggestionGroupTitle[group.type] }}
         </h3>
         <ul class="grid gap-2">
@@ -73,7 +82,7 @@ const emit = defineEmits<{
             :key="`${result.type}:${result.id}`"
           >
             <button
-              class="flex w-full items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-100"
+              class="flex w-full items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-sky-300 hover:bg-sky-50 focus:ring-2 focus:ring-sky-100 focus:outline-none"
               type="button"
               @click="emit('selectResult', result)"
             >

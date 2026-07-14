@@ -13,12 +13,7 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.1",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "lucide-vue-next": "^0.577.0",
-    "pinia": "^3.0.4",
-    "reka-ui": "^2.9.0",
-    "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
     "vue": "^3.5.29"
   },
@@ -32,7 +27,6 @@
     "postcss": "^8.5.8",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "shadcn-vue": "^2.4.3",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-vue-devtools": "^8.0.6",

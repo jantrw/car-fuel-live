@@ -114,13 +114,27 @@ export function formatCountryContextLabel(
   return displayNames.of(normalizedCountryCode) ?? normalizedCountryCode
 }
 
-export function normalizeCountryCode(value: string | null | undefined): string | null {
+export function normalizeCountryCode(
+  value: string | null | undefined,
+): string | null {
   if (typeof value !== 'string') {
     return null
   }
 
   const normalizedValue = value.trim().toUpperCase()
   return /^[A-Z]{2}$/.test(normalizedValue) ? normalizedValue : null
+}
+
+export function getBrowserLanguages(
+  fallbackLanguages: readonly string[] = [],
+): readonly string[] {
+  if (typeof navigator === 'undefined') {
+    return fallbackLanguages
+  }
+
+  return navigator.languages.length > 0
+    ? navigator.languages
+    : [navigator.language]
 }
 
 export function deriveCountryCodeFromLanguages(
@@ -170,16 +184,11 @@ function countryCodeFromLanguage(language: string): string | null {
   return null
 }
 
-function getBrowserLanguages(): readonly string[] {
-  if (typeof navigator === 'undefined') {
-    return []
-  }
-
-  return navigator.languages.length > 0 ? navigator.languages : [navigator.language]
-}
-
 function getBrowserTimeZone(): string | null {
-  if (typeof Intl === 'undefined' || typeof Intl.DateTimeFormat === 'undefined') {
+  if (
+    typeof Intl === 'undefined' ||
+    typeof Intl.DateTimeFormat === 'undefined'
+  ) {
     return null
   }
 

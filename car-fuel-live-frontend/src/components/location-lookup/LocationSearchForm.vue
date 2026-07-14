@@ -81,7 +81,11 @@ function onSubmit() {
           class="inline-flex min-h-11 items-center justify-center rounded-md bg-sky-700 px-4 text-sm font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-400"
           type="submit"
         >
-          {{ props.isLoading ? props.messages.loading : props.messages.searchAction }}
+          {{
+            props.isLoading
+              ? props.messages.loading
+              : props.messages.searchAction
+          }}
         </button>
         <p class="text-sm text-slate-600">
           {{ props.messages.searchHint }}

@@ -1,42 +1,33 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { storeToRefs } from 'pinia'
-
 import { useGasStationResults } from '@/composables/useGasStationResults'
+import { useLocationCountryContext } from '@/composables/useLocationCountryContext'
 import { useLocationLookup } from '@/composables/useLocationLookup'
 import { resolveLocationLookupMessages } from '@/i18n/locationLookupMessages'
-import { useLocationCountryContextStore } from '@/stores/locationCountryContext'
 
 import GasStationResultPanel from './GasStationResultPanel.vue'
 import LocationResultList from './LocationResultList.vue'
 import LocationSearchForm from './LocationSearchForm.vue'
 
 const messages = resolveLocationLookupMessages()
-const countryContextStore = useLocationCountryContextStore()
-countryContextStore.initializeCountryContext()
-const { countryCode } = storeToRefs(countryContextStore)
+const countryContext = useLocationCountryContext()
+countryContext.initializeCountryContext()
+const countryCode = countryContext.countryCode
+const countryLabel = countryContext.countryLabel(messages.locale)
 
 const lookup = useLocationLookup({
   countryCode,
 })
 const gasStationResults = useGasStationResults()
 
-const countryLabel = computed(() =>
-  countryContextStore.countryLabel(messages.locale),
-)
-
 async function handleResultSelection(
   result: Parameters<typeof lookup.selectResult>[0],
 ) {
-  // Every selection updates the country context first. Fuel-price loading is only the optional
-  // follow-up when the selected item still represents a concrete coordinate-bearing place.
   lookup.selectResult(result)
-  countryContextStore.setCountryCode(result.countryCode)
+  countryContext.setCountryCode(result.countryCode)
   await gasStationResults.loadForSelection(result)
 }
 
 function handleQueryUpdate(value: string) {
-  // Editing the query invalidates the previously selected place and any loaded live-price list.
   lookup.updateQuery(value)
   gasStationResults.reset()
 }
