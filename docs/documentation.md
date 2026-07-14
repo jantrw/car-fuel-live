@@ -6,27 +6,29 @@
 
 ---
 
-## Planned Product Behavior
+## Product Behavior And Follow-Ups
 
-- Current frontend slice: users enter a manual location query, trigger an explicit local search, and work inside an active country context derived from `localStorage`, browser locale, or time zone. Selecting a returned result still only fills the input in this slice; later result-state behavior belongs to a follow-up slice.
+- Current frontend slice: users enter a manual location query, trigger an explicit local search, and work inside an active country context derived from `localStorage`, browser locale, or time zone. Selecting a `place` or `postalCode` result now starts a live Tankerkönig price lookup; selecting a `country` result updates the country context only in this MVP.
 - On first visit, derive the initial country from `localStorage`, then browser locale region, then time zone heuristic, then Germany.
-- If the user does not share a city, show prices for major cities in the selected country/area.
+- Planned follow-up after the current MVP: if the user does not share a city, show prices for major cities in the selected country/area.
 - Store the selected country in `localStorage`.
-- Users can choose `Use my city`. Only then request browser geolocation and show nearby gas prices.
+- Planned follow-up after the current MVP: users can choose `Use my city`. Only then request browser geolocation and show nearby gas prices.
 - Users can manually enter a country, city, region, place, or German postal code. The backend resolves matching text to longitude and latitude from PostgreSQL before any Tankerkönig lookup.
 - Manual search must support countries, cities, regions, places, and German postal codes.
 - Explicit searches such as `Be` or `Ber` should return locally relevant matches from PostgreSQL, with the active country context used as a ranking preference across all supported countries.
 - The country-context preference should be strongest for short or ambiguous prefixes such as `Wi`, but must not override a clear exact place intent such as `Bern`. An obscure zero-population exact row such as `Berli` must not trap an unfinished local prefix like `Berlin`; the backend should still surface stronger local continuations first. When multiple equally strong exact place matches compete, the active country context should break the tie, for example for multiple places named `Paris`.
-- Selecting a city or region should use stored coordinates directly. Selecting a country should switch country context and load that country's default major-city results instead of querying Tankerkönig with a country centroid.
-- Users can filter results by fuel type: **E5**, **E10**, **Diesel**.
-- Users can filter results by distance: `1km`, `2km`, `5km`.
-- Users can order results by price.
-- Each gas station entry should link to more details.
+- Selecting a city, place, or postal code should use stored coordinates directly and load nearby live prices. Selecting a country should switch country context only in the current MVP; country-driven default major-city results remain a follow-up and must not query Tankerkönig with a country centroid.
+- The current price MVP uses fixed backend defaults for Tankerkönig list lookups: `rad=5`, `type=all`, `sort=dist`.
+- Planned post-MVP: users can filter results by fuel type: **E5**, **E10**, **Diesel**.
+- Planned post-MVP: users can filter results by distance: `1km`, `2km`, `5km`.
+- Planned post-MVP: users can order results by price.
+- Planned follow-up: each gas station entry should link to more details.
 - No login, no authentication, no user accounts.
-- The backend should deduplicate identical in-flight location lookups and identical in-flight Tankerkönig requests so concurrent users share one active computation per application node.
+- The backend deduplicates identical in-flight location lookups. Tankerkönig list lookups are rate-limited and can add in-flight deduplication later if measured duplicate pressure requires it.
 - The backend may keep a small in-memory coordinate cache for the largest European cities and the most common German cities so repeated known-city searches can skip unnecessary PostgreSQL lookups.
 - Do not rely on long-lived fuel-price result caching by default. Price freshness matters more.
-- Public search endpoints should enforce throttling and request limits so abusive traffic is rejected before it can spam the database or Tankerkönig.
+- Public search endpoints should enforce throttling and request limits so abusive traffic is rejected before it can spam the database or Tankerkönig. The current worktree already rate-limits `GET /api/v1/gas-stations`; equivalent protection for the remaining public endpoints is still a follow-up.
+- Unmapped or unexpected public API errors must never expose stack traces, exception names, package names, or framework internals in the response body. Missing routes should return the shared structured error DTO instead.
 
 ---
 
@@ -43,11 +45,11 @@
 
 ## User Flows
 
-1. First visit fallback: frontend reads browser locale and time zone, derives a country if possible, falls back to Germany when locale has no region, and renders major-city prices for that country.
-2. Remembered country: frontend reads the selected country from `localStorage` and renders that country's default results without asking for geolocation.
-3. Use my city: user chooses `Use my city`, browser asks for permission, frontend sends temporary coordinates to backend, backend queries Tankerkönig, frontend renders nearby prices.
-4. Manual search foundation: user enters part of a country, city, region, place, or German postal code, explicitly starts a search, frontend shows grouped local results from PostgreSQL, and later slices decide what selecting a result should load next.
-5. Filter: user selects fuel type and distance, results update in place or via a new backend query depending on implementation.
+1. Planned follow-up: first visit fallback reads browser locale and time zone, derives a country if possible, falls back to Germany when locale has no region, and renders major-city prices for that country.
+2. Planned follow-up: remembered country reads the selected country from `localStorage` and renders that country's default results without asking for geolocation.
+3. Planned follow-up: `Use my city` asks for browser permission, sends temporary coordinates to the backend, queries Tankerkönig, and renders nearby prices.
+4. Manual search to price lookup: user enters part of a country, city, region, place, or German postal code, explicitly starts a search, frontend shows grouped local results from PostgreSQL, and selecting a `place` or `postalCode` result loads nearby live prices from the backend.
+5. Planned post-MVP: user selects fuel type and distance, and results update in place or via a new backend query depending on implementation.
 
 ---
 
@@ -91,9 +93,10 @@
 - For prefix-style manual searches with `limit=8`, the backend should usually expose a mixed visible slice instead of an all-context list: up to `5` strong context-preferred continuations first, then up to `3` strong global direct or near-direct alternatives.
 - Manual search must also support normalized transliteration variants for seeded place names without runtime fuzzy SQL. Examples: `koeln` and `koln` resolve `Köln`, `muenchen` and `munchen` resolve `München`, `zuerich` and `zurich` resolve `Zürich`.
 - The frontend should clear stale visible results on edit, trigger backend lookup only on explicit search, and group the flat backend `items` list into visible sections for cities/places, countries, and postal codes.
+- The frontend should keep the active country context in sync with the selected result's `countryCode` so later searches stay locally relevant across borders.
 - For Germany, support local resolution of postal codes, cities, places, and the country itself from the seeded dataset.
 - When a selected or submitted city or region already exists in PostgreSQL, the backend should use the stored coordinates immediately and continue to Tankerkönig.
-- When a selected or submitted country already exists in PostgreSQL, the frontend should switch to that country context and render the major-city defaults for that country.
+- When a selected or submitted country already exists in PostgreSQL, the current MVP should switch only to that country context and show an explanatory follow-up hint instead of a centroid-based price lookup. Rendering major-city defaults for that country remains a later slice.
 - If a submitted location is missing, return no local match.
 - Manual search result retrieval must depend only on PostgreSQL matches and must not wait on any external geocoding provider.
 
@@ -101,7 +104,8 @@
 - The backend is a public, stateless, no-auth API.
 - The frontend never calls Tankerkönig directly.
 - `TANKERKOENIG_API_KEY` lives only in the backend environment.
-- Public search and detail endpoints must enforce rate limits and bounded result sizes.
+- The backend exposes `GET /api/v1/gas-stations?lat=...&lng=...` for the current live-price MVP and keeps filter controls server-fixed for now.
+- Public search and detail endpoints must enforce rate limits and bounded result sizes. The current MVP already does this for `GET /api/v1/gas-stations`.
 
 ---
 
@@ -140,7 +144,7 @@
   - Bulk or mass-data style live usage can lead to blocked requests or disabled API keys.
   - Tankerkönig data is delivered under `CC BY 4.0`; the product must include attribution.
   - MTS-K usage conditions apply and must be respected by the product.
-- On upstream failure, return a structured error DTO and log full details internally.
+- On upstream failure, return a structured error DTO and log failure details internally without leaking full request URIs or the Tankerkönig API key.
 
 ---
 
@@ -150,7 +154,7 @@
 - Start from repo root.
 - Create the backend env file once: `Copy-Item .\car-fuel-live-backend\.env.example .\car-fuel-live-backend\.env`
 - Set at least `DB_USER`, `DB_PASSWORD`, and `DB_NAME` in `car-fuel-live-backend/.env`.
-- Keep `TANKERKOENIG_API_KEY` empty until live fuel-price integration is being worked on.
+- Set `TANKERKOENIG_API_KEY` before verifying the live price flow locally.
 - Database: `docker compose --env-file .\car-fuel-live-backend\.env -f .\car-fuel-live-backend\docker-compose.yml up -d`
 - Backend: `.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun`
 - The bundled PostgreSQL container binds to `127.0.0.1:3307` only for local development.
@@ -172,8 +176,9 @@
 ### Frontend Foundation
 - The frontend uses Vue 3 with TypeScript enabled.
 - `shadcn-vue` is installed for UI component scaffolding.
-- The current frontend screen is a manual search foundation. It derives and persists only the active country context, calls `/api/v1/locations/suggestions` through `src/api/` only after an explicit user search, clears stale visible results on edit, and groups results by type.
-- Selecting a returned result in the current slice only fills the input and clears the visible result list. Later result-state behavior belongs to the next frontend follow-up slice.
+- The current frontend screen is a manual search plus live price MVP. It derives and persists only the active country context, calls `/api/v1/locations/suggestions` through `src/api/` only after an explicit user search, clears stale visible results on edit, and groups results by type.
+- Selecting a `place` or `postalCode` result now triggers `/api/v1/gas-stations` and renders nearby station prices with explicit `loading`, `error`, `empty`, and `results` states.
+- Selecting a `country` result still updates only the country context in this MVP and shows a guided follow-up hint instead of loading centroid-based prices.
 - Vite proxies `/api` to `http://localhost:8080` during local development.
 
 ### Verification Commands

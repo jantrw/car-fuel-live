@@ -2,7 +2,7 @@
 
 # Car Fuel Live
 
-Public web app in progress for finding live fuel prices around a user's city in Germany and nearby Europe.
+Public web app in progress for finding live fuel prices around a selected place in Germany and nearby Europe.
 
 <sub><strong>Tech Stack</strong></sub>
 
@@ -11,7 +11,7 @@ Public web app in progress for finding live fuel prices around a user's city in 
 [![Backend: Java 21, Spring Boot 4](https://img.shields.io/badge/Backend-Java%2021%20%7C%20Spring%20Boot%204-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](car-fuel-live-backend)
 [![Data: PostgreSQL 17, Flyway](https://img.shields.io/badge/Data-PostgreSQL%2017%20%7C%20Flyway-336791?style=for-the-badge&logo=postgresql&logoColor=white)](car-fuel-live-backend)
 [![API Spec: OpenAPI](https://img.shields.io/badge/API%20Spec-OpenAPI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](car-fuel-live-backend)
-[![Project Status](https://img.shields.io/badge/status-foundation%20stage-C97A00?style=for-the-badge)](#project-status)
+[![Project Status](https://img.shields.io/badge/status-location--to--price%20mvp%20in%20progress-C97A00?style=for-the-badge)](#project-status)
 
 [![Open Issues](https://img.shields.io/github/issues/jantrw/car-fuel-live?style=flat-square)](https://github.com/jantrw/car-fuel-live/issues)
 [![Closed Issues](https://img.shields.io/github/issues-closed/jantrw/car-fuel-live?style=flat-square)](https://github.com/jantrw/car-fuel-live/issues?q=is%3Aissue+is%3Aclosed)
@@ -57,21 +57,32 @@ Car Fuel Live is intended to keep that experience focused:
 
 ## Project Status
 
-This repository is not a finished application yet.
+This repository is not a finished application yet, but it is past the foundation-only stage.
 
-What already exists:
+What already exists in the current worktree:
 
-- Vue 3 + TypeScript frontend foundation
-- Spring Boot 4 backend foundation
-- PostgreSQL + Flyway backend setup
-- product and architecture documentation
+- Vue 3 frontend for explicit location search and gas-station results
+- Spring Boot backend with `GET /api/v1/locations/suggestions`
+- Spring Boot backend with `GET /api/v1/gas-stations`
+- PostgreSQL + Flyway location dataset and seed pipeline
+- Tankerkonig backend integration with structured upstream error mapping
+- proxy-aware rate limiting for the gas-station price endpoint
 
 What is still in progress:
 
-- first end-to-end search-to-results flow
-- live Tankerkonig integration
-- DB-backed lookup deduplication, bounded in-memory hot-city cache, and request throttling
-- frontend result views and filtering UX
+- country-driven default price results after country selection
+- filter UI and backend parameters for fuel type, radius, and sorting
+- opt-in `Use my city` geolocation flow
+- station detail flow
+- broader request hardening for the remaining public endpoints
+- bounded hot-city cache for known coordinates
+
+## Stack
+
+- Frontend: Vue 3, TypeScript 5, Vite 7, Tailwind CSS 4, shadcn-vue
+- Backend: Java 21, Spring Boot 4, Spring Security, Spring JDBC, Flyway
+- Data: PostgreSQL 17
+- External data: Tankerkonig via backend only
 
 ## Location Data Model
 
@@ -83,8 +94,6 @@ The backend stores a local PostgreSQL location dataset that turns country, place
 | `location_places` | Seeded European cities, towns, districts, and administrative places with coordinates | Lets the app resolve manual place searches to coordinates for later Tankerkonig requests |
 | `location_place_aliases` | Alternate names, spellings, and normalized search variants for places | Lets the app find places even when users type localized names or alternate spellings |
 | `german_postal_codes` | German postal codes mapped to place names and coordinates | Lets the app resolve German postal-code searches directly to coordinates |
-
-This is an application-level overview, not the full SQL schema. The detailed implementation lives in the backend migrations and docs.
 
 ## Repository Structure
 
@@ -103,7 +112,10 @@ Backend setup before first start:
 Copy-Item .\car-fuel-live-backend\.env.example .\car-fuel-live-backend\.env
 ```
 
-Set at least `DB_USER`, `DB_PASSWORD`, and `DB_NAME` in `car-fuel-live-backend/.env`. Keep `TANKERKOENIG_API_KEY` empty until you work on live fuel-price integration.
+Set at least `DB_USER`, `DB_PASSWORD`, and `DB_NAME` in `car-fuel-live-backend/.env`.
+
+- Set `TANKERKOENIG_API_KEY` when you want to verify the live price flow.
+- Leave it empty if you only work on local search, docs, or non-price frontend work.
 
 Current development entry points from the repository root:
 
@@ -119,7 +131,15 @@ Seed location data only for a new or empty local database:
 .\car-fuel-live-backend\scripts\import-location-data.ps1
 ```
 
-Run the backend once before seeding so Flyway creates and records the database schema. The seed script only loads data and fails fast if Flyway migration `V1` has not completed.
+Run the backend once before seeding so Flyway creates and records the database schema. The seed script only loads data and fails fast if the required Flyway schema is missing.
+
+Useful verification commands:
+
+```powershell
+.\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend test
+npm --prefix .\car-fuel-live-frontend run test -- --run
+npm --prefix .\car-fuel-live-frontend run build
+```
 
 Expected supporting services during development:
 
@@ -136,12 +156,12 @@ Expected supporting services during development:
 
 Near-term priorities:
 
-1. implement the first search-to-results flow
-2. integrate live fuel data in the backend
-3. add bounded in-memory hot-city caching, deduplicate identical in-flight lookups, and throttle safely
-4. harden verification, security checks, and CI
+1. turn country selection into concrete default price results
+2. add fuel-type, radius, and sort controls to the price flow
+3. add opt-in geolocation and station detail slices
+4. harden the remaining public endpoints and CI checks
 
 ## Notes
 
-- This README intentionally describes the actual current state, not the intended finished state.
-- Setup instructions will be expanded once the first usable end-to-end flow exists.
+- This README describes the current worktree state, not the intended finished product.
+- Planned follow-ups stay in `docs/documentation.md`; implemented architecture stays in `docs/architecture.md`.

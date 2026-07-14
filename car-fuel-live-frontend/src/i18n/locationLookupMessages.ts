@@ -3,6 +3,7 @@ export interface LocationLookupMessages {
   eyebrow: string
   title: string
   intro: string
+  mvpCatchPhrase: string
   currentCountryLabel: string
   currentCountryHint: string
   searchLabel: string
@@ -17,6 +18,27 @@ export interface LocationLookupMessages {
   errorTitle: string
   errorBody: string
   privacyNotice: string
+  stationResultsEyebrow: string
+  stationResultsTitle: string
+  stationResultsSelectionPrefix: string
+  stationLoading: string
+  stationEmptyTitle: string
+  stationEmptyBody: string
+  stationErrorTitle: string
+  stationErrorBody: string
+  stationRateLimitedTitle: string
+  stationRateLimitedBody: string
+  countrySelectionTitle: string
+  countrySelectionBody: string
+  stationAttribution: string
+  stationFreshnessNotice: string
+  stationPriceUnavailable: string
+  stationDistanceUnavailable: string
+  stationAddressUnavailable: string
+  stationBrandFallback: string
+  stationOpen: string
+  stationClosed: string
+  stationOpenUnknown: string
   validationMessage: {
     QUERY_TOO_SHORT: string
     QUERY_TOO_LONG: string
@@ -28,10 +50,12 @@ export interface LocationLookupMessages {
 const messages: Record<'en' | 'de', LocationLookupMessages> = {
   en: {
     locale: 'en',
-    eyebrow: 'Manual location lookup',
-    title: 'Search local places',
+    eyebrow: 'Cheap & Fast',
+    title: 'Find the nearest fair fuel price',
     intro:
-      'Search the local PostgreSQL dataset for countries, cities, places, regions, and German postal codes when you want explicit local results.',
+      'Search a place once and load live your fuel prices nearby.',
+    mvpCatchPhrase:
+      'Compare real prices in seconds before you pick the next station.',
     currentCountryLabel: 'Country context',
     currentCountryHint:
       'Search results prefer matches from this country first, but still fall back across borders when needed.',
@@ -48,7 +72,33 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     errorTitle: 'Lookup failed',
     errorBody: 'The location service did not return usable results.',
     privacyNotice:
-      'This UI uses local seed data only. It stores the selected country context, but not coordinates.',
+      'This UI uses local seed data for place lookup and loads live fuel prices after you choose a result. It stores the selected country context, but not coordinates.',
+    stationResultsEyebrow: 'Tankerkönig prices',
+    stationResultsTitle: 'Fuel prices nearby',
+    stationResultsSelectionPrefix: 'Selected location',
+    stationLoading: 'Loading nearby fuel prices...',
+    stationEmptyTitle: 'No nearby stations',
+    stationEmptyBody: 'Try another place or search in a larger nearby city later.',
+    stationErrorTitle: 'Fuel prices unavailable',
+    stationErrorBody:
+      'The upstream fuel price service did not return usable station data.',
+    stationRateLimitedTitle: 'Too many price requests',
+    stationRateLimitedBody:
+      'You have reached the current request limit for live fuel prices. Please wait a moment and try again.',
+    countrySelectionTitle: 'Country selected',
+    countrySelectionBody:
+      'This MVP loads live prices only for cities, places, and postal codes with coordinates. Choose a concrete place next.',
+    stationAttribution:
+      'Fuel price data provided via Tankerkönig under CC BY 4.0 and subject to MTS-K usage rules.',
+    stationFreshnessNotice:
+      'Prices are loaded on demand for the selected location and are not kept in a long-lived cache.',
+    stationPriceUnavailable: 'Not offered',
+    stationDistanceUnavailable: 'Distance unavailable',
+    stationAddressUnavailable: 'Address unavailable',
+    stationBrandFallback: 'Independent station',
+    stationOpen: 'Open now',
+    stationClosed: 'Closed',
+    stationOpenUnknown: 'Open state unknown',
     validationMessage: {
       QUERY_TOO_SHORT: 'Enter at least two characters before searching.',
       QUERY_TOO_LONG: 'Enter at most 80 characters before searching.',
@@ -66,19 +116,21 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
   },
   de: {
     locale: 'de',
-    eyebrow: 'Manuelle Standortsuche',
-    title: 'Lokale Orte gezielt suchen',
+    eyebrow: 'Günstig & Schnell',
+    title: 'Finde deinen nächsten fairen Spritpreis',
     intro:
-      'Suche im lokalen PostgreSQL-Datensatz nach Laendern, Staedten, Orten, Regionen und deutschen Postleitzahlen, wenn du bewusst lokale Treffer laden willst.',
-    currentCountryLabel: 'Laenderkontext',
+      'Suche einen Ort und lade sofort echte Kraftstoffpreise in deiner Nähe.',
+    mvpCatchPhrase:
+      'Preise vergleichen, besser tanken.',
+    currentCountryLabel: 'Länderkontext',
     currentCountryHint:
-      'Suchergebnisse bevorzugen Treffer aus diesem Land, greifen bei Bedarf aber weiter laenderuebergreifend.',
+      'Suchergebnisse bevorzugen Treffer aus diesem Land, greifen bei Bedarf aber weiter länderübergreifend.',
     searchLabel: 'Suche',
     searchPlaceholder: 'Berlin, Belgien, 10115',
     searchAction: 'Orte suchen',
     searchHint:
-      'Ergebnisse erscheinen erst nach einer bewussten Suche. Der Laenderkontext ist eine Praeferenz, kein Filter.',
-    loading: 'Suche laeuft...',
+      'Ergebnisse erscheinen erst nach einer bewussten Suche. Der Länderkontext ist eine Präferenz, kein Filter.',
+    loading: 'Suche läuft...',
     resultsTitle: 'Ergebnisse',
     resultsQueryPrefix: 'Suche nach',
     noResultsTitle: 'Kein lokaler Treffer',
@@ -87,14 +139,41 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     errorTitle: 'Suche fehlgeschlagen',
     errorBody: 'Der Standortdienst hat keine nutzbaren Ergebnisse geliefert.',
     privacyNotice:
-      'Diese UI nutzt nur lokale Seed-Daten. Gespeichert wird nur der Laenderkontext, keine Koordinaten.',
+      'Diese UI nutzt lokale Seed-Daten für die Ortssuche und lädt Live-Kraftstoffpreise nach deiner Auswahl. Gespeichert wird nur der Länderkontext, keine Koordinaten.',
+    stationResultsEyebrow: 'Tankerkönig-Preise',
+    stationResultsTitle: 'Kraftstoffpreise in der Nähe',
+    stationResultsSelectionPrefix: 'Ausgewählter Ort',
+    stationLoading: 'Nahe Kraftstoffpreise werden geladen...',
+    stationEmptyTitle: 'Keine nahen Tankstellen gefunden',
+    stationEmptyBody:
+      'Versuche einen anderen Ort oder später eine größere Stadt in der Nähe.',
+    stationErrorTitle: 'Kraftstoffpreise nicht verfügbar',
+    stationErrorBody:
+      'Der Upstream-Dienst für Kraftstoffpreise hat keine nutzbaren Stationsdaten geliefert.',
+    stationRateLimitedTitle: 'Zu viele Preisabfragen',
+    stationRateLimitedBody:
+      'Du hast das aktuelle Anfrage-Limit für Live-Kraftstoffpreise erreicht. Warte kurz und versuche es dann erneut.',
+    countrySelectionTitle: 'Land ausgewählt',
+    countrySelectionBody:
+      'Dieses MVP lädt Live-Preise nur für Städte, Orte und Postleitzahlen mit Koordinaten. Wähle als Nächstes einen konkreten Ort.',
+    stationAttribution:
+      'Kraftstoffpreisdaten kommen über Tankerkönig unter CC BY 4.0 und unterliegen den MTS-K-Nutzungsbedingungen.',
+    stationFreshnessNotice:
+      'Preise werden bei Bedarf für den gewählten Ort geladen und nicht über lange Zeit zwischengespeichert.',
+    stationPriceUnavailable: 'Nicht angeboten',
+    stationDistanceUnavailable: 'Entfernung unbekannt',
+    stationAddressUnavailable: 'Adresse unbekannt',
+    stationBrandFallback: 'Freie Tankstelle',
+    stationOpen: 'Jetzt offen',
+    stationClosed: 'Geschlossen',
+    stationOpenUnknown: 'Öffnungsstatus unbekannt',
     validationMessage: {
       QUERY_TOO_SHORT: 'Gib vor der Suche mindestens zwei Zeichen ein.',
-      QUERY_TOO_LONG: 'Gib vor der Suche hoechstens 80 Zeichen ein.',
+      QUERY_TOO_LONG: 'Gib vor der Suche höchstens 80 Zeichen ein.',
     },
     suggestionGroupTitle: {
-      country: 'Laender',
-      place: 'Staedte und Orte',
+      country: 'Länder',
+      place: 'Städte und Orte',
       postalCode: 'Postleitzahlen',
     },
     resultType: {

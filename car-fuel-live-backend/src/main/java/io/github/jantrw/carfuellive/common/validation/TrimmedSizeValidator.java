@@ -3,6 +3,12 @@ package io.github.jantrw.carfuellive.common.validation;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
+/**
+ * Validator for {@link TrimmedSize}.
+ *
+ * <p>It treats {@code null} and blank values as the responsibility of other annotations such as
+ * {@code @NotBlank}; this validator only enforces the trimmed length window.
+ */
 public class TrimmedSizeValidator implements ConstraintValidator<TrimmedSize, String> {
 
   private int min;

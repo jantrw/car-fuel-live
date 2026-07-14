@@ -38,76 +38,6 @@
 
 ## Spring Boot Style
 
-- Group by **feature/domain**, never by layer:
-  ```
-  stations/controller/
-  stations/service/
-  stations/repository/
-  stations/model/
-  stations/dto/
-  tankerkoenig/
-  common/exception/
-  common/validation/
-  ```
-- **Constructor injection** for all beans. Never use field injection (`@Autowired` on fields).
-- Controllers are thin — no business logic. All logic belongs in the service layer.
-- `@Transactional` boundaries on service methods, not controllers.
-- Use `@ConfigurationProperties` for grouped config. Avoid scattered `@Value`.
-- Centralize REST error handling with `@ControllerAdvice` and structured error DTOs.
-
-### REST API Naming
-- Base path: `/api/v1/`
-- Resource names: plural nouns, kebab-case (e.g., `/api/v1/gas-stations`)
-- Query parameters: camelCase (e.g., `?fuelType=E5&radius=5`)
-- JSON fields: camelCase (Jackson default — enforce via `spring.jackson.property-naming-strategy=LOWER_CAMEL_CASE`)
-- Never expose raw database IDs in URLs if a stable natural key exists
-- Public API text stays English only. Keep OpenAPI summaries, descriptions, validation messages, and error payload text in English unless a task explicitly requires localized backend responses.
-
-```
-GET  /api/v1/gas-stations?lat=52.5&lng=13.4&radius=5&fuelType=E5
-GET  /api/v1/gas-stations/{id}
-```
-
-### OpenAPI
-- Use Springdoc OpenAPI.
-- Swagger UI at `/swagger-ui.html` in development only.
-- Annotate all public controller methods with `@Operation` and `@ApiResponse`.
-- Disable it in production:
-```yaml
-# application-prod.yml
-springdoc:
-  swagger-ui:
-    enabled: false
-  api-docs:
-    enabled: false
-```
-
-### Spring Security
-This is a stateless, no-auth public API. Configure explicitly — never leave Spring Security defaults active.
-
-```java
-@Configuration
-@EnableWebSecurity
-public class SecurityConfig {
-
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .headers(headers -> headers
-                .frameOptions(frame -> frame.deny())
-                .contentTypeOptions(Customizer.withDefaults())
-                .httpStrictTransportSecurity(hsts ->
-                    hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
-            );
-        return http.build();
-    }
-}
-```
-
 CSRF is intentionally disabled — API is stateless, no cookies. If sessions are ever introduced, re-enable CSRF immediately.
 
 ---
@@ -173,7 +103,7 @@ Enforce via Spring Security config and/or reverse proxy:
   - Fuel values can be `false` when a station does not offer that fuel.
   - `prices.php` can return station statuses `open`, `closed`, and `no prices`.
   - `detail.php` fields such as `openingTimes`, `overrides`, `wholeDay`, and `state` are optional.
-- Deduplicate identical in-flight location lookups and identical in-flight Tankerkönig requests per application node so concurrent callers share one fresh DB or upstream request.
+- Deduplicate identical in-flight location lookups per application node. Add Tankerkönig in-flight deduplication only after measured duplicate pressure justifies the concurrency complexity.
 - Do not rely on long-lived fuel-price result caching by default. Freshness is more important than multi-minute response caching.
 - If a user spams searches, rate limiting and in-flight deduplication absorb it. Do not depend on the bounded city cache to hide abusive traffic.
 - Only perform Tankerkönig requests on demand from user-driven flows. Avoid periodic background polling against the free API.
@@ -210,4 +140,3 @@ Enforce via Spring Security config and/or reverse proxy:
 
 ### Logging & Monitoring
 - Centralize logs; alert on traffic spikes, error rate increases, rate-limit events, and unusual Tankerkönig API call volumes.
-
