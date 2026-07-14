@@ -22,7 +22,7 @@ public class LocationSearchRepository {
 
   // Prefix search supports partial country input after exact lookup misses.
   public List<LocationSearchResult> searchCountries(
-      String normalizedQuery, String likePrefix, int limit) {
+      String normalizedQuery, String prefixEnd, int limit) {
     return jdbcClient
         .sql(
             """
@@ -46,12 +46,12 @@ public class LocationSearchRepository {
                 COALESCE(population, 0) AS popularity
             FROM location_countries
             WHERE normalized_name = :query
-                OR normalized_name LIKE :prefix ESCAPE '\\'
+                OR (normalized_name >= :query AND normalized_name < :prefixEnd)
             ORDER BY match_rank, popularity DESC, name
             LIMIT :limit
             """)
         .param("query", normalizedQuery)
-        .param("prefix", likePrefix)
+        .param("prefixEnd", prefixEnd)
         .param("limit", limit)
         .query(LocationSearchRepository::mapLocationSearchResult)
         .list();
@@ -91,16 +91,16 @@ public class LocationSearchRepository {
   // Prefix query supports partial city/place input such as "Ber"; use only after exact lookup
   // misses because it can scan the large GeoNames place table without pattern indexes.
   public List<LocationSearchResult> searchPlaces(
-      String normalizedQuery, String likePrefix, int limit) {
-    return searchPlaces(normalizedQuery, likePrefix, null, limit, false);
+      String normalizedQuery, String prefixEnd, int limit) {
+    return searchPlaces(normalizedQuery, prefixEnd, null, limit, false);
   }
 
   // Country-scoped prefix lookup ensures the active country can contribute strong local
   // candidates before broader cross-country popularity pushes them out of the bounded result
   // window.
   public List<LocationSearchResult> searchPlacesInCountry(
-      String normalizedQuery, String likePrefix, String countryCode, int limit) {
-    return searchPlaces(normalizedQuery, likePrefix, countryCode, limit, false);
+      String normalizedQuery, String prefixEnd, String countryCode, int limit) {
+    return searchPlaces(normalizedQuery, prefixEnd, countryCode, limit, false);
   }
 
   // Full-name lookups should stay index-friendly and prefer populated places over same-label
@@ -117,7 +117,7 @@ public class LocationSearchRepository {
   }
 
   private List<LocationSearchResult> searchPlaces(
-      String normalizedQuery, String likePrefix, String countryCode, int limit, boolean exactOnly) {
+      String normalizedQuery, String prefixEnd, String countryCode, int limit, boolean exactOnly) {
     final String whereClause = placeWhereClause(countryCode != null, exactOnly);
     var query =
         jdbcClient
@@ -125,7 +125,7 @@ public class LocationSearchRepository {
             .param("query", normalizedQuery)
             .param("limit", limit);
     if (!exactOnly) {
-      query = query.param("prefix", likePrefix);
+      query = query.param("prefixEnd", prefixEnd);
     }
     if (countryCode != null) {
       query = query.param("countryCode", countryCode);
@@ -194,8 +194,11 @@ public class LocationSearchRepository {
                 (
                     p.normalized_name = :query
                     OR p.normalized_ascii_name = :query
-                    OR p.normalized_name LIKE :prefix ESCAPE '\\'
-                    OR p.normalized_ascii_name LIKE :prefix ESCAPE '\\'
+                    OR (p.normalized_name >= :query AND p.normalized_name < :prefixEnd)
+                    OR (
+                        p.normalized_ascii_name >= :query
+                        AND p.normalized_ascii_name < :prefixEnd
+                    )
                 )
               """;
     return countryScoped ? "p.country_code = :countryCode AND " + matchClause : matchClause;
@@ -204,15 +207,15 @@ public class LocationSearchRepository {
   // Alias prefix search is the most expensive lookup path because aliases are the largest table.
   // Keep it as a fallback for partial alternate-name input.
   public List<LocationSearchResult> searchPlaceAliases(
-      String normalizedQuery, String likePrefix, int limit) {
-    return searchPlaceAliases(normalizedQuery, likePrefix, null, limit, false);
+      String normalizedQuery, String prefixEnd, int limit) {
+    return searchPlaceAliases(normalizedQuery, prefixEnd, null, limit, false);
   }
 
   // Alias prefix search also needs a same-country path so common local alternate names do not get
   // displaced by more popular foreign rows before Java ranking can apply the context preference.
   public List<LocationSearchResult> searchPlaceAliasesInCountry(
-      String normalizedQuery, String likePrefix, String countryCode, int limit) {
-    return searchPlaceAliases(normalizedQuery, likePrefix, countryCode, limit, false);
+      String normalizedQuery, String prefixEnd, String countryCode, int limit) {
+    return searchPlaceAliases(normalizedQuery, prefixEnd, countryCode, limit, false);
   }
 
   // Exact alias lookup supports alternate names without paying the prefix-scan cost first.
@@ -228,7 +231,7 @@ public class LocationSearchRepository {
   }
 
   private List<LocationSearchResult> searchPlaceAliases(
-      String normalizedQuery, String likePrefix, String countryCode, int limit, boolean exactOnly) {
+      String normalizedQuery, String prefixEnd, String countryCode, int limit, boolean exactOnly) {
     final String whereClause = aliasWhereClause(countryCode != null, exactOnly);
     var query =
         jdbcClient
@@ -236,7 +239,7 @@ public class LocationSearchRepository {
             .param("query", normalizedQuery)
             .param("limit", limit);
     if (!exactOnly) {
-      query = query.param("prefix", likePrefix);
+      query = query.param("prefixEnd", prefixEnd);
     }
     if (countryCode != null) {
       query = query.param("countryCode", countryCode);
@@ -301,7 +304,10 @@ public class LocationSearchRepository {
             : """
                 (
                     a.normalized_alias_name = :query
-                    OR a.normalized_alias_name LIKE :prefix ESCAPE '\\'
+                    OR (
+                        a.normalized_alias_name >= :query
+                        AND a.normalized_alias_name < :prefixEnd
+                    )
                 )
               """;
     return countryScoped ? "p.country_code = :countryCode AND " + matchClause : matchClause;

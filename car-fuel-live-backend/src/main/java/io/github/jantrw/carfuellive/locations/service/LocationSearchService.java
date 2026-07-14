@@ -52,7 +52,7 @@ public class LocationSearchService {
   private LocationSearchResponse lookup(
       String query, int limit, Optional<String> boostedCountryCode) {
     final String normalizedQuery = normalize(query);
-    final String likePrefix = escapeLikePattern(normalizedQuery) + "%";
+    final String prefixEnd = prefixEnd(normalizedQuery);
     final int candidateLimit = searchCandidateLimit(limit);
     final Map<String, LocationSearchResult> uniqueResults = new LinkedHashMap<>();
     final Comparator<LocationSearchResult> comparator =
@@ -74,8 +74,9 @@ public class LocationSearchService {
       addPrefixResults(
           uniqueResults,
           normalizedQuery,
-          likePrefix,
+          prefixEnd,
           candidateLimit,
+          limit,
           comparator,
           boostedCountryCode);
       addNearPrefixResults(
@@ -193,27 +194,30 @@ public class LocationSearchService {
   private void addPrefixResults(
       Map<String, LocationSearchResult> uniqueResults,
       String normalizedQuery,
-      String likePrefix,
+      String prefixEnd,
       int candidateLimit,
+      int visibleLimit,
       Comparator<LocationSearchResult> comparator,
       Optional<String> boostedCountryCode) {
     addContextCountryPrefixResults(
-        uniqueResults, normalizedQuery, likePrefix, candidateLimit, comparator, boostedCountryCode);
+        uniqueResults, normalizedQuery, prefixEnd, candidateLimit, comparator, boostedCountryCode);
     addBestResults(
         uniqueResults,
-        locationSearchRepository.searchPlaces(normalizedQuery, likePrefix, candidateLimit),
+        locationSearchRepository.searchPlaces(normalizedQuery, prefixEnd, candidateLimit),
         LocationSearchService::idKey,
         comparator);
     addBestResults(
         uniqueResults,
-        locationSearchRepository.searchPlaceAliases(normalizedQuery, likePrefix, candidateLimit),
+        locationSearchRepository.searchCountries(normalizedQuery, prefixEnd, candidateLimit),
         LocationSearchService::idKey,
         comparator);
-    addBestResults(
-        uniqueResults,
-        locationSearchRepository.searchCountries(normalizedQuery, likePrefix, candidateLimit),
-        LocationSearchService::idKey,
-        comparator);
+    if (uniqueResults.size() < visibleLimit) {
+      addBestResults(
+          uniqueResults,
+          locationSearchRepository.searchPlaceAliases(normalizedQuery, prefixEnd, candidateLimit),
+          LocationSearchService::idKey,
+          comparator);
+    }
   }
 
   private void addNearPrefixResults(
@@ -228,18 +232,17 @@ public class LocationSearchService {
       return;
     }
 
-    final String nearPrefix =
-        escapeLikePattern(normalizedQuery.substring(0, normalizedQuery.length() - 1)) + "%";
+    final String nearPrefix = normalizedQuery.substring(0, normalizedQuery.length() - 1);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlacesInCountry(
-            normalizedQuery, nearPrefix, "DE", candidateLimit),
+            normalizedQuery, prefixEnd(nearPrefix), "DE", candidateLimit),
         LocationSearchService::idKey,
         comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaceAliasesInCountry(
-            normalizedQuery, nearPrefix, "DE", candidateLimit),
+            normalizedQuery, prefixEnd(nearPrefix), "DE", candidateLimit),
         LocationSearchService::idKey,
         comparator);
   }
@@ -260,24 +263,19 @@ public class LocationSearchService {
     }
 
     final String variantQuery = variant.get();
-    final String variantPrefix = escapeLikePattern(variantQuery) + "%";
+    final String variantPrefixEnd = prefixEnd(variantQuery);
     addBestResults(
         uniqueResults,
-        germanOnly(
-            locationSearchRepository.searchPlaces(variantQuery, variantPrefix, candidateLimit)),
+        locationSearchRepository.searchPlacesInCountry(
+            variantQuery, variantPrefixEnd, "DE", candidateLimit),
         LocationSearchService::idKey,
         comparator);
     addBestResults(
         uniqueResults,
-        germanOnly(
-            locationSearchRepository.searchPlaceAliases(
-                variantQuery, variantPrefix, candidateLimit)),
+        locationSearchRepository.searchPlaceAliasesInCountry(
+            variantQuery, variantPrefixEnd, "DE", candidateLimit),
         LocationSearchService::idKey,
         comparator);
-  }
-
-  private static List<LocationSearchResult> germanOnly(List<LocationSearchResult> results) {
-    return results.stream().filter(result -> "DE".equals(result.countryCode())).toList();
   }
 
   // The context country must influence candidate collection, not only final sorting. Otherwise a
@@ -311,7 +309,7 @@ public class LocationSearchService {
   private void addContextCountryPrefixResults(
       Map<String, LocationSearchResult> uniqueResults,
       String normalizedQuery,
-      String likePrefix,
+      String prefixEnd,
       int candidateLimit,
       Comparator<LocationSearchResult> comparator,
       Optional<String> boostedCountryCode) {
@@ -323,13 +321,13 @@ public class LocationSearchService {
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlacesInCountry(
-            normalizedQuery, likePrefix, countryCode, candidateLimit),
+            normalizedQuery, prefixEnd, countryCode, candidateLimit),
         LocationSearchService::idKey,
         comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaceAliasesInCountry(
-            normalizedQuery, likePrefix, countryCode, candidateLimit),
+            normalizedQuery, prefixEnd, countryCode, candidateLimit),
         LocationSearchService::idKey,
         comparator);
   }
@@ -1026,5 +1024,9 @@ public class LocationSearchService {
   // not silently widen the query.
   private static String escapeLikePattern(String value) {
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+  }
+
+  private static String prefixEnd(String prefix) {
+    return prefix + Character.MAX_VALUE;
   }
 }
