@@ -4,9 +4,9 @@
 Global agent rules live in `C:\Users\janferech\.codex\AGENTS.md`. This file adds repo-specific rules only.
 
 ## Documentation Sources
-- Agent handoff: `docs/agent-project-status.md`.
 - Product spec: `docs/documentation.md`.
 - Architecture: `docs/architecture.md`.
+- Local ignored agent handoff, if present: `docs/agent-project-status.md`.
 - Backend rules: `car-fuel-live-backend/AGENTS.md`.
 - Frontend rules: `car-fuel-live-frontend/AGENTS.md`.
 

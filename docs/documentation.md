@@ -1,7 +1,7 @@
 ## Application Overview
 
 **Name:** Car Fuel Live (working title)
-**Purpose:** Public, no-auth web app for real-time fuel prices across Germany and nearby European countries for a selected city or country.
+**Purpose:** Public, no-auth web app for real-time fuel prices across Germany and nearby European countries for a selected place.
 **Document role:** Agent-facing product and planning reference. Captures intended behavior and durable requirements.
 
 ---
@@ -24,10 +24,10 @@
 - Planned post-MVP: users can order results by price.
 - Planned follow-up: each gas station entry should link to more details.
 - No login, no authentication, no user accounts.
-- The backend deduplicates identical in-flight location lookups. Tankerkönig list lookups are rate-limited and can add in-flight deduplication later if measured duplicate pressure requires it.
+- Tankerkönig list lookups are rate-limited and can add in-flight deduplication later if measured duplicate pressure requires it.
 - The backend may keep a small in-memory coordinate cache for the largest European cities and the most common German cities so repeated known-city searches can skip unnecessary PostgreSQL lookups.
 - Do not rely on long-lived fuel-price result caching by default. Price freshness matters more.
-- Public search endpoints should enforce throttling and request limits so abusive traffic is rejected before it can spam the database or Tankerkönig. The current worktree already rate-limits `GET /api/v1/gas-stations`; equivalent protection for the remaining public endpoints is still a follow-up.
+- Public search endpoints should enforce throttling and request limits so abusive traffic is rejected before it can spam the database or Tankerkönig. The current implementation already rate-limits `GET /api/v1/gas-stations`; equivalent protection for the remaining public endpoints is still a follow-up.
 - Unmapped or unexpected public API errors must never expose stack traces, exception names, package names, or framework internals in the response body. Missing routes should return the shared structured error DTO instead.
 
 ---
@@ -173,7 +173,7 @@
 - The script does not create target schema tables. It fails if the required Flyway-managed location schema is missing.
 - During the seed transform, each imported country must resolve exactly one same-country capital place via a deterministic `PPLC` match on normalized capital name, ascii name, or alias. The seed must fail fast instead of guessing when that mapping is missing. No current runtime endpoint reads the capital mapping, but copied databases should keep it complete for future country-default flows.
 
-### Frontend Foundation
+### Frontend MVP
 - The frontend uses Vue 3 with TypeScript enabled.
 - The current frontend screen is a manual search plus live price MVP. It derives and persists only the active country context, calls `/api/v1/locations/suggestions` through `src/api/` only after an explicit user search, clears stale visible results on edit, and groups results by type.
 - Selecting a `place` or `postalCode` result now triggers `/api/v1/gas-stations` and renders nearby station prices with explicit `loading`, `error`, `empty`, and `results` states.

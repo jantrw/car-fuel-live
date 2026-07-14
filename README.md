@@ -56,4 +56,3 @@ npm --prefix .\car-fuel-live-frontend run build
 
 - Product behavior and requirements: [`docs/documentation.md`](docs/documentation.md)
 - Implemented architecture: [`docs/architecture.md`](docs/architecture.md)
-- Agent handoff status: [`docs/agent-project-status.md`](docs/agent-project-status.md)
