@@ -1,14 +1,19 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import { CodeXml, Info } from 'lucide-vue-next'
 
 import logoUrl from '@/assets/car-fuel-live-logo.png'
+import type { LocationSearchResult } from '@/api/locationSearch'
 import { useGasStationResults } from '@/composables/useGasStationResults'
 import { useLocationCountryContext } from '@/composables/useLocationCountryContext'
 import { useLocationLookup } from '@/composables/useLocationLookup'
 import { resolveLocationLookupMessages } from '@/i18n/locationLookupMessages'
 
 import GasStationResultPanel from './GasStationResultPanel.vue'
-import LocationResultList from './LocationResultList.vue'
+import LocationSearchResultDropdown, {
+  type LocationSearchDropdownGroup,
+} from './LocationSearchResultDropdown.vue'
 import LocationSearchForm from './LocationSearchForm.vue'
 
 const messages = resolveLocationLookupMessages()
@@ -21,10 +26,18 @@ const lookup = useLocationLookup({
   countryCode,
 })
 const gasStationResults = useGasStationResults()
+const dropdownGroups = computed<LocationSearchDropdownGroup[]>(() =>
+  lookup.groupedResults.value.map((group) => ({
+    id: group.type,
+    label: messages.suggestionGroupTitle[group.type],
+    items: group.items.map((result) => ({
+      ...result,
+      context: `${result.countryCode} · ${messages.resultType[result.type]}`,
+    })),
+  })),
+)
 
-async function handleResultSelection(
-  result: Parameters<typeof lookup.selectResult>[0],
-) {
+async function handleResultSelection(result: LocationSearchResult) {
   lookup.selectResult(result)
   countryContext.setCountryCode(result.countryCode)
   await gasStationResults.loadForSelection(result)
@@ -107,14 +120,40 @@ function handleQueryUpdate(value: string) {
             @update-query="handleQueryUpdate"
           >
             <template #results>
-              <LocationResultList
-                :groups="lookup.groupedResults.value"
-                :messages="messages"
-                :query="lookup.lastSubmittedQuery.value"
-                :status="lookup.status.value"
-                :validation-message="lookup.validationMessage.value"
-                @select-result="handleResultSelection"
-              />
+              <div
+                v-if="
+                  lookup.status.value !== 'idle' &&
+                  lookup.status.value !== 'validation'
+                "
+                aria-live="polite"
+              >
+                <p
+                  v-if="lookup.status.value === 'error'"
+                  class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-red-700 shadow-sm"
+                >
+                  <span class="block font-semibold">{{
+                    messages.errorTitle
+                  }}</span>
+                  {{ messages.errorBody }}
+                </p>
+                <p
+                  v-else-if="lookup.status.value === 'loading'"
+                  class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm"
+                >
+                  <span
+                    class="size-4 animate-spin rounded-full border-2 border-slate-300 border-t-teal-700 motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                  {{ messages.loading }}
+                </p>
+                <LocationSearchResultDropdown
+                  v-else
+                  :groups="dropdownGroups"
+                  :messages="messages"
+                  :query="lookup.lastSubmittedQuery.value"
+                  @select-item="handleResultSelection"
+                />
+              </div>
             </template>
           </LocationSearchForm>
         </div>

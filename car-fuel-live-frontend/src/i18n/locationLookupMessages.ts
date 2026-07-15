@@ -23,6 +23,7 @@ export interface LocationLookupMessages {
   loading: string
   resultsTitle: string
   resultsQueryPrefix: string
+  dropdownHelperText: string
   noResultsTitle: string
   noResultsBody: string
   errorTitle: string
@@ -85,6 +86,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     loading: 'Searching...',
     resultsTitle: 'Search results',
     resultsQueryPrefix: 'for',
+    dropdownHelperText: 'Choose the matching location.',
     noResultsTitle: 'No local match',
     noResultsBody: 'Try another spelling or a nearby place.',
     errorTitle: 'Lookup failed',
@@ -160,6 +162,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     loading: 'Suche läuft...',
     resultsTitle: 'Suchergebnisse',
     resultsQueryPrefix: 'für',
+    dropdownHelperText: 'Wähle den passenden Ort.',
     noResultsTitle: 'Kein lokaler Treffer',
     noResultsBody:
       'Versuche eine andere Schreibweise oder einen nahegelegenen Ort.',

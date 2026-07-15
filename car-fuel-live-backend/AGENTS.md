@@ -3,24 +3,19 @@
 # Root package: io.github.jantrw.carfuellive
 
 ## Stack
-- Java 21
-- Spring Boot 4
-- Gradle 9
-- PostgreSQL 17
-- Flyway
+- Java 21, Spring Boot 4, Gradle 9, PostgreSQL 17, Flyway.
 
 ## Java And Spring
 - Spotless enforces Java formatting. Do not hand-format around it.
 - Apply `.codex/skills/java-best-practices/SKILL.md` when changing Java implementation details.
-- Keep the public API stateless. CSRF stays disabled while there are no sessions or cookies.
+- Keep the public API stateless; CSRF stays disabled while there are no sessions or cookies.
 - Use `@ConfigurationProperties` for grouped configuration. Do not scatter `@Value`.
 - Return structured error DTOs to clients. Log internal details server-side only.
 
 ## Database
 - Flyway migrations live in `src/main/resources/db/migration/` and use `V<n>__<description>.sql`.
 - Never edit an applied migration; add a new migration instead.
-- Seed scripts live in `src/main/resources/db/seed/` and `scripts/`.
-- PostgreSQL is the source of truth for manual location resolution.
+- Seed scripts live in `src/main/resources/db/seed/` and `scripts/`; PostgreSQL is the source of truth for manual location resolution.
 - Use parameterized SQL only. Never concatenate user input into SQL.
 - Keep `location_countries.capital_place_geoname_id`; copied databases should retain stable country-capital references.
 
