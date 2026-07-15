@@ -1,15 +1,11 @@
 <script setup lang="ts">
 import { Building2, ChevronRight, Globe2, MapPin } from 'lucide-vue-next'
 
+import type { LocationSearchResult } from '@/api/locationSearch'
 import type { LocationLookupMessages } from '@/i18n/locationLookupMessages'
 
-export type LocationSearchDropdownItemType = 'country' | 'place' | 'postalCode'
-
-export interface LocationSearchDropdownItem {
-  id: string
-  label: string
+export interface LocationSearchDropdownItem extends LocationSearchResult {
   context: string
-  type: LocationSearchDropdownItemType
 }
 
 export interface LocationSearchDropdownGroup {
