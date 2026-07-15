@@ -23,7 +23,6 @@ export interface LocationLookupMessages {
   loading: string
   resultsTitle: string
   resultsQueryPrefix: string
-  resultsForQuery: string
   noResultsTitle: string
   noResultsBody: string
   errorTitle: string
@@ -32,8 +31,6 @@ export interface LocationLookupMessages {
   stationResultsEyebrow: string
   stationResultsTitle: string
   stationResultsSelectionPrefix: string
-  stationCount: string
-  stationUpdated: string
   stationLoading: string
   stationEmptyTitle: string
   stationEmptyBody: string
@@ -88,7 +85,6 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     loading: 'Searching...',
     resultsTitle: 'Search results',
     resultsQueryPrefix: 'for',
-    resultsForQuery: 'Search results for',
     noResultsTitle: 'No local match',
     noResultsBody: 'Try another spelling or a nearby place.',
     errorTitle: 'Lookup failed',
@@ -98,8 +94,6 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     stationResultsEyebrow: 'Tankerkonig prices',
     stationResultsTitle: 'Fuel prices nearby',
     stationResultsSelectionPrefix: 'Selected location',
-    stationCount: 'stations',
-    stationUpdated: 'Updated just now',
     stationLoading: 'Loading nearby fuel prices...',
     stationEmptyTitle: 'No nearby stations',
     stationEmptyBody:
@@ -166,7 +160,6 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     loading: 'Suche läuft...',
     resultsTitle: 'Suchergebnisse',
     resultsQueryPrefix: 'für',
-    resultsForQuery: 'Suchergebnisse für',
     noResultsTitle: 'Kein lokaler Treffer',
     noResultsBody:
       'Versuche eine andere Schreibweise oder einen nahegelegenen Ort.',
@@ -177,8 +170,6 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     stationResultsEyebrow: 'Tankerkonig-Preise',
     stationResultsTitle: 'Kraftstoffpreise in der Nähe',
     stationResultsSelectionPrefix: 'Ausgewählter Ort',
-    stationCount: 'Tankstellen',
-    stationUpdated: 'Gerade aktualisiert',
     stationLoading: 'Nahe Kraftstoffpreise werden geladen...',
     stationEmptyTitle: 'Keine nahen Tankstellen gefunden',
     stationEmptyBody:

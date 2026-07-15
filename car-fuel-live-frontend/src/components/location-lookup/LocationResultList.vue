@@ -21,7 +21,7 @@ const emit = defineEmits<{
 <template>
   <section
     v-if="props.status !== 'idle'"
-    class="rounded-xl border border-slate-200 bg-white p-3 shadow-lg shadow-slate-950/10 sm:p-5 lg:absolute lg:z-10 lg:mt-2 lg:w-full"
+    class="mt-2 max-h-[32rem] overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-lg shadow-slate-950/10 sm:p-5"
     aria-live="polite"
   >
     <div>

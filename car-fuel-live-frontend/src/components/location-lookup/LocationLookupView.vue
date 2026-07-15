@@ -58,7 +58,6 @@ function handleQueryUpdate(value: string) {
       class="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-5 py-9 sm:px-8 lg:py-10"
     >
       <section
-        :class="{ 'lg:mb-48': lookup.status.value === 'results' }"
         class="relative grid rounded-[2rem] bg-[linear-gradient(115deg,#eff9f7_5%,#f8fbfb_55%,#e5f4f1)] px-6 py-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12 lg:px-10 lg:py-10"
       >
         <div class="flex max-w-xl flex-col items-start text-left">
