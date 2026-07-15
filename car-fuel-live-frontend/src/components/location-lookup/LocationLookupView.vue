@@ -75,22 +75,24 @@ function handleQueryUpdate(value: string) {
             :validation-message="lookup.validationMessage.value"
             @submit-search="lookup.submitSearch"
             @update-query="handleQueryUpdate"
-          />
-        </div>
-        <div class="w-full max-w-5xl">
-          <LocationResultList
-            :groups="lookup.groupedResults.value"
-            :messages="messages"
-            :query="lookup.lastSubmittedQuery.value"
-            :status="lookup.status.value"
-            :validation-message="lookup.validationMessage.value"
-            @select-result="handleResultSelection"
-          />
+          >
+            <template #results>
+              <LocationResultList
+                :groups="lookup.groupedResults.value"
+                :messages="messages"
+                :query="lookup.lastSubmittedQuery.value"
+                :status="lookup.status.value"
+                @select-result="handleResultSelection"
+              />
+            </template>
+          </LocationSearchForm>
         </div>
         <div class="w-full max-w-6xl">
           <GasStationResultPanel
             :messages="messages"
-            :selected-location-label="gasStationResults.selectedLocationLabel.value"
+            :selected-location-label="
+              gasStationResults.selectedLocationLabel.value
+            "
             :stations="gasStationResults.stations.value"
             :status="gasStationResults.status.value"
           />

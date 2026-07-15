@@ -55,30 +55,38 @@ function onSubmit() {
       <label class="text-sm font-semibold text-slate-900" for="location-query">
         {{ props.messages.searchLabel }}
       </label>
-      <div class="relative">
-        <Search
-          class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
-          aria-hidden="true"
-        />
-        <input
-          id="location-query"
-          :value="props.query"
-          :placeholder="props.messages.searchPlaceholder"
-          class="min-h-12 w-full rounded-md border border-slate-300 bg-white pr-3 pl-10 text-base text-slate-950 transition outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-100"
-          type="search"
-          @input="onInput"
-        />
-      </div>
-      <p
-        v-if="props.validationMessage !== null"
-        class="text-sm font-medium text-amber-700"
-      >
-        {{ props.messages.validationMessage[props.validationMessage] }}
-      </p>
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div class="relative">
+          <div class="relative">
+            <Search
+              class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+              aria-hidden="true"
+            />
+            <input
+              id="location-query"
+              :value="props.query"
+              :placeholder="props.messages.searchPlaceholder"
+              :aria-invalid="props.validationMessage !== null || undefined"
+              :aria-describedby="
+                props.validationMessage === null
+                  ? undefined
+                  : 'location-query-validation'
+              "
+              class="min-h-12 w-full rounded-md border border-slate-300 bg-white pr-3 pl-10 text-base text-slate-950 transition outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-100"
+              type="search"
+              @input="onInput"
+            />
+          </div>
+          <div
+            v-if="$slots.results"
+            class="mt-2 w-full sm:absolute sm:top-full sm:z-10"
+          >
+            <slot name="results" />
+          </div>
+        </div>
         <button
           :disabled="props.isLoading"
-          class="inline-flex min-h-11 items-center justify-center rounded-md bg-sky-700 px-4 text-sm font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          class="inline-flex min-h-12 items-center justify-center rounded-md bg-sky-700 px-5 text-sm font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-400"
           type="submit"
         >
           {{
@@ -87,10 +95,18 @@ function onSubmit() {
               : props.messages.searchAction
           }}
         </button>
-        <p class="text-sm text-slate-600">
-          {{ props.messages.searchHint }}
-        </p>
       </div>
+      <p
+        v-if="props.validationMessage !== null"
+        id="location-query-validation"
+        role="alert"
+        class="text-sm font-medium text-amber-700"
+      >
+        {{ props.messages.validationMessage[props.validationMessage] }}
+      </p>
+      <p class="text-sm text-slate-600">
+        {{ props.messages.searchHint }}
+      </p>
     </form>
   </section>
 </template>
