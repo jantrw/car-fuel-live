@@ -17,11 +17,11 @@ const emit = defineEmits<{
   submitSearch: []
 }>()
 
-function onInput(event: Event) {
+function emitQueryUpdate(event: Event) {
   emit('updateQuery', (event.target as HTMLInputElement).value)
 }
 
-function onSubmit() {
+function emitSearchSubmission() {
   emit('submitSearch')
 }
 </script>
@@ -51,7 +51,7 @@ function onSubmit() {
       </div>
     </div>
 
-    <form class="mt-4 grid gap-3" @submit.prevent="onSubmit">
+    <form class="mt-4 grid gap-3" @submit.prevent="emitSearchSubmission">
       <label class="text-sm font-semibold text-slate-900" for="location-query">
         {{ props.messages.searchLabel }}
       </label>
@@ -66,7 +66,7 @@ function onSubmit() {
           :placeholder="props.messages.searchPlaceholder"
           class="min-h-12 w-full rounded-md border border-slate-300 bg-white pr-3 pl-10 text-base text-slate-950 transition outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-100"
           type="search"
-          @input="onInput"
+          @input="emitQueryUpdate"
         />
       </div>
       <p
