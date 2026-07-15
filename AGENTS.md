@@ -41,5 +41,6 @@ Global agent rules live in `C:\Users\janferech\.codex\AGENTS.md`. This file adds
 
 ## Verification
 - Frontend: ESLint, Prettier, Vitest, production build.
+- For frontend changes, use Playwright MCP to verify behavior and capture screenshots for visual checks. Screenshots are local artifacts; never commit them.
 - Backend: Spotless and Gradle tests.
 - Full backend tests may need Docker/Testcontainers.
