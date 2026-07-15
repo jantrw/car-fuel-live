@@ -1,11 +1,16 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
+import type { LocationSearchResult } from '@/api/locationSearch'
 import { useGasStationResults } from '@/composables/useGasStationResults'
 import { useLocationCountryContext } from '@/composables/useLocationCountryContext'
 import { useLocationLookup } from '@/composables/useLocationLookup'
 import { resolveLocationLookupMessages } from '@/i18n/locationLookupMessages'
 
 import GasStationResultPanel from './GasStationResultPanel.vue'
-import LocationResultList from './LocationResultList.vue'
+import LocationSearchResultDropdown, {
+  type LocationSearchDropdownGroup,
+} from './LocationSearchResultDropdown.vue'
 import LocationSearchForm from './LocationSearchForm.vue'
 
 const messages = resolveLocationLookupMessages()
@@ -18,10 +23,18 @@ const lookup = useLocationLookup({
   countryCode,
 })
 const gasStationResults = useGasStationResults()
+const dropdownGroups = computed<LocationSearchDropdownGroup[]>(() =>
+  lookup.groupedResults.value.map((group) => ({
+    id: group.type,
+    label: messages.suggestionGroupTitle[group.type],
+    items: group.items.map((result) => ({
+      ...result,
+      context: `${result.countryCode} · ${messages.resultType[result.type]}`,
+    })),
+  })),
+)
 
-async function handleResultSelection(
-  result: Parameters<typeof lookup.selectResult>[0],
-) {
+async function handleResultSelection(result: LocationSearchResult) {
   lookup.selectResult(result)
   countryContext.setCountryCode(result.countryCode)
   await gasStationResults.loadForSelection(result)
@@ -75,22 +88,47 @@ function handleQueryUpdate(value: string) {
             :validation-message="lookup.validationMessage.value"
             @submit-search="lookup.submitSearch"
             @update-query="handleQueryUpdate"
-          />
-        </div>
-        <div class="w-full max-w-5xl">
-          <LocationResultList
-            :groups="lookup.groupedResults.value"
-            :messages="messages"
-            :query="lookup.lastSubmittedQuery.value"
-            :status="lookup.status.value"
-            :validation-message="lookup.validationMessage.value"
-            @select-result="handleResultSelection"
-          />
+          >
+            <template #results>
+              <div
+                v-if="
+                  lookup.status.value !== 'idle' &&
+                  lookup.status.value !== 'validation'
+                "
+                aria-live="polite"
+              >
+                <p
+                  v-if="lookup.status.value === 'error'"
+                  class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-red-700 shadow-sm"
+                >
+                  <span class="block font-semibold">{{
+                    messages.errorTitle
+                  }}</span>
+                  {{ messages.errorBody }}
+                </p>
+                <p
+                  v-else-if="lookup.status.value === 'loading'"
+                  class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm"
+                >
+                  {{ messages.loading }}
+                </p>
+                <LocationSearchResultDropdown
+                  v-else
+                  :groups="dropdownGroups"
+                  :messages="messages"
+                  :query="lookup.lastSubmittedQuery.value"
+                  @select-item="handleResultSelection"
+                />
+              </div>
+            </template>
+          </LocationSearchForm>
         </div>
         <div class="w-full max-w-6xl">
           <GasStationResultPanel
             :messages="messages"
-            :selected-location-label="gasStationResults.selectedLocationLabel.value"
+            :selected-location-label="
+              gasStationResults.selectedLocationLabel.value
+            "
             :stations="gasStationResults.stations.value"
             :status="gasStationResults.status.value"
           />

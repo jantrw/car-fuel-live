@@ -11,9 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.jantrw.carfuellive.common.exception.FuelPriceLookupException;
 import io.github.jantrw.carfuellive.common.security.InMemoryGasStationRequestRateLimiter;
-import io.github.jantrw.carfuellive.stations.dto.GasStationSearchResponse;
 import io.github.jantrw.carfuellive.stations.model.GasStation;
-import io.github.jantrw.carfuellive.stations.service.GasStationSearchService;
+import io.github.jantrw.carfuellive.tankerkoenig.service.TankerkoenigRestClient;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +29,7 @@ class GasStationControllerTests {
 
   @Autowired private MockMvc mockMvc;
 
-  @MockitoBean private GasStationSearchService gasStationSearchService;
+  @MockitoBean private TankerkoenigRestClient tankerkoenigRestClient;
   @MockitoBean private InMemoryGasStationRequestRateLimiter gasStationRequestRateLimiter;
 
   @BeforeEach
@@ -40,25 +39,24 @@ class GasStationControllerTests {
 
   @Test
   void should_returnStationsWithPrices_when_validCoordinatesProvided() throws Exception {
-    when(gasStationSearchService.searchStations(52.52437, 13.41053))
+    when(tankerkoenigRestClient.searchStations(52.52437, 13.41053))
         .thenReturn(
-            new GasStationSearchResponse(
-                List.of(
-                    new GasStation(
-                        "station-1",
-                        "Fuel Stop",
-                        "Brand",
-                        "Main Street",
-                        "10",
-                        "10115",
-                        "Berlin",
-                        52.52,
-                        13.41,
-                        new BigDecimal("0.5"),
-                        true,
-                        new BigDecimal("1.759"),
-                        new BigDecimal("1.699"),
-                        new BigDecimal("1.589")))));
+            List.of(
+                new GasStation(
+                    "station-1",
+                    "Fuel Stop",
+                    "Brand",
+                    "Main Street",
+                    "10",
+                    "10115",
+                    "Berlin",
+                    52.52,
+                    13.41,
+                    new BigDecimal("0.5"),
+                    true,
+                    new BigDecimal("1.759"),
+                    new BigDecimal("1.699"),
+                    new BigDecimal("1.589"))));
 
     mockMvc
         .perform(get("/api/v1/gas-stations").param("lat", "52.52437").param("lng", "13.41053"))
@@ -80,7 +78,7 @@ class GasStationControllerTests {
 
   @Test
   void should_returnUpstreamError_when_fuelPriceLookupFails() throws Exception {
-    when(gasStationSearchService.searchStations(anyDouble(), anyDouble()))
+    when(tankerkoenigRestClient.searchStations(anyDouble(), anyDouble()))
         .thenThrow(new FuelPriceLookupException("Upstream failed."));
 
     mockMvc
@@ -98,7 +96,7 @@ class GasStationControllerTests {
         .andExpect(status().isTooManyRequests())
         .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 
-    verifyNoInteractions(gasStationSearchService);
+    verifyNoInteractions(tankerkoenigRestClient);
   }
 
   @Test
@@ -120,6 +118,6 @@ class GasStationControllerTests {
         .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 
     verify(gasStationRequestRateLimiter).allowRequest("198.51.100.7");
-    verifyNoInteractions(gasStationSearchService);
+    verifyNoInteractions(tankerkoenigRestClient);
   }
 }

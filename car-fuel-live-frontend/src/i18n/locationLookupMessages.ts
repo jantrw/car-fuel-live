@@ -15,6 +15,7 @@ export interface LocationLookupMessages {
   loading: string
   resultsTitle: string
   resultsQueryPrefix: string
+  dropdownHelperText: string
   noResultsTitle: string
   noResultsBody: string
   errorTitle: string
@@ -66,8 +67,9 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     searchHint:
       'Results appear only after you start a search. The country context is a preference, not a filter.',
     loading: 'Searching...',
-    resultsTitle: 'Results',
+    resultsTitle: 'Search results for',
     resultsQueryPrefix: 'Search for',
+    dropdownHelperText: 'Choose the matching location.',
     noResultsTitle: 'No local match',
     noResultsBody: 'Try another spelling or a nearby place.',
     errorTitle: 'Lookup failed',
@@ -79,7 +81,8 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     stationResultsSelectionPrefix: 'Selected location',
     stationLoading: 'Loading nearby fuel prices...',
     stationEmptyTitle: 'No nearby stations',
-    stationEmptyBody: 'Try another place or search in a larger nearby city later.',
+    stationEmptyBody:
+      'Try another place or search in a larger nearby city later.',
     stationErrorTitle: 'Fuel prices unavailable',
     stationErrorBody:
       'The upstream fuel price service did not return usable station data.',
@@ -131,8 +134,9 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     searchHint:
       'Ergebnisse erscheinen erst nach einer bewussten Suche. Der Länderkontext ist eine Präferenz, kein Filter.',
     loading: 'Suche läuft...',
-    resultsTitle: 'Ergebnisse',
+    resultsTitle: 'Suchergebnisse für',
     resultsQueryPrefix: 'Suche nach',
+    dropdownHelperText: 'Wähle den passenden Ort.',
     noResultsTitle: 'Kein lokaler Treffer',
     noResultsBody:
       'Versuche eine andere Schreibweise oder einen nahegelegenen Ort.',
