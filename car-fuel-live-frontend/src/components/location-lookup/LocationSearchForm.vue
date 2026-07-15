@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MapPinned, Search } from 'lucide-vue-next'
+import { ArrowRight, LoaderCircle, Search } from 'lucide-vue-next'
 
 import type { LocationLookupMessages } from '@/i18n/locationLookupMessages'
 
@@ -27,39 +27,16 @@ function onSubmit() {
 </script>
 
 <template>
-  <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-    <div
-      class="rounded-md border border-sky-200 bg-sky-50/80 p-3 text-sm text-slate-800"
-    >
-      <div class="flex items-start gap-3">
-        <span
-          class="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-sky-700 text-white"
-        >
-          <MapPinned class="size-4" aria-hidden="true" />
-        </span>
-        <div class="min-w-0">
-          <p class="font-semibold text-slate-950">
-            {{ props.messages.currentCountryLabel }}
-          </p>
-          <p class="mt-1 text-base font-semibold text-sky-950">
-            {{ props.countryLabel }} ({{ props.countryCode }})
-          </p>
-          <p class="mt-1 text-sm text-slate-600">
-            {{ props.messages.currentCountryHint }}
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <form class="mt-4 grid gap-3" @submit.prevent="onSubmit">
-      <label class="text-sm font-semibold text-slate-900" for="location-query">
+  <section>
+    <form class="grid gap-3" @submit.prevent="onSubmit">
+      <label class="text-base font-medium text-[#063b37]" for="location-query">
         {{ props.messages.searchLabel }}
       </label>
-      <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-        <div class="relative">
-          <div class="relative">
+      <div class="relative">
+        <div class="relative flex flex-col gap-3 sm:flex-row">
+          <div class="relative min-w-0 flex-1">
             <Search
-              class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+              class="pointer-events-none absolute top-1/2 left-5 size-6 -translate-y-1/2 text-teal-700"
               aria-hidden="true"
             />
             <input
@@ -72,11 +49,27 @@ function onSubmit() {
                   ? undefined
                   : 'location-query-validation'
               "
-              class="min-h-12 w-full rounded-md border border-slate-300 bg-white pr-3 pl-10 text-base text-slate-950 transition outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-100"
+              class="min-h-15 w-full rounded-xl border border-slate-300 bg-white pr-5 pl-15 text-xl text-slate-950 shadow-sm transition outline-none placeholder:text-slate-500 focus:border-teal-700 focus:ring-2 focus:ring-teal-200"
               type="search"
               @input="onInput"
             />
           </div>
+          <button
+            :disabled="props.isLoading"
+            class="inline-flex min-h-15 items-center justify-center gap-4 rounded-xl bg-teal-700 px-7 text-lg font-semibold text-white transition hover:bg-teal-800 focus:ring-2 focus:ring-teal-200 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-400"
+            type="submit"
+          >
+            <LoaderCircle
+              v-if="props.isLoading"
+              class="size-5 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+            <template v-else>
+              {{ props.messages.searchAction }}
+              <ArrowRight class="size-6" aria-hidden="true" />
+            </template>
+            <span v-if="props.isLoading">{{ props.messages.loading }}</span>
+          </button>
           <div
             v-if="$slots.results"
             class="mt-2 w-full sm:absolute sm:top-full sm:z-10"
@@ -84,17 +77,6 @@ function onSubmit() {
             <slot name="results" />
           </div>
         </div>
-        <button
-          :disabled="props.isLoading"
-          class="inline-flex min-h-12 items-center justify-center rounded-md bg-sky-700 px-5 text-sm font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-          type="submit"
-        >
-          {{
-            props.isLoading
-              ? props.messages.loading
-              : props.messages.searchAction
-          }}
-        </button>
       </div>
       <p
         v-if="props.validationMessage !== null"
@@ -105,7 +87,12 @@ function onSubmit() {
         {{ props.messages.validationMessage[props.validationMessage] }}
       </p>
       <p class="text-sm text-slate-600">
-        {{ props.messages.searchHint }}
+        {{ props.messages.currentCountryLabel }}: {{ props.countryLabel }} ({{
+          props.countryCode
+        }})
+      </p>
+      <p class="text-xs leading-5 text-slate-600">
+        {{ props.messages.privacyNotice }}
       </p>
     </form>
   </section>
