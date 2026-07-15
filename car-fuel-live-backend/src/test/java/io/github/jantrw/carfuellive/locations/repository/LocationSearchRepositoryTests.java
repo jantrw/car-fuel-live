@@ -38,7 +38,7 @@ class LocationSearchRepositoryTests {
   @Test
   void should_returnPlacePrefixLookups_when_queryMatchesShortText() {
     final List<LocationSearchResult> results =
-        locationSearchRepository.searchPlaces("be", "be%", 8);
+        locationSearchRepository.searchPlaces("be", prefixEnd("be"), 8);
 
     assertThat(results).extracting(LocationSearchResult::id).containsExactly("2950159", "3169070");
     assertThat(results).extracting(LocationSearchResult::matchRank).containsOnly(2);
@@ -72,5 +72,9 @@ class LocationSearchRepositoryTests {
     assertThat(results).hasSize(1);
     assertThat(results.getFirst().postalCode()).isEqualTo("10115");
     assertThat(results.getFirst().label()).isEqualTo("10115 Berlin, Germany");
+  }
+
+  private static String prefixEnd(String prefix) {
+    return prefix + Character.MAX_VALUE;
   }
 }

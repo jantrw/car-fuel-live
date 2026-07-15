@@ -85,10 +85,12 @@ PostgreSQL 17 location dataset
 
 ## Search-Relevant Indexes
 
-- `location_countries.normalized_name` for country-name lookup.
+- `location_countries.normalized_name` for exact and prefix-range country-name lookup.
 - `location_countries.capital_place_geoname_id` for copied-database completeness and future direct country-to-capital lookup.
 - `location_places.country_code` for country-scoped place queries.
-- `location_places.normalized_name` and `location_places.normalized_ascii_name` for primary place search.
+- `location_places.normalized_name` and `location_places.normalized_ascii_name` for exact and prefix-range primary place search.
+- Composite `location_places.country_code` plus normalized-name indexes for country-scoped prefix-range place search.
 - `location_places.feature_code` for filtering by GeoNames feature type.
-- `location_place_aliases.normalized_alias_name` for alias matches.
-- `german_postal_codes.normalized_place_name` for German postal-code place lookup.
+- `location_place_aliases.normalized_alias_name` for exact alias matches.
+- `location_place_aliases.normalized_alias_name, place_geoname_id` for alias prefix-range search and joins.
+- `german_postal_codes.normalized_place_name` for German postal-code place lookup and indexed place-name prefixes.

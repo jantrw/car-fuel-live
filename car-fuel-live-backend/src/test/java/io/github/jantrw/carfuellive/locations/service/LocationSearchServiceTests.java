@@ -88,10 +88,11 @@ class LocationSearchServiceTests {
   @Test
   void should_notLetCountryPreferenceOverrideClearExactPlaceIntent_when_queryIsLonger() {
     insertPlace("950001", "CH", "Bern", "bern", "bern", "P", 133000);
+    insertPlace("950002", "DE", "Bernau", "bernau", "bernau", "P", 41000);
 
     final LocationSearchResponse response = locationSearchService.suggest("Bern", "DE", 8);
 
-    assertThat(ids(response)).containsExactly("950001");
+    assertThat(ids(response)).startsWith("950001");
   }
 
   @Test
@@ -104,6 +105,99 @@ class LocationSearchServiceTests {
     final LocationSearchResponse response = locationSearchService.suggest("Paris", "FR", 8);
 
     assertThat(ids(response)).containsExactly("960001", "960002");
+  }
+
+  @Test
+  void should_preferFoldedLocalCityPrefix_when_queryOmitsUmlautExpansion() {
+    insertPlace("970001", "DE", "D\u00fcsseldorf", "duesseldorf", "dusseldorf", "P", 620000);
+    insertPlace("970002", "DE", "Dusslingen", "dusslingen", "dusslingen", "P", 6200);
+    insertPlace("970003", "DE", "N\u00fcrnberg", "nuernberg", "nurnberg", "P", 500000);
+    insertPlace("970004", "DE", "Nurn", "nurn", "nurn", "P", 1200);
+    insertAlias("970001", "Dusseldorf", "dusseldorf");
+    insertAlias("970003", "Nurnberg", "nurnberg");
+
+    assertThat(ids(locationSearchService.suggest("Duss", "DE", 8))).startsWith("970001");
+    assertThat(ids(locationSearchService.suggest("Nurn", "DE", 8))).startsWith("970003");
+  }
+
+  @Test
+  void should_preferStrongLocalPrefixOverLowPopularityExactAlias() {
+    insertPlace("971001", "DE", "Stuttgart", "stuttgart", "stuttgart", "P", 630000);
+    insertPlace("971002", "DE", "Stuettgen", "stuettgen", "stuettgen", "P", 300);
+    insertAlias("971002", "Stutt", "stutt");
+
+    assertThat(ids(locationSearchService.suggest("Stutt", "DE", 8))).startsWith("971001");
+  }
+
+  @Test
+  void should_preferTopGermanCity_when_shortExactAliasWouldBlockPrefixFallback() {
+    insertCountry("NL", "The Netherlands", "the netherlands", 18000000);
+    insertPlace("975001", "DE", "Dortmund", "dortmund", "dortmund", "P", 587000);
+    insertPlace("975002", "NL", "Dordrecht", "dordrecht", "dordrecht", "P", 119000);
+    insertAlias("975002", "Dort", "dort");
+
+    assertThat(ids(locationSearchService.suggest("Dort", "DE", 8))).startsWith("975001");
+  }
+
+  @Test
+  void should_preferTopGermanCity_when_queryHasOneCharacterPrefixTypo() {
+    insertPlace("976001", "DE", "Munich", "munich", "munich", "P", 1260000);
+    insertPlace("976002", "DE", "Munchberg", "munchberg", "munchberg", "P", 10000);
+
+    assertThat(ids(locationSearchService.suggest("Munc", "DE", 8)).getFirst())
+        .isIn("2867714", "976001");
+    assertThat(ids(locationSearchService.suggest("Munch", "DE", 8)).getFirst())
+        .isIn("2867714", "976001");
+  }
+
+  @Test
+  void should_continueWithLocalPrefixFallback_when_longForeignExactMatchExists() {
+    insertCountry("AT", "Austria", "austria", 9000000);
+    insertPlace("977001", "AT", "Essling", "essling", "essling", "P", 10000);
+    insertPlace("977002", "DE", "Esslingen", "esslingen", "esslingen", "P", 95000);
+
+    assertThat(ids(locationSearchService.suggest("Essling", "DE", 8))).startsWith("977002");
+  }
+
+  @Test
+  void should_keepPopularForeignExactIntent_when_localContextExists() {
+    insertCountry("IT", "Italy", "italy", 59000000);
+    insertPlace("978001", "IT", "Milan", "milan", "milan", "P", 1300000);
+    insertPlace("978002", "DE", "Milanoweg", "milanoweg", "milanoweg", "P", 120);
+
+    assertThat(ids(locationSearchService.suggest("Milan", "DE", 8))).startsWith("978001");
+  }
+
+  @Test
+  void should_notShowLowPopularityAliasRowsForClearCityName() {
+    insertCountry("UA", "Ukraine", "ukraine", 37000000);
+    insertPlace("972001", "UA", "Khmelevoye", "khmelevoye", "khmelevoye", "P", 600);
+    insertAlias("972001", "Berlin", "berlin");
+
+    final LocationSearchResponse response = locationSearchService.suggest("Berlin", "DE", 8);
+
+    assertThat(ids(response)).contains("2950159");
+    assertThat(ids(response)).doesNotContain("972001");
+  }
+
+  @Test
+  void should_keepPopularAlternateLanguageAlias() {
+    final LocationSearchResponse response = locationSearchService.suggest("Praha", "DE", 8);
+
+    assertThat(ids(response)).contains("3067696");
+  }
+
+  @Test
+  void should_collapseDuplicateVisiblePlaceRows_when_rowsRepresentSameLocation() {
+    insertCountry("IT", "Italy", "italy", 59000000);
+    insertPlace("974001", "IT", "Milan", "milan", "milan", "P", 1300000, 45.4642, 9.19, "09");
+    insertPlace("974002", "IT", "Milan", "milan", "milan", "P", 1200000, 45.4643, 9.1901, "09");
+    insertPlace("974003", "IT", "Milan", "milan", "milan", "P", 900000, 45.4641, 9.1899, "09");
+
+    final LocationSearchResponse response = locationSearchService.suggest("Milan", "DE", 8);
+
+    assertThat(ids(response)).contains("974001");
+    assertThat(ids(response)).doesNotContain("974002", "974003");
   }
 
   @Test
@@ -157,6 +251,30 @@ class LocationSearchServiceTests {
       String normalizedAsciiName,
       String featureClass,
       long population) {
+    insertPlace(
+        geonameId,
+        countryCode,
+        name,
+        normalizedName,
+        normalizedAsciiName,
+        featureClass,
+        population,
+        1.0,
+        2.0,
+        null);
+  }
+
+  private void insertPlace(
+      String geonameId,
+      String countryCode,
+      String name,
+      String normalizedName,
+      String normalizedAsciiName,
+      String featureClass,
+      long population,
+      double latitude,
+      double longitude,
+      String admin1Code) {
     jdbcClient
         .sql(
             """
@@ -171,15 +289,19 @@ class LocationSearchServiceTests {
                 longitude,
                 feature_class,
                 feature_code,
+                admin1_code,
                 population
-            ) VALUES (:geonameId, :countryCode, :name, :name, :normalizedName, :normalizedAsciiName, 1.0, 2.0, :featureClass, 'PPL', :population)
+            ) VALUES (:geonameId, :countryCode, :name, :name, :normalizedName, :normalizedAsciiName, :latitude, :longitude, :featureClass, 'PPL', :admin1Code, :population)
             """)
         .param("geonameId", Long.parseLong(geonameId))
         .param("countryCode", countryCode)
         .param("name", name)
         .param("normalizedName", normalizedName)
         .param("normalizedAsciiName", normalizedAsciiName)
+        .param("latitude", latitude)
+        .param("longitude", longitude)
         .param("featureClass", featureClass)
+        .param("admin1Code", admin1Code)
         .param("population", population)
         .update();
   }
