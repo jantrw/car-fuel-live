@@ -2,10 +2,18 @@ import { getBrowserLanguages } from '@/lib/locationCountryContext'
 
 export interface LocationLookupMessages {
   locale: 'en' | 'de'
+  appName: string
   eyebrow: string
   title: string
   intro: string
   mvpCatchPhrase: string
+  sourceAvailability: string
+  stepSelectLocation: string
+  stepComparePrices: string
+  selectionHint: string
+  footerPriceData: string
+  footerPriceNotice: string
+  footerSourceLink: string
   currentCountryLabel: string
   currentCountryHint: string
   searchLabel: string
@@ -15,6 +23,7 @@ export interface LocationLookupMessages {
   loading: string
   resultsTitle: string
   resultsQueryPrefix: string
+  resultsForQuery: string
   noResultsTitle: string
   noResultsBody: string
   errorTitle: string
@@ -23,6 +32,8 @@ export interface LocationLookupMessages {
   stationResultsEyebrow: string
   stationResultsTitle: string
   stationResultsSelectionPrefix: string
+  stationCount: string
+  stationUpdated: string
   stationLoading: string
   stationEmptyTitle: string
   stationEmptyBody: string
@@ -52,11 +63,20 @@ export interface LocationLookupMessages {
 const messages: Record<'en' | 'de', LocationLookupMessages> = {
   en: {
     locale: 'en',
+    appName: 'Car Fuel Live',
     eyebrow: 'Cheap & Fast',
     title: 'Find the nearest fair fuel price',
     intro: 'Search a place once and load live fuel prices nearby.',
     mvpCatchPhrase:
       'Compare real prices in seconds before you pick the next station.',
+    sourceAvailability: 'Free · Open source available',
+    stepSelectLocation: 'Select location',
+    stepComparePrices: 'Compare prices',
+    selectionHint:
+      'Choose a specific place first. Then we will show matching fuel prices.',
+    footerPriceData: 'Fuel price data: Tankerkoenig · CC BY 4.0',
+    footerPriceNotice: 'Prices may change',
+    footerSourceLink: 'View source code',
     currentCountryLabel: 'Country context',
     currentCountryHint:
       'Search results prefer matches from this country first, but still fall back across borders when needed.',
@@ -66,8 +86,9 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     searchHint:
       'Results appear only after you start a search. The country context is a preference, not a filter.',
     loading: 'Searching...',
-    resultsTitle: 'Results',
-    resultsQueryPrefix: 'Search for',
+    resultsTitle: 'Search results',
+    resultsQueryPrefix: 'for',
+    resultsForQuery: 'Search results for',
     noResultsTitle: 'No local match',
     noResultsBody: 'Try another spelling or a nearby place.',
     errorTitle: 'Lookup failed',
@@ -77,9 +98,12 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     stationResultsEyebrow: 'Tankerkonig prices',
     stationResultsTitle: 'Fuel prices nearby',
     stationResultsSelectionPrefix: 'Selected location',
+    stationCount: 'stations',
+    stationUpdated: 'Updated just now',
     stationLoading: 'Loading nearby fuel prices...',
     stationEmptyTitle: 'No nearby stations',
-    stationEmptyBody: 'Try another place or search in a larger nearby city later.',
+    stationEmptyBody:
+      'Try another place or search in a larger nearby city later.',
     stationErrorTitle: 'Fuel prices unavailable',
     stationErrorBody:
       'The upstream fuel price service did not return usable station data.',
@@ -117,11 +141,20 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
   },
   de: {
     locale: 'de',
+    appName: 'Car Fuel Live',
     eyebrow: 'Günstig & Schnell',
     title: 'Finde deinen nächsten fairen Spritpreis',
     intro:
       'Suche einen Ort und lade sofort echte Kraftstoffpreise in deiner Nähe.',
     mvpCatchPhrase: 'Preise vergleichen, besser tanken.',
+    sourceAvailability: 'Kostenlos · Quellcode einsehbar',
+    stepSelectLocation: 'Ort auswählen',
+    stepComparePrices: 'Preise vergleichen',
+    selectionHint:
+      'Wähle zuerst einen konkreten Ort. Danach zeigen wir dir die passenden Tankstellenpreise.',
+    footerPriceData: 'Preisdaten: Tankerkönig · CC BY 4.0',
+    footerPriceNotice: 'Preise können sich ändern',
+    footerSourceLink: 'Code ansehen',
     currentCountryLabel: 'Länderkontext',
     currentCountryHint:
       'Suchergebnisse bevorzugen Treffer aus diesem Land, greifen bei Bedarf aber weiter länderübergreifend.',
@@ -131,8 +164,9 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     searchHint:
       'Ergebnisse erscheinen erst nach einer bewussten Suche. Der Länderkontext ist eine Präferenz, kein Filter.',
     loading: 'Suche läuft...',
-    resultsTitle: 'Ergebnisse',
-    resultsQueryPrefix: 'Suche nach',
+    resultsTitle: 'Suchergebnisse',
+    resultsQueryPrefix: 'für',
+    resultsForQuery: 'Suchergebnisse für',
     noResultsTitle: 'Kein lokaler Treffer',
     noResultsBody:
       'Versuche eine andere Schreibweise oder einen nahegelegenen Ort.',
@@ -143,6 +177,8 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     stationResultsEyebrow: 'Tankerkonig-Preise',
     stationResultsTitle: 'Kraftstoffpreise in der Nähe',
     stationResultsSelectionPrefix: 'Ausgewählter Ort',
+    stationCount: 'Tankstellen',
+    stationUpdated: 'Gerade aktualisiert',
     stationLoading: 'Nahe Kraftstoffpreise werden geladen...',
     stationEmptyTitle: 'Keine nahen Tankstellen gefunden',
     stationEmptyBody:
