@@ -2,17 +2,13 @@
 # Scope: car-fuel-live-frontend/
 
 ## Stack
-- Vue 3
-- TypeScript
-- Vite
-- Tailwind CSS 4
-- Vitest
+- Vue 3, TypeScript, Vite, Tailwind CSS 4, Vitest.
 
 ## Vue And TypeScript
 - Use Composition API with `<script setup lang="ts">`.
 - Apply `.codex/skills/vue-best-practices/SKILL.md` for Vue work.
 - Components live in `src/components/`; composables live in `src/composables/` and start with `use`.
-- Backend calls live in `src/api/` only. Components do not call `fetch` directly.
+- Backend calls live in `src/api/`; components do not call `fetch` directly.
 - Use typed props and emits.
 - Validate external API responses at runtime.
 - Prefer `unknown` over `any`; justify any escape hatch with an ESLint-disable comment.
