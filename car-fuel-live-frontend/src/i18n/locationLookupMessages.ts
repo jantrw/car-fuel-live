@@ -50,6 +50,7 @@ export interface LocationLookupMessages {
   stationOpen: string
   stationClosed: string
   stationOpenUnknown: string
+  stationShowMore: string
   validationMessage: {
     QUERY_TOO_SHORT: string
     QUERY_TOO_LONG: string
@@ -120,6 +121,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     stationOpen: 'Open now',
     stationClosed: 'Closed',
     stationOpenUnknown: 'Open state unknown',
+    stationShowMore: 'Show more stations',
     validationMessage: {
       QUERY_TOO_SHORT: 'Enter at least two characters before searching.',
       QUERY_TOO_LONG: 'Enter at most 80 characters before searching.',
@@ -197,6 +199,7 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
     stationOpen: 'Jetzt offen',
     stationClosed: 'Geschlossen',
     stationOpenUnknown: 'Öffnungsstatus unbekannt',
+    stationShowMore: 'Weitere Tankstellen anzeigen',
     validationMessage: {
       QUERY_TOO_SHORT: 'Gib vor der Suche mindestens zwei Zeichen ein.',
       QUERY_TOO_LONG: 'Gib vor der Suche höchstens 80 Zeichen ein.',

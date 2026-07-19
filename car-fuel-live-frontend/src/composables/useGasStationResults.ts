@@ -1,4 +1,4 @@
-import { readonly, shallowRef } from 'vue'
+import { computed, readonly, shallowRef } from 'vue'
 
 import {
   GasStationLookupError,
@@ -27,22 +27,40 @@ interface UseGasStationResultsOptions {
   ) => Promise<GasStationSearchResponse>
 }
 
+const INITIAL_STATION_COUNT = 10
+const ADDITIONAL_STATION_COUNT = 5
+
 // Gas-station lookup is a second explicit action after local search selection. Keep that state
 // isolated so search input edits do not accidentally persist raw coordinates anywhere.
-export function useGasStationResults(options: UseGasStationResultsOptions = {}) {
+export function useGasStationResults(
+  options: UseGasStationResultsOptions = {},
+) {
   const search = options.search ?? searchGasStations
 
   const stations = shallowRef<GasStationResult[]>([])
   const status = shallowRef<GasStationResultsStatus>('idle')
   const selectedLocationLabel = shallowRef('')
+  const visibleStationCount = shallowRef(INITIAL_STATION_COUNT)
   let currentController: AbortController | null = null
+
+  const visibleStations = computed(() =>
+    stations.value.slice(0, visibleStationCount.value),
+  )
+  const hasMoreStations = computed(
+    () => visibleStationCount.value < stations.value.length,
+  )
 
   function reset() {
     currentController?.abort()
     currentController = null
     stations.value = []
+    visibleStationCount.value = INITIAL_STATION_COUNT
     status.value = 'idle'
     selectedLocationLabel.value = ''
+  }
+
+  function showMoreStations() {
+    visibleStationCount.value += ADDITIONAL_STATION_COUNT
   }
 
   async function loadForSelection(result: LocationSearchResult) {
@@ -52,7 +70,11 @@ export function useGasStationResults(options: UseGasStationResultsOptions = {}) 
 
     // Country results currently update only the country context. They intentionally stop here
     // because this MVP needs concrete coordinates before it can call the live price endpoint.
-    if (result.type === 'country' || result.latitude === null || result.longitude === null) {
+    if (
+      result.type === 'country' ||
+      result.latitude === null ||
+      result.longitude === null
+    ) {
       stations.value = []
       status.value = 'countrySelected'
       return
@@ -61,6 +83,7 @@ export function useGasStationResults(options: UseGasStationResultsOptions = {}) 
     const controller = new AbortController()
     currentController = controller
     stations.value = []
+    visibleStationCount.value = INITIAL_STATION_COUNT
     status.value = 'loading'
 
     try {
@@ -95,9 +118,12 @@ export function useGasStationResults(options: UseGasStationResultsOptions = {}) 
 
   return {
     stations: readonly(stations),
+    visibleStations: readonly(visibleStations),
+    hasMoreStations: readonly(hasMoreStations),
     status: readonly(status),
     selectedLocationLabel: readonly(selectedLocationLabel),
     loadForSelection,
+    showMoreStations,
     reset,
   }
 }

@@ -7,6 +7,7 @@ import { getStationBrandAccent } from '@/lib/stationBrandAccent'
 
 const props = defineProps<{
   stations: readonly GasStationResult[]
+  hasMoreStations: boolean
   status:
     | 'idle'
     | 'loading'
@@ -17,6 +18,10 @@ const props = defineProps<{
     | 'countrySelected'
   selectedLocationLabel: string
   messages: LocationLookupMessages
+}>()
+
+const emit = defineEmits<{
+  showMoreStations: []
 }>()
 
 function formatPrice(value: number | null) {
@@ -209,6 +214,15 @@ function openStateLabel(isOpen: boolean | null) {
           </div>
         </article>
       </div>
+
+      <button
+        v-if="props.hasMoreStations"
+        class="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 focus:ring-2 focus:ring-teal-200 focus:outline-none"
+        type="button"
+        @click="emit('showMoreStations')"
+      >
+        {{ props.messages.stationShowMore }}
+      </button>
 
       <div
         class="flex flex-wrap items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"

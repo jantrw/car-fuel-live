@@ -11,6 +11,7 @@
 - Work branches merge into `dev` first. `dev` merges into `main` only after explicit approval.
 - Never open a PR, merge, or push without asking first.
 - Create GitHub issues with `gh` before non-trivial implementation unless the user explicitly waives it.
+- Issues should be concise, in german and not bloated with filler.
 - Do not commit `todo.md` or `lessons.md` unless explicitly asked.
 - Do not modify unrelated files.
 
