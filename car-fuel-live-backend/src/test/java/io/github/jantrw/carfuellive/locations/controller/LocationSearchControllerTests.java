@@ -40,7 +40,8 @@ class LocationSearchControllerTests {
         .andExpect(jsonPath("$.items[0].label").value("Berlin, Germany"))
         .andExpect(jsonPath("$.items[0].countryCode").value("DE"))
         .andExpect(jsonPath("$.items[0].latitude").value(52.52437))
-        .andExpect(jsonPath("$.items[0].longitude").value(13.41053));
+        .andExpect(jsonPath("$.items[0].longitude").value(13.41053))
+        .andExpect(jsonPath("$.items[0].directResolution").value(false));
   }
 
   @Test
@@ -52,7 +53,18 @@ class LocationSearchControllerTests {
         .andExpect(jsonPath("$.items[0].type").value("country"))
         .andExpect(jsonPath("$.items[0].id").value("BE"))
         .andExpect(jsonPath("$.items[0].latitude").value(nullValue()))
-        .andExpect(jsonPath("$.items[0].longitude").value(nullValue()));
+        .andExpect(jsonPath("$.items[0].longitude").value(nullValue()))
+        .andExpect(jsonPath("$.items[0].directResolution").value(false));
+  }
+
+  @Test
+  void should_markSingleExactPlace_asDirectlyResolvable() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/locations/suggestions").param("q", "Berlin"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].type").value("place"))
+        .andExpect(jsonPath("$.items[0].directResolution").value(true));
   }
 
   @Test
@@ -102,7 +114,8 @@ class LocationSearchControllerTests {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].type").value("place"))
-        .andExpect(jsonPath("$.items[0].label").value("Berlin, Germany"));
+        .andExpect(jsonPath("$.items[0].label").value("Berlin, Germany"))
+        .andExpect(jsonPath("$.items[0].directResolution").value(true));
   }
 
   @Test
@@ -209,7 +222,8 @@ class LocationSearchControllerTests {
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].type").value("postalCode"))
         .andExpect(jsonPath("$.items[0].postalCode").value("10115"))
-        .andExpect(jsonPath("$.items[0].label").value("10115 Berlin, Germany"));
+        .andExpect(jsonPath("$.items[0].label").value("10115 Berlin, Germany"))
+        .andExpect(jsonPath("$.items[0].directResolution").value(true));
   }
 
   @Test
@@ -220,7 +234,8 @@ class LocationSearchControllerTests {
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].type").value("postalCode"))
         .andExpect(jsonPath("$.items[0].postalCode").value("53757"))
-        .andExpect(jsonPath("$.items[0].label").value("53757 Sankt Augustin, Germany"));
+        .andExpect(jsonPath("$.items[0].label").value("53757 Sankt Augustin, Germany"))
+        .andExpect(jsonPath("$.items[0].directResolution").value(false));
   }
 
   @Test
@@ -253,7 +268,8 @@ class LocationSearchControllerTests {
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].type").value("place"))
         .andExpect(jsonPath("$.items[0].id").value("2841648"))
-        .andExpect(jsonPath("$.items[0].label").value("Sankt Augustin, Germany"));
+        .andExpect(jsonPath("$.items[0].label").value("Sankt Augustin, Germany"))
+        .andExpect(jsonPath("$.items[0].directResolution").value(true));
   }
 
   @Test
@@ -267,10 +283,39 @@ class LocationSearchControllerTests {
         .andExpect(jsonPath("$.items[0].id").value("2864067"))
         .andExpect(jsonPath("$.items[0].label").value("Neustadt, Bremen, Germany"))
         .andExpect(jsonPath("$.items[0].latitude").value(53.55196))
+        .andExpect(jsonPath("$.items[0].directResolution").value(false))
         .andExpect(jsonPath("$.items[1].type").value("place"))
         .andExpect(jsonPath("$.items[1].id").value("8379207"))
         .andExpect(jsonPath("$.items[1].label").value("Neustadt, Niedersachsen, Germany"))
-        .andExpect(jsonPath("$.items[1].latitude").value(52.26799));
+        .andExpect(jsonPath("$.items[1].latitude").value(52.26799))
+        .andExpect(jsonPath("$.items[1].directResolution").value(false));
+  }
+
+  @Test
+  void should_notMarkLimitedAmbiguousPlaces_asDirectlyResolvable() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/locations/suggestions").param("q", "Neustadt").param("limit", "1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].directResolution").value(false));
+  }
+
+  @Test
+  void should_notMarkLimitedAmbiguousPostalCodes_asDirectlyResolvable() throws Exception {
+    jdbcClient
+        .sql(
+            """
+            INSERT INTO german_postal_codes (
+                country_code, postal_code, place_name, normalized_place_name, admin1_name, latitude, longitude, accuracy
+            ) VALUES ('DE', '10115', 'Berlin Mitte', 'berlin mitte', 'Berlin', 52.53, 13.39, 6)
+            """)
+        .update();
+
+    mockMvc
+        .perform(get("/api/v1/locations/suggestions").param("q", "10115").param("limit", "1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].directResolution").value(false));
   }
 
   @Test

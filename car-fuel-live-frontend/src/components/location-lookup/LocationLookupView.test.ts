@@ -28,6 +28,7 @@ const berlin: LocationSearchResult = {
   latitude: 52.52437,
   longitude: 13.41053,
   postalCode: null,
+  directResolution: true,
 }
 
 const belgium: LocationSearchResult = {
@@ -38,6 +39,7 @@ const belgium: LocationSearchResult = {
   latitude: null,
   longitude: null,
   postalCode: null,
+  directResolution: false,
 }
 
 const fuelStop = {
@@ -64,9 +66,10 @@ describe('LocationLookupView', () => {
     searchGasStations.mockReset()
   })
 
-  it('should submit search only when requested and load prices when a place is selected', async () => {
+  it('should load prices without a second selection when the submitted place resolves directly', async () => {
     searchLocations.mockResolvedValue({ items: [berlin] })
     searchGasStations.mockResolvedValue({ items: [fuelStop] })
+    localStorage.setItem('car-fuel-live.selected-country', 'BE')
     const wrapper = mount(LocationLookupView)
 
     await wrapper.get('#location-query').setValue('Berlin')
@@ -74,8 +77,6 @@ describe('LocationLookupView', () => {
     expect(searchLocations).not.toHaveBeenCalled()
 
     await wrapper.get('form').trigger('submit')
-    await vi.waitFor(() => expect(searchLocations).toHaveBeenCalledTimes(1))
-    await wrapper.get('li button').trigger('click')
 
     await vi.waitFor(() =>
       expect(searchGasStations).toHaveBeenCalledWith(52.52437, 13.41053, {
@@ -83,6 +84,33 @@ describe('LocationLookupView', () => {
       }),
     )
     expect(wrapper.text()).toContain('Fuel Stop')
+    expect(wrapper.find('li button').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Wähle zuerst einen konkreten Ort.')
+    expect(localStorage.getItem('car-fuel-live.selected-country')).toBe('DE')
+  })
+
+  it('should keep ambiguous matches selectable without loading prices', async () => {
+    searchLocations.mockResolvedValue({
+      items: [
+        { ...berlin, directResolution: false },
+        {
+          ...berlin,
+          id: '3169070',
+          label: 'Berlin, El Salvador',
+          countryCode: 'SV',
+          latitude: 13.5,
+          longitude: -88.5,
+          directResolution: false,
+        },
+      ],
+    })
+    const wrapper = mount(LocationLookupView)
+
+    await wrapper.get('#location-query').setValue('Berlin')
+    await wrapper.get('form').trigger('submit')
+
+    await vi.waitFor(() => expect(wrapper.findAll('li button')).toHaveLength(2))
+    expect(searchGasStations).not.toHaveBeenCalled()
   })
 
   it('should update country context without prices when a country is selected', async () => {

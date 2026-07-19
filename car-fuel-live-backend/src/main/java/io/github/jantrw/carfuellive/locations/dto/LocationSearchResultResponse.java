@@ -13,4 +13,5 @@ public record LocationSearchResultResponse(
     String countryCode,
     Double latitude,
     Double longitude,
-    String postalCode) {}
+    String postalCode,
+    boolean directResolution) {}
