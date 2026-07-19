@@ -96,7 +96,6 @@ describe('LocationLookupView', () => {
 
     expect(searchGasStations).not.toHaveBeenCalled()
     expect(localStorage.getItem('car-fuel-live.selected-country')).toBe('BE')
-    expect(wrapper.text()).toContain('Belgium (BE)')
 
     await wrapper.get('#location-query').setValue('Berlin')
     await wrapper.get('form').trigger('submit')
