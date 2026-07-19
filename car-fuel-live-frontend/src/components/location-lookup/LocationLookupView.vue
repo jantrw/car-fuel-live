@@ -172,12 +172,14 @@ function handleQueryUpdate(value: string) {
 
       <section>
         <GasStationResultPanel
+          :has-more-stations="gasStationResults.hasMoreStations.value"
           :messages="messages"
           :selected-location-label="
             gasStationResults.selectedLocationLabel.value
           "
-          :stations="gasStationResults.stations.value"
+          :stations="gasStationResults.visibleStations.value"
           :status="gasStationResults.status.value"
+          @show-more-stations="gasStationResults.showMoreStations"
         />
       </section>
     </div>

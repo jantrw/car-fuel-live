@@ -12,6 +12,7 @@ Users select a country context, search locally for a country, place, region, or 
 - Country selection changes the search context only. It does not use a country centroid for a price lookup.
 - Place and postal-code selection use their stored coordinates for a live lookup.
 - The current station lookup uses a 5 km radius, all fuel types, and distance order.
+- A station result initially shows up to 10 stations; users can explicitly reveal five more from the current response without another price request.
 - The interface supports German and English.
 
 ## Privacy And Security
