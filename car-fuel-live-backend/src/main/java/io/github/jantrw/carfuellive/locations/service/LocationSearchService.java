@@ -44,19 +44,25 @@ public class LocationSearchService {
 
   @Transactional(readOnly = true)
   public LocationSearchResponse suggest(String query, String countryCode, int limit) {
-    return lookup(query, limit, normalizeCountryCode(countryCode));
+    return searchLocationSuggestions(query, limit, normalizeCountryCode(countryCode));
   }
 
-  // Prefer exact postal-code matches when input contains digits, then use exact name lookups
-  // before prefix fallback so indexed queries win whenever the user provides a full name.
-  private LocationSearchResponse lookup(
+  /**
+   * Builds a bounded, user-visible suggestion list from the local dataset.
+   *
+   * <p>Postal-code input has priority. Other input first gathers exact matches, then adds bounded
+   * prefix and near-prefix candidates only when no clear exact intent exists. Candidate families
+   * are ranked together and semantically deduplicated only after database retrieval so distinct
+   * same-name towns remain selectable.
+   */
+  private LocationSearchResponse searchLocationSuggestions(
       String query, int limit, Optional<String> boostedCountryCode) {
     final String normalizedQuery = normalize(query);
     final String prefixEnd = prefixEnd(normalizedQuery);
     final int candidateLimit = searchCandidateLimit(limit);
     final Map<String, LocationSearchResult> uniqueResults = new LinkedHashMap<>();
     final Comparator<LocationSearchResult> comparator =
-        resultComparator(normalizedQuery, boostedCountryCode);
+        createSearchResultComparator(normalizedQuery, boostedCountryCode);
     final boolean shouldUsePrefixFallback;
 
     final Optional<List<LocationSearchResult>> postalCodeResults =
@@ -184,17 +190,17 @@ public class LocationSearchService {
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlacesExact(normalizedQuery, candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaceAliasesExact(normalizedQuery, candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchCountriesExact(normalizedQuery, candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
   }
 
@@ -212,18 +218,18 @@ public class LocationSearchService {
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaces(normalizedQuery, prefixEnd, candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchCountries(normalizedQuery, prefixEnd, candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
     if (uniqueResults.size() < visibleLimit) {
       addBestResults(
           uniqueResults,
           locationSearchRepository.searchPlaceAliases(normalizedQuery, prefixEnd, candidateLimit),
-          LocationSearchService::idKey,
+          LocationSearchService::resultIdentityKey,
           comparator);
     }
   }
@@ -245,13 +251,13 @@ public class LocationSearchService {
         uniqueResults,
         locationSearchRepository.searchPlacesInCountry(
             normalizedQuery, prefixEnd(nearPrefix), "DE", candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaceAliasesInCountry(
             normalizedQuery, prefixEnd(nearPrefix), "DE", candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
   }
 
@@ -276,13 +282,13 @@ public class LocationSearchService {
         uniqueResults,
         locationSearchRepository.searchPlacesInCountry(
             variantQuery, variantPrefixEnd, "DE", candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaceAliasesInCountry(
             variantQuery, variantPrefixEnd, "DE", candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
   }
 
@@ -304,13 +310,13 @@ public class LocationSearchService {
         uniqueResults,
         locationSearchRepository.searchPlacesExactInCountry(
             normalizedQuery, countryCode, candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaceAliasesExactInCountry(
             normalizedQuery, countryCode, candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
   }
 
@@ -330,13 +336,13 @@ public class LocationSearchService {
         uniqueResults,
         locationSearchRepository.searchPlacesInCountry(
             normalizedQuery, prefixEnd, countryCode, candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
     addBestResults(
         uniqueResults,
         locationSearchRepository.searchPlaceAliasesInCountry(
             normalizedQuery, prefixEnd, countryCode, candidateLimit),
-        LocationSearchService::idKey,
+        LocationSearchService::resultIdentityKey,
         comparator);
   }
 
@@ -353,13 +359,13 @@ public class LocationSearchService {
       uniqueResults.merge(
           keyFactory.apply(result),
           result,
-          (current, candidate) -> best(current, candidate, comparator));
+          (current, candidate) -> selectHigherRankedResult(current, candidate, comparator));
     }
   }
 
   // The same visible location can arrive through primary names and aliases. Keep the best ranked
   // candidate after semantic dedupe.
-  private static LocationSearchResult best(
+  private static LocationSearchResult selectHigherRankedResult(
       LocationSearchResult current,
       LocationSearchResult candidate,
       Comparator<LocationSearchResult> comparator) {
@@ -368,7 +374,7 @@ public class LocationSearchService {
 
   // SQL assigns matchRank by match quality. Java applies shared tie-breakers so results from
   // place, alias, country, and postal-code queries are ranked consistently.
-  private static Comparator<LocationSearchResult> resultComparator(
+  private static Comparator<LocationSearchResult> createSearchResultComparator(
       String normalizedQuery, Optional<String> boostedCountryCode) {
     return Comparator.<LocationSearchResult>comparingInt(
             result -> intentRank(result, normalizedQuery, boostedCountryCode))
@@ -667,7 +673,7 @@ public class LocationSearchService {
     return countsById;
   }
 
-  private static String idKey(LocationSearchResult result) {
+  private static String resultIdentityKey(LocationSearchResult result) {
     return result.type() + ":" + result.id();
   }
 
@@ -750,38 +756,39 @@ public class LocationSearchService {
     }
 
     final List<LocationSearchResult> visibleResults = new ArrayList<>();
-    appendBucket(visibleResults, clearExactIntents, limit, limit);
+    appendDistinctResultsFromBucket(visibleResults, clearExactIntents, limit, limit);
 
     final int contextSlots = Math.min(limit - visibleResults.size(), CONTEXT_VISIBLE_TARGET);
-    appendBucket(visibleResults, contextPreferredPrefixes, contextSlots, limit);
+    appendDistinctResultsFromBucket(visibleResults, contextPreferredPrefixes, contextSlots, limit);
 
     final int globalSlots = Math.min(limit - visibleResults.size(), GLOBAL_VISIBLE_TARGET);
     final int reservedLowConfidenceExactSlots =
         lowConfidenceExactMatches.isEmpty() ? 0 : Math.min(1, globalSlots);
-    appendBucket(visibleResults, lowConfidenceExactMatches, reservedLowConfidenceExactSlots, limit);
-    appendBucket(
+    appendDistinctResultsFromBucket(
+        visibleResults, lowConfidenceExactMatches, reservedLowConfidenceExactSlots, limit);
+    appendDistinctResultsFromBucket(
         visibleResults, globalStrongPrefixes, globalSlots - reservedLowConfidenceExactSlots, limit);
-    appendBucket(
+    appendDistinctResultsFromBucket(
         visibleResults,
         lowConfidenceExactMatches,
         globalSlots - reservedLowConfidenceExactSlots,
         limit);
 
-    appendBucket(visibleResults, contextPreferredPrefixes, limit, limit);
-    appendBucket(visibleResults, globalStrongPrefixes, limit, limit);
-    appendBucket(visibleResults, lowConfidenceExactMatches, limit, limit);
-    appendBucket(visibleResults, rest, limit, limit);
+    appendDistinctResultsFromBucket(visibleResults, contextPreferredPrefixes, limit, limit);
+    appendDistinctResultsFromBucket(visibleResults, globalStrongPrefixes, limit, limit);
+    appendDistinctResultsFromBucket(visibleResults, lowConfidenceExactMatches, limit, limit);
+    appendDistinctResultsFromBucket(visibleResults, rest, limit, limit);
     return visibleResults;
   }
 
   private static List<LocationSearchResult> collectVisibleResults(
       List<LocationSearchResult> sortedResults, int limit) {
     final List<LocationSearchResult> visibleResults = new ArrayList<>();
-    appendBucket(visibleResults, sortedResults, limit, limit);
+    appendDistinctResultsFromBucket(visibleResults, sortedResults, limit, limit);
     return visibleResults;
   }
 
-  private static void appendBucket(
+  private static void appendDistinctResultsFromBucket(
       List<LocationSearchResult> visibleResults,
       List<LocationSearchResult> candidates,
       int maxFromBucket,
@@ -795,7 +802,7 @@ public class LocationSearchService {
       if (addedFromBucket == maxFromBucket || visibleResults.size() == limit) {
         return;
       }
-      if (containsSameResult(visibleResults, candidate)) {
+      if (containsSameResultIdentity(visibleResults, candidate)) {
         continue;
       }
       if (isSemanticPlaceDuplicateOfAny(visibleResults, candidate)) {
@@ -807,7 +814,7 @@ public class LocationSearchService {
     }
   }
 
-  private static boolean containsSameResult(
+  private static boolean containsSameResultIdentity(
       List<LocationSearchResult> visibleResults, LocationSearchResult candidate) {
     for (LocationSearchResult visibleResult : visibleResults) {
       if (Objects.equals(visibleResult.type(), candidate.type())
