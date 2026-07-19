@@ -60,3 +60,4 @@ playwright-*.yml
 tmp-*.err
 tmp-*.log
 tmp-*.ps1
+img-screenshots/
