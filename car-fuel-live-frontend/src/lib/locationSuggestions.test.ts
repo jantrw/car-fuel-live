@@ -13,6 +13,7 @@ describe('locationSuggestions', () => {
         latitude: null,
         longitude: null,
         postalCode: null,
+        directResolution: false,
       },
       {
         type: 'place' as const,
@@ -22,6 +23,7 @@ describe('locationSuggestions', () => {
         latitude: 52.52437,
         longitude: 13.41053,
         postalCode: null,
+        directResolution: false,
       },
       {
         type: 'postalCode' as const,
@@ -31,6 +33,7 @@ describe('locationSuggestions', () => {
         latitude: 52.532,
         longitude: 13.3849,
         postalCode: '10115',
+        directResolution: false,
       },
     ]
 

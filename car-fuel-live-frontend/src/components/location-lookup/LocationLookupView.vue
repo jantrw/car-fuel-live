@@ -43,6 +43,13 @@ async function handleResultSelection(result: LocationSearchResult) {
   await gasStationResults.loadForSelection(result)
 }
 
+async function handleSearchSubmit() {
+  const directResult = await lookup.submitSearch()
+  if (directResult !== null) {
+    await handleResultSelection(directResult)
+  }
+}
+
 function handleQueryUpdate(value: string) {
   lookup.updateQuery(value)
   gasStationResults.reset()
@@ -116,7 +123,7 @@ function handleQueryUpdate(value: string) {
             :messages="messages"
             :query="lookup.query.value"
             :validation-message="lookup.validationMessage.value"
-            @submit-search="lookup.submitSearch"
+            @submit-search="handleSearchSubmit"
             @update-query="handleQueryUpdate"
           >
             <template #results>
@@ -160,6 +167,7 @@ function handleQueryUpdate(value: string) {
       </section>
 
       <section
+        v-if="gasStationResults.status.value === 'idle'"
         class="flex items-center gap-5 rounded-2xl border border-slate-300 bg-white px-6 py-7 text-lg shadow-sm"
       >
         <span

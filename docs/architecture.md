@@ -24,7 +24,7 @@ The backend is a stateless public Spring Boot API. It resolves manual-search res
 
 | Endpoint | Responsibility |
 | --- | --- |
-| `GET /api/v1/locations/suggestions` | Local country, place, and German postal-code search. `q` is 2 to 80 characters; `countryCode` ranks but never filters. |
+| `GET /api/v1/locations/suggestions` | Local country, place, and German postal-code search. `q` is 2 to 80 characters; `countryCode` ranks but never filters. A result is marked for direct resolution only when one clear exact place or postal-code match exists. |
 | `GET /api/v1/gas-stations` | Live nearby prices for validated `lat` and `lng`. Uses fixed MVP defaults: 5 km, all fuel types, distance order. |
 
 Search returns typed items: `country`, `place`, or `postalCode`. Only places and postal codes include coordinates. No matches return an empty item list.

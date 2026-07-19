@@ -10,6 +10,7 @@ export interface LocationSearchResult {
   latitude: number | null
   longitude: number | null
   postalCode: string | null
+  directResolution: boolean
 }
 
 export interface LocationSearchResponse {
@@ -81,6 +82,7 @@ function parseLocationSearchResult(value: unknown): LocationSearchResult {
     latitude: parseNullableNumber(value.latitude, 'latitude'),
     longitude: parseNullableNumber(value.longitude, 'longitude'),
     postalCode: parseNullableString(value.postalCode, 'postalCode'),
+    directResolution: parseBoolean(value.directResolution, 'directResolution'),
   }
 }
 
@@ -114,6 +116,14 @@ function parseNullableString(value: unknown, field: string): string | null {
 // still be rejected.
 function parseNullableNumber(value: unknown, field: string): number | null {
   if (value === null || typeof value === 'number') {
+    return value
+  }
+
+  throw new Error(`Invalid location lookup ${field}.`)
+}
+
+function parseBoolean(value: unknown, field: string): boolean {
+  if (typeof value === 'boolean') {
     return value
   }
 

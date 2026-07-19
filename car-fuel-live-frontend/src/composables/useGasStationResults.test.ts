@@ -55,6 +55,7 @@ describe('useGasStationResults', () => {
       latitude: 52.52437,
       longitude: 13.41053,
       postalCode: null,
+      directResolution: false,
     })
 
     expect(search).toHaveBeenCalledWith(52.52437, 13.41053, {
@@ -76,6 +77,7 @@ describe('useGasStationResults', () => {
       latitude: null,
       longitude: null,
       postalCode: null,
+      directResolution: false,
     })
 
     expect(search).not.toHaveBeenCalled()
@@ -114,6 +116,7 @@ describe('useGasStationResults', () => {
       latitude: 52.52437,
       longitude: 13.41053,
       postalCode: null,
+      directResolution: false,
     })
 
     gasStationResults.reset()
@@ -141,6 +144,7 @@ describe('useGasStationResults', () => {
       latitude: 52.52437,
       longitude: 13.41053,
       postalCode: null,
+      directResolution: false,
     })
 
     expect(gasStationResults.status.value).toBe('rateLimited')
@@ -161,6 +165,7 @@ describe('useGasStationResults', () => {
       latitude: 52.52437,
       longitude: 13.41053,
       postalCode: null,
+      directResolution: false,
     })
 
     expect(gasStationResults.visibleStations.value).toHaveLength(10)
