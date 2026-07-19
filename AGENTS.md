@@ -28,6 +28,22 @@
 
 ## Verification
 - Frontend: ESLint, Prettier, Vitest, production build.
-- For frontend changes, use Playwright MCP to verify behavior and capture screenshots for visual checks. Screenshots are local artifacts; never commit them.
+- For frontend changes, use Playwright MCP to verify behavior and capture screenshots for visual checks. Store screenshots in `img-screenshots/`; they are local artifacts and must never be committed.
 - Backend: Spotless and Gradle tests.
 - Full backend tests may need Docker/Testcontainers.
+
+## Codex Code Review guidelines
+
+**Use these guidelines only when using the automated PR review!**
+
+- Write all review findings in German.
+- Keep findings concise.
+- Use a short imperative title.
+- Limit the explanation to at most three sentences.
+- Do not restate the changed code.
+- Do not include praise, generic advice, or introductory text.
+- State only:
+    1. the concrete defect,
+    2. its practical consequence,
+    3. the smallest reasonable correction.
+- Only report actionable issues with a realistic failure scenario.

@@ -43,20 +43,6 @@ out/
 ### VS Code ###
 .vscode/
 
-# Repo-local Codex stays private.
-.codex/
-
-# Local workflow scratch files
-todo.md
-lessons.md
-grill-me-session.md
-/docs/slice-1-manual-search-plan.md
-
 # Local test and agent artifacts
 .gradle-verification/
-.playwright-mcp/
 backups/
-playwright-*.yml
-tmp-*.err
-tmp-*.log
-tmp-*.ps1
