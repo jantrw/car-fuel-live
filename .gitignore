@@ -46,3 +46,4 @@ out/
 # Local test and agent artifacts
 .gradle-verification/
 backups/
+img-screenshots/

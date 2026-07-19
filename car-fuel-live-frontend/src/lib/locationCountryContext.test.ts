@@ -61,6 +61,24 @@ describe('locationCountryContext', () => {
     expect(countryCode).toBe('DE')
   })
 
+  it('should derive and return a country when storage access is unavailable', () => {
+    const unavailableStorage = {
+      getItem() {
+        throw new Error('Storage is unavailable')
+      },
+      setItem() {
+        throw new Error('Storage is unavailable')
+      },
+    }
+
+    expect(
+      deriveInitialCountryCode({
+        storage: unavailableStorage,
+        languages: ['de-AT'],
+      }),
+    ).toBe('AT')
+  })
+
   it('should format the visible country label through Intl display names when available', () => {
     expect(formatCountryContextLabel('DE', 'en')).toBe('Germany')
     expect(formatCountryContextLabel('DE', 'de')).toBe('Deutschland')

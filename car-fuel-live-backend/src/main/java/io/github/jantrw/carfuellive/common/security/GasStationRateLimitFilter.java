@@ -12,18 +12,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Applies lightweight request throttling to the live fuel-price endpoint.
+ * Applies lightweight request throttling to public lookup endpoints.
  *
- * <p>The filter only guards {@code GET /api/v1/gas-stations}; other routes stay untouched so
- * location search and framework internals are not coupled to this first abuse-protection slice.
+ * <p>The filter guards fuel-price and location-suggestion requests. Framework internals and all
+ * other routes stay untouched.
  */
 @Component
 public class GasStationRateLimitFilter extends OncePerRequestFilter {
 
   private static final String GAS_STATIONS_PATH = "/api/v1/gas-stations";
+  private static final String LOCATION_SUGGESTIONS_PATH = "/api/v1/locations/suggestions";
   private static final String RATE_LIMITED_RESPONSE_BODY =
       """
-      {"code":"RATE_LIMITED","message":"Too many fuel price requests from this client.","details":[]}
+      {"code":"RATE_LIMITED","message":"Too many requests from this client.","details":[]}
       """;
 
   private final ClientAddressResolver clientAddressResolver;
@@ -39,7 +40,8 @@ public class GasStationRateLimitFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
     return !HttpMethod.GET.matches(request.getMethod())
-        || !GAS_STATIONS_PATH.equals(requestPath(request));
+        || !(GAS_STATIONS_PATH.equals(requestPath(request))
+            || LOCATION_SUGGESTIONS_PATH.equals(requestPath(request)));
   }
 
   @Override

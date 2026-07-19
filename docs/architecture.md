@@ -47,4 +47,4 @@ The database is the only manual-search and coordinate-resolution source. There i
 - The frontend persists only the selected country; it never persists raw coordinates.
 - The API key exists only in backend environment-backed configuration and is never logged or returned.
 - Controllers validate public input. Responses use structured errors; internal details remain server-side.
-- Public price lookups are rate-limited before upstream calls.
+- Public price lookups and location suggestions are rate-limited before upstream or database work.

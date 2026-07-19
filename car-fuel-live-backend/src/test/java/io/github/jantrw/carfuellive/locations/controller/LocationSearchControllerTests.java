@@ -3,10 +3,13 @@ package io.github.jantrw.carfuellive.locations.controller;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.jantrw.carfuellive.common.security.InMemoryGasStationRequestRateLimiter;
 import io.github.jantrw.carfuellive.locations.support.LocationSearchTestData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -24,9 +28,22 @@ class LocationSearchControllerTests {
 
   @Autowired private JdbcClient jdbcClient;
 
+  @MockitoBean private InMemoryGasStationRequestRateLimiter gasStationRequestRateLimiter;
+
   @BeforeEach
   void setUpLocationRows() {
+    when(gasStationRequestRateLimiter.allowRequest(anyString())).thenReturn(true);
     LocationSearchTestData.resetDefaultFixture(jdbcClient);
+  }
+
+  @Test
+  void should_returnTooManyRequests_when_locationRateLimitIsExceeded() throws Exception {
+    when(gasStationRequestRateLimiter.allowRequest(anyString())).thenReturn(false);
+
+    mockMvc
+        .perform(get("/api/v1/locations/suggestions").param("q", "Berlin"))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
   }
 
   @Test
