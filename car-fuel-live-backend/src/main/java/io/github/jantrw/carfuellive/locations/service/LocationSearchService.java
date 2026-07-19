@@ -88,10 +88,16 @@ public class LocationSearchService {
     final List<LocationSearchResult> filteredResults =
         filterConfusingExactAliases(
             uniqueResults.values().stream().sorted(comparator).toList(), normalizedQuery);
+    final List<LocationSearchResult> deduplicatedResults =
+        collectVisibleResults(filteredResults, filteredResults.size());
     return toSearchResponse(
         limitVisibleResults(
-            filteredResults, limit, normalizedQuery, boostedCountryCode, shouldUsePrefixFallback),
-        hasDirectResolution(filteredResults, normalizedQuery));
+            deduplicatedResults,
+            limit,
+            normalizedQuery,
+            boostedCountryCode,
+            shouldUsePrefixFallback),
+        hasDirectResolution(deduplicatedResults, normalizedQuery));
   }
 
   // Exact lookups should usually short-circuit to stay index-friendly. Keep the prefix fallback

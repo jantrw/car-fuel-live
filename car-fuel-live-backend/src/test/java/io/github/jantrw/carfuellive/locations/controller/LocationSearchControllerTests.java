@@ -268,7 +268,8 @@ class LocationSearchControllerTests {
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].type").value("place"))
         .andExpect(jsonPath("$.items[0].id").value("2841648"))
-        .andExpect(jsonPath("$.items[0].label").value("Sankt Augustin, Germany"));
+        .andExpect(jsonPath("$.items[0].label").value("Sankt Augustin, Germany"))
+        .andExpect(jsonPath("$.items[0].directResolution").value(true));
   }
 
   @Test
