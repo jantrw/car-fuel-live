@@ -8,6 +8,7 @@ package-lock.json
 package.json
 car-fuel-live.iml
 node_modules/*
+.gitattributes
 
 ### STS ###
 .apt_generated
