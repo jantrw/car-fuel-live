@@ -57,4 +57,7 @@ tasks.named('test') {
 
 dependencyCheck {
 	failBuildOnCVSS = 7
+	nvd {
+		apiKey = System.getenv('NVD_API_KEY')
+	}
 }

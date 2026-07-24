@@ -9,6 +9,7 @@ package.json
 car-fuel-live.iml
 node_modules/*
 .gitattributes
+.actrc
 
 ### STS ###
 .apt_generated
