@@ -16,6 +16,7 @@ describe('searchLocations', () => {
               latitude: 52.52437,
               longitude: 13.41053,
               postalCode: null,
+              directResolution: true,
             },
           ],
         }),
@@ -41,6 +42,7 @@ describe('searchLocations', () => {
       latitude: 52.52437,
       longitude: 13.41053,
       postalCode: null,
+      directResolution: true,
     })
   })
 

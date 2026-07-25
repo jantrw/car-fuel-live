@@ -94,7 +94,11 @@ export function persistCountryCode(
     return
   }
 
-  storage.setItem(COUNTRY_STORAGE_KEY, normalizedCountryCode)
+  try {
+    storage.setItem(COUNTRY_STORAGE_KEY, normalizedCountryCode)
+  } catch {
+    // Storage can be unavailable in private browsing or embedded browser contexts.
+  }
 }
 
 export function formatCountryContextLabel(
@@ -165,7 +169,11 @@ function readStoredCountryCode(storage: StorageLike | null): string | null {
     return null
   }
 
-  return normalizeCountryCode(storage.getItem(COUNTRY_STORAGE_KEY))
+  try {
+    return normalizeCountryCode(storage.getItem(COUNTRY_STORAGE_KEY))
+  } catch {
+    return null
+  }
 }
 
 function countryCodeFromLanguage(language: string): string | null {
@@ -200,5 +208,9 @@ function defaultStorage(): StorageLike | null {
     return null
   }
 
-  return window.localStorage
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
 }

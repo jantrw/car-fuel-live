@@ -66,9 +66,11 @@ public class LocationSearchService {
     final boolean shouldUsePrefixFallback;
 
     final Optional<List<LocationSearchResult>> postalCodeResults =
-        searchGermanPostalCodeResults(normalizedQuery, limit, comparator);
+        searchGermanPostalCodeResults(normalizedQuery, candidateLimit, comparator);
     if (postalCodeResults.isPresent()) {
-      return toSearchResponse(postalCodeResults.get());
+      return toSearchResponse(
+          postalCodeResults.get().stream().limit(limit).toList(),
+          hasDirectResolution(postalCodeResults.get(), normalizedQuery));
     }
 
     addExactResults(uniqueResults, normalizedQuery, candidateLimit, comparator, boostedCountryCode);
@@ -89,13 +91,19 @@ public class LocationSearchService {
           uniqueResults, normalizedQuery, candidateLimit, comparator, boostedCountryCode);
     }
 
+    final List<LocationSearchResult> filteredResults =
+        filterConfusingExactAliases(
+            uniqueResults.values().stream().sorted(comparator).toList(), normalizedQuery);
+    final List<LocationSearchResult> deduplicatedResults =
+        collectVisibleResults(filteredResults, filteredResults.size());
     return toSearchResponse(
         limitVisibleResults(
-            uniqueResults.values().stream().sorted(comparator).toList(),
+            deduplicatedResults,
             limit,
             normalizedQuery,
             boostedCountryCode,
-            shouldUsePrefixFallback));
+            shouldUsePrefixFallback),
+        hasDirectResolution(deduplicatedResults, normalizedQuery));
   }
 
   // Exact lookups should usually short-circuit to stay index-friendly. Keep the prefix fallback
@@ -614,16 +622,34 @@ public class LocationSearchService {
 
   // German same-label places need one extra disambiguator in the visible label; other countries
   // already remain understandable with the default place + country text.
-  private static LocationSearchResponse toSearchResponse(List<LocationSearchResult> results) {
+  private static LocationSearchResponse toSearchResponse(
+      List<LocationSearchResult> results, boolean hasDirectResolution) {
     final Map<String, Long> visibleGermanPlaceCounts = visibleGermanPlaceCounts(results);
     final List<LocationSearchResultResponse> items =
         results.stream()
             .map(
                 result ->
-                    toResponse(result, visibleGermanPlaceCounts.getOrDefault(result.id(), 0L) > 1))
+                    toResponse(
+                        result,
+                        visibleGermanPlaceCounts.getOrDefault(result.id(), 0L) > 1,
+                        hasDirectResolution))
             .toList();
 
     return new LocationSearchResponse(items);
+  }
+
+  private static boolean hasDirectResolution(
+      List<LocationSearchResult> results, String normalizedQuery) {
+    return results.size() == 1 && isDirectlyResolvable(results.getFirst(), normalizedQuery);
+  }
+
+  // The client must not infer intent from display labels. Only an unambiguous, clear exact place
+  // or postal-code match is safe to resolve immediately after the user's explicit submit.
+  private static boolean isDirectlyResolvable(LocationSearchResult result, String normalizedQuery) {
+    return !"country".equals(result.type())
+        && result.latitude() != null
+        && result.longitude() != null
+        && isClearExactIntent(result, normalizedQuery);
   }
 
   private static Map<String, Long> visibleGermanPlaceCounts(List<LocationSearchResult> results) {
@@ -662,13 +688,11 @@ public class LocationSearchService {
       String normalizedQuery,
       Optional<String> boostedCountryCode,
       boolean mixedPrefixLayout) {
-    final List<LocationSearchResult> filteredResults =
-        filterConfusingExactAliases(sortedResults, normalizedQuery);
     if (!mixedPrefixLayout || boostedCountryCode.isEmpty()) {
-      return collectVisibleResults(filteredResults, limit);
+      return collectVisibleResults(sortedResults, limit);
     }
 
-    return collectMixedVisibleResults(filteredResults, limit, normalizedQuery, boostedCountryCode);
+    return collectMixedVisibleResults(sortedResults, limit, normalizedQuery, boostedCountryCode);
   }
 
   private static List<LocationSearchResult> filterConfusingExactAliases(
@@ -934,7 +958,7 @@ public class LocationSearchService {
   }
 
   private static LocationSearchResultResponse toResponse(
-      LocationSearchResult result, boolean includeGermanAdmin1Name) {
+      LocationSearchResult result, boolean includeGermanAdmin1Name, boolean directResolution) {
     return new LocationSearchResultResponse(
         result.type(),
         result.id(),
@@ -942,7 +966,8 @@ public class LocationSearchService {
         result.countryCode(),
         responseLatitude(result),
         responseLongitude(result),
-        result.postalCode());
+        result.postalCode(),
+        directResolution);
   }
 
   private static Double responseLatitude(LocationSearchResult result) {

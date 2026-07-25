@@ -54,9 +54,9 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
   const groupedResults = computed(() => groupLocationSuggestions(results.value))
   const hasVisibleResults = computed(() => status.value === 'results')
 
-  async function submitSearch() {
+  async function submitSearch(): Promise<LocationSearchResult | null> {
     if (status.value === 'loading') {
-      return
+      return null
     }
 
     const nextQuery = trimmedQuery.value
@@ -66,14 +66,14 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
       results.value = []
       status.value = 'validation'
       validationMessage.value = 'QUERY_TOO_SHORT'
-      return
+      return null
     }
 
     if (nextQuery.length > MAX_QUERY_LENGTH) {
       results.value = []
       status.value = 'validation'
       validationMessage.value = 'QUERY_TOO_LONG'
-      return
+      return null
     }
 
     currentController?.abort()
@@ -90,18 +90,20 @@ export function useLocationLookup(options: UseLocationLookupOptions = {}) {
       })
 
       if (controller.signal.aborted || currentController !== controller) {
-        return
+        return null
       }
 
       results.value = response.items
       status.value = response.items.length > 0 ? 'results' : 'noResults'
+      return response.items.find((result) => result.directResolution) ?? null
     } catch {
       if (controller.signal.aborted || currentController !== controller) {
-        return
+        return null
       }
 
       results.value = []
       status.value = 'error'
+      return null
     } finally {
       if (currentController === controller) {
         currentController = null

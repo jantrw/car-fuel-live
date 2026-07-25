@@ -24,7 +24,7 @@ The backend is a stateless public Spring Boot API. It resolves manual-search res
 
 | Endpoint | Responsibility |
 | --- | --- |
-| `GET /api/v1/locations/suggestions` | Local country, place, and German postal-code search. `q` is 2 to 80 characters; `countryCode` ranks but never filters. |
+| `GET /api/v1/locations/suggestions` | Local country, place, and German postal-code search. `q` is 2 to 80 characters; `countryCode` ranks but never filters. A result is marked for direct resolution only when one clear exact place or postal-code match exists. |
 | `GET /api/v1/gas-stations` | Live nearby prices for validated `lat` and `lng`. Uses fixed MVP defaults: 5 km, all fuel types, distance order. |
 
 Search returns typed items: `country`, `place`, or `postalCode`. Only places and postal codes include coordinates. No matches return an empty item list.
@@ -47,4 +47,4 @@ The database is the only manual-search and coordinate-resolution source. There i
 - The frontend persists only the selected country; it never persists raw coordinates.
 - The API key exists only in backend environment-backed configuration and is never logged or returned.
 - Controllers validate public input. Responses use structured errors; internal details remain server-side.
-- Public price lookups are rate-limited before upstream calls.
+- Public price lookups and location suggestions are rate-limited before upstream or database work.

@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Fuel, MapPinned, TriangleAlert } from 'lucide-vue-next'
+import { LoaderCircle, MapPinned, TriangleAlert } from 'lucide-vue-next'
 
 import type { GasStationResult } from '@/api/gasStations'
 import type { LocationLookupMessages } from '@/i18n/locationLookupMessages'
+import { getStationBrandAccent } from '@/lib/stationBrandAccent'
 
 const props = defineProps<{
   stations: readonly GasStationResult[]
+  hasMoreStations: boolean
   status:
     | 'idle'
     | 'loading'
@@ -18,6 +20,10 @@ const props = defineProps<{
   messages: LocationLookupMessages
 }>()
 
+const emit = defineEmits<{
+  showMoreStations: []
+}>()
+
 function formatPrice(value: number | null) {
   if (value === null) {
     return props.messages.stationPriceUnavailable
@@ -26,7 +32,7 @@ function formatPrice(value: number | null) {
   return `${new Intl.NumberFormat(props.messages.locale, {
     minimumFractionDigits: 3,
     maximumFractionDigits: 3,
-  }).format(value)} €/L`
+  }).format(value)} €`
 }
 
 function formatDistance(value: number | null) {
@@ -74,7 +80,7 @@ function openStateLabel(isOpen: boolean | null) {
 <template>
   <section
     v-if="props.status !== 'idle'"
-    class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+    class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
     aria-live="polite"
   >
     <div class="flex items-center justify-between gap-3">
@@ -84,7 +90,7 @@ function openStateLabel(isOpen: boolean | null) {
         >
           {{ props.messages.stationResultsEyebrow }}
         </p>
-        <h2 class="mt-1 text-lg font-semibold text-slate-950">
+        <h2 class="mt-1 text-3xl font-bold tracking-tight text-[#063b37]">
           {{ props.messages.stationResultsTitle }}
         </h2>
       </div>
@@ -96,7 +102,14 @@ function openStateLabel(isOpen: boolean | null) {
       </p>
     </div>
 
-    <p v-if="props.status === 'loading'" class="mt-4 text-sm text-slate-600">
+    <p
+      v-if="props.status === 'loading'"
+      class="mt-4 flex items-center gap-2 text-sm text-slate-600"
+    >
+      <LoaderCircle
+        class="size-4 animate-spin motion-reduce:animate-none"
+        aria-hidden="true"
+      />
       {{ props.messages.stationLoading }}
     </p>
 
@@ -134,34 +147,44 @@ function openStateLabel(isOpen: boolean | null) {
       {{ props.messages.stationRateLimitedBody }}
     </p>
 
-    <div v-else class="mt-4 grid gap-3">
-      <div class="grid gap-3 xl:grid-cols-2">
+    <div v-else class="mt-5 grid gap-3">
+      <div class="grid gap-1">
         <article
           v-for="station in props.stations"
           :key="station.id"
-          class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+          class="overflow-hidden rounded-xl border border-l-8 border-slate-200 border-l-teal-500 bg-white"
+          :style="{ borderLeftColor: getStationBrandAccent(station.brand) }"
         >
-          <div class="border-b border-slate-200 bg-white px-4 py-3">
+          <div class="border-b border-slate-200 bg-white px-5 py-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div class="min-w-0">
-                <h3 class="truncate text-base font-semibold text-slate-950">
+                <h3
+                  class="truncate text-2xl font-bold tracking-tight text-[#063b37]"
+                >
                   {{ station.name }}
                 </h3>
-                <p class="mt-1 text-sm text-slate-600">
+                <p class="mt-1 text-base text-slate-700">
                   {{ station.brand ?? props.messages.stationBrandFallback }} ·
                   {{ formatAddress(station) }}
                 </p>
               </div>
               <div
-                class="flex flex-wrap items-center gap-2 text-xs font-semibold"
+                class="flex flex-wrap items-center gap-2 text-base font-semibold"
               >
                 <span
-                  class="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-900"
+                  class="rounded-full bg-teal-100 px-3 py-1.5 text-teal-900"
                 >
                   {{ formatDistance(station.distanceKm) }}
                 </span>
                 <span
-                  class="rounded-full bg-slate-200 px-2.5 py-1 text-slate-700"
+                  :class="
+                    station.isOpen === true
+                      ? 'bg-emerald-100 text-emerald-900'
+                      : station.isOpen === false
+                        ? 'bg-red-100 text-red-900'
+                        : 'bg-slate-200 text-slate-700'
+                  "
+                  class="rounded-full px-3 py-1.5"
                 >
                   {{ openStateLabel(station.isOpen) }}
                 </span>
@@ -169,49 +192,37 @@ function openStateLabel(isOpen: boolean | null) {
             </div>
           </div>
 
-          <div class="grid gap-2 px-4 py-4 sm:grid-cols-3">
-            <div
-              class="rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-200"
-            >
-              <div
-                class="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase"
-              >
-                <Fuel class="size-3.5" aria-hidden="true" />
-                E5
-              </div>
-              <p class="mt-2 text-lg font-semibold text-slate-950">
+          <div class="grid gap-2 px-5 py-4 sm:grid-cols-3">
+            <div class="border-l border-slate-200 px-3 py-2 first:border-l-0">
+              <div class="text-sm text-slate-700">E5</div>
+              <p class="mt-1 text-2xl font-bold text-[#063b37]">
                 {{ formatPrice(station.e5) }}
               </p>
             </div>
-            <div
-              class="rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-200"
-            >
-              <div
-                class="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase"
-              >
-                <Fuel class="size-3.5" aria-hidden="true" />
-                E10
-              </div>
-              <p class="mt-2 text-lg font-semibold text-slate-950">
+            <div class="border-l border-slate-200 px-3 py-2">
+              <div class="text-sm text-slate-700">E10</div>
+              <p class="mt-1 text-2xl font-bold text-[#063b37]">
                 {{ formatPrice(station.e10) }}
               </p>
             </div>
-            <div
-              class="rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-200"
-            >
-              <div
-                class="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase"
-              >
-                <Fuel class="size-3.5" aria-hidden="true" />
-                Diesel
-              </div>
-              <p class="mt-2 text-lg font-semibold text-slate-950">
+            <div class="border-l border-slate-200 px-3 py-2">
+              <div class="text-sm text-slate-700">Diesel</div>
+              <p class="mt-1 text-2xl font-bold text-[#063b37]">
                 {{ formatPrice(station.diesel) }}
               </p>
             </div>
           </div>
         </article>
       </div>
+
+      <button
+        v-if="props.hasMoreStations"
+        class="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-teal-700 bg-white px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 focus:ring-2 focus:ring-teal-200 focus:outline-none"
+        type="button"
+        @click="emit('showMoreStations')"
+      >
+        {{ props.messages.stationShowMore }}
+      </button>
 
       <div
         class="flex flex-wrap items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"

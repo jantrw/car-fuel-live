@@ -1,13 +1,20 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '4.0.3'
+	id 'org.springframework.boot' version '4.0.7'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'com.diffplug.spotless' version '6.25.0'
+	id 'org.owasp.dependencycheck' version '12.2.2'
 }
 
 group = 'io.github.jantrw'
 version = '0.0.1-SNAPSHOT'
 description = 'Car Fuel Live backend'
+
+ext['jackson-2-bom.version'] = '2.21.5'
+ext['jackson-bom.version'] = '3.1.5'
+ext['log4j2.version'] = '2.25.5'
+ext['postgresql.version'] = '42.7.13'
+ext['tomcat.version'] = '11.0.24'
 
 java {
 	toolchain {
@@ -33,7 +40,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
-	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
@@ -50,5 +57,15 @@ dependencies {
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform();
+	spotlessJavaCheck;
+}
+
+dependencyCheck {
+	failBuildOnCVSS = 7
+	skipConfigurations = ['developmentOnly']
+	nvd {
+		apiKey = System.getenv('NVD_API_KEY')
+		validForHours = 48
+	}
 }

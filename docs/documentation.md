@@ -4,7 +4,7 @@ Car Fuel Live is a public, no-login application for finding current fuel prices 
 
 ## Current Product
 
-Users select a country context, search locally for a country, place, region, or German postal code, then select a concrete place or postal code to load nearby live station prices.
+Users select a country context and search locally for a country, place, region, or German postal code. A single clear exact place or postal-code match loads nearby live station prices directly; otherwise users select a concrete result.
 
 - The initial country comes from a saved selection, browser locale, time zone, then Germany.
 - The selected country is the only browser-persisted value. Coordinates are never persisted.
@@ -12,6 +12,7 @@ Users select a country context, search locally for a country, place, region, or 
 - Country selection changes the search context only. It does not use a country centroid for a price lookup.
 - Place and postal-code selection use their stored coordinates for a live lookup.
 - The current station lookup uses a 5 km radius, all fuel types, and distance order.
+- A station result initially shows up to 10 stations; users can explicitly reveal five more from the current response without another price request.
 - The interface supports German and English.
 
 ## Privacy And Security

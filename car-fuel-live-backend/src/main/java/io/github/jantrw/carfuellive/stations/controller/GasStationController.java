@@ -1,7 +1,7 @@
 package io.github.jantrw.carfuellive.stations.controller;
 
 import io.github.jantrw.carfuellive.stations.dto.GasStationSearchResponse;
-import io.github.jantrw.carfuellive.stations.service.GasStationSearchService;
+import io.github.jantrw.carfuellive.tankerkoenig.service.TankerkoenigRestClient;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.constraints.DecimalMax;
@@ -12,27 +12,22 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * HTTP entry point for live fuel-price lookups around coordinates.
- *
- * <p>The controller keeps only request validation and OpenAPI metadata; the Tankerkönig-backed
- * lookup flow itself lives in {@link GasStationSearchService}.
- */
+/** HTTP entry point for live fuel-price lookups around coordinates. */
 @RestController
 @RequestMapping("/api/v1/gas-stations")
 @Validated
 public class GasStationController {
 
-  private final GasStationSearchService gasStationSearchService;
+  private final TankerkoenigRestClient tankerkoenigRestClient;
 
-  public GasStationController(GasStationSearchService gasStationSearchService) {
-    this.gasStationSearchService = gasStationSearchService;
+  public GasStationController(TankerkoenigRestClient tankerkoenigRestClient) {
+    this.tankerkoenigRestClient = tankerkoenigRestClient;
   }
 
   @Operation(
       summary = "Search gas stations by coordinates",
       description =
-          "Resolve gas stations and live fuel prices around coordinates through the Tankerkönig backend integration.")
+          "Resolve gas stations and live fuel prices around coordinates through the TankerkÃ¶nig backend integration.")
   @ApiResponse(responseCode = "200", description = "Gas station lookup completed.")
   @ApiResponse(responseCode = "400", description = "Gas station lookup request validation failed.")
   @ApiResponse(responseCode = "502", description = "Fuel price service is currently unavailable.")
@@ -46,6 +41,6 @@ public class GasStationController {
           @DecimalMin(value = "-180.0", message = "Longitude must be at least -180.")
           @DecimalMax(value = "180.0", message = "Longitude must be at most 180.")
           double longitude) {
-    return gasStationSearchService.searchStations(latitude, longitude);
+    return new GasStationSearchResponse(tankerkoenigRestClient.searchStations(latitude, longitude));
   }
 }

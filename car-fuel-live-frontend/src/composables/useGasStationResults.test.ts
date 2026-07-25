@@ -4,6 +4,25 @@ import { GasStationLookupError } from '@/api/gasStations'
 
 import { useGasStationResults } from './useGasStationResults'
 
+function station(id: number) {
+  return {
+    id: `station-${id}`,
+    name: `Fuel Stop ${id}`,
+    brand: 'Brand',
+    street: 'Main Street',
+    houseNumber: '10',
+    postCode: '10115',
+    place: 'Berlin',
+    latitude: 52.52,
+    longitude: 13.41,
+    distanceKm: 0.5,
+    isOpen: true,
+    e5: 1.759,
+    e10: null,
+    diesel: 1.589,
+  }
+}
+
 describe('useGasStationResults', () => {
   it('should load gas stations when a place with coordinates is selected', async () => {
     const search = vi.fn(async () => ({
@@ -36,6 +55,7 @@ describe('useGasStationResults', () => {
       latitude: 52.52437,
       longitude: 13.41053,
       postalCode: null,
+      directResolution: false,
     })
 
     expect(search).toHaveBeenCalledWith(52.52437, 13.41053, {
@@ -57,6 +77,7 @@ describe('useGasStationResults', () => {
       latitude: null,
       longitude: null,
       postalCode: null,
+      directResolution: false,
     })
 
     expect(search).not.toHaveBeenCalled()
@@ -95,6 +116,7 @@ describe('useGasStationResults', () => {
       latitude: 52.52437,
       longitude: 13.41053,
       postalCode: null,
+      directResolution: false,
     })
 
     gasStationResults.reset()
@@ -122,9 +144,47 @@ describe('useGasStationResults', () => {
       latitude: 52.52437,
       longitude: 13.41053,
       postalCode: null,
+      directResolution: false,
     })
 
     expect(gasStationResults.status.value).toBe('rateLimited')
     expect(gasStationResults.stations.value).toEqual([])
+  })
+
+  it('should reveal loaded stations in explicit batches without another price request', async () => {
+    const search = vi.fn(async () => ({
+      items: Array.from({ length: 16 }, (_, index) => station(index + 1)),
+    }))
+    const gasStationResults = useGasStationResults({ search })
+
+    await gasStationResults.loadForSelection({
+      type: 'place',
+      id: '2950159',
+      label: 'Berlin, Germany',
+      countryCode: 'DE',
+      latitude: 52.52437,
+      longitude: 13.41053,
+      postalCode: null,
+      directResolution: false,
+    })
+
+    expect(gasStationResults.visibleStations.value).toHaveLength(10)
+    expect(gasStationResults.hasMoreStations.value).toBe(true)
+
+    gasStationResults.showMoreStations()
+
+    expect(gasStationResults.visibleStations.value).toHaveLength(15)
+    expect(gasStationResults.hasMoreStations.value).toBe(true)
+
+    gasStationResults.showMoreStations()
+
+    expect(gasStationResults.visibleStations.value).toHaveLength(16)
+    expect(gasStationResults.hasMoreStations.value).toBe(false)
+    expect(search).toHaveBeenCalledTimes(1)
+
+    gasStationResults.reset()
+
+    expect(gasStationResults.visibleStations.value).toEqual([])
+    expect(gasStationResults.hasMoreStations.value).toBe(false)
   })
 })
