@@ -118,8 +118,8 @@ export function useGasStationResults(
 
   return {
     stations: readonly(stations),
-    visibleStations: readonly(visibleStations),
-    hasMoreStations: readonly(hasMoreStations),
+    visibleStations,
+    hasMoreStations,
     status: readonly(status),
     selectedLocationLabel: readonly(selectedLocationLabel),
     loadForSelection,

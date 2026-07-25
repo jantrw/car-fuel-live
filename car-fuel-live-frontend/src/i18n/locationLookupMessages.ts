@@ -3,10 +3,8 @@ import { getBrowserLanguages } from '@/lib/locationCountryContext'
 export interface LocationLookupMessages {
   locale: 'en' | 'de'
   appName: string
-  eyebrow: string
   title: string
   intro: string
-  mvpCatchPhrase: string
   sourceAvailability: string
   stepSelectLocation: string
   stepComparePrices: string
@@ -63,11 +61,8 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
   en: {
     locale: 'en',
     appName: 'Car Fuel Live',
-    eyebrow: 'Cheap & Fast',
     title: 'Find the nearest fair fuel price',
     intro: 'Search a place once and load live fuel prices nearby.',
-    mvpCatchPhrase:
-      'Compare real prices in seconds before you pick the next station.',
     sourceAvailability: 'Free · Open source available',
     stepSelectLocation: 'Select location',
     stepComparePrices: 'Compare prices',
@@ -140,11 +135,9 @@ const messages: Record<'en' | 'de', LocationLookupMessages> = {
   de: {
     locale: 'de',
     appName: 'Car Fuel Live',
-    eyebrow: 'Günstig & Schnell',
     title: 'Finde deinen nächsten fairen Spritpreis',
     intro:
       'Suche einen Ort und lade sofort echte Kraftstoffpreise in deiner Nähe.',
-    mvpCatchPhrase: 'Preise vergleichen, besser tanken.',
     sourceAvailability: 'Kostenlos · Quellcode einsehbar',
     stepSelectLocation: 'Ort auswählen',
     stepComparePrices: 'Preise vergleichen',

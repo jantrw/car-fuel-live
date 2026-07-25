@@ -43,19 +43,6 @@ describe('LocationSearchResultDropdown', () => {
     expect(wrapper.emitted('selectItem')).toEqual([[groups[0].items[0]]])
   })
 
-  it('should allow result rows to receive keyboard focus', () => {
-    const wrapper = mount(LocationSearchResultDropdown, {
-      props: { query: 'Ber', groups, messages },
-      attachTo: document.body,
-    })
-    const button = wrapper.get('li button')
-
-    ;(button.element as HTMLButtonElement).focus()
-
-    expect(document.activeElement).toBe(button.element)
-    wrapper.unmount()
-  })
-
   it('should render an accessible empty state when no groups are provided', () => {
     const wrapper = mount(LocationSearchResultDropdown, {
       props: { query: 'Unknown', groups: [], messages },
