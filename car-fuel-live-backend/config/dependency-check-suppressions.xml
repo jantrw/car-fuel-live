@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.4.xsd">
+    <suppress until="2026-09-01Z">
+        <notes><![CDATA[
+        CVE-2026-66299 affects Tomcat's WebSocket chat example. The embedded Tomcat JARs do not
+        contain that example. Remove this suppression after upgrading to Tomcat 11.0.25 or newer.
+        ]]></notes>
+        <gav regex="true">^org\.apache\.tomcat\.embed:tomcat-embed-(core|websocket):11\.0\.24$</gav>
+        <cve>CVE-2026-66299</cve>
+    </suppress>
+</suppressions>
