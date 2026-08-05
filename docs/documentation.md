@@ -37,7 +37,7 @@ Users select a country context and search locally for a country, place, region, 
 3. Start the backend with `gradlew.bat -p car-fuel-live-backend bootRun`.
 4. Start the frontend with `npm --prefix car-fuel-live-frontend run dev`.
 
-For live station data, set `TANKERKOENIG_API_KEY` in the backend process environment. Seed a new database with `car-fuel-live-backend/scripts/import-location-data.ps1` after Flyway has created the schema.
+For live station data, set `TANKERKOENIG_API_KEY` in the backend process environment. Restore a checksummed database baseline to reproduce a released dataset. Use `car-fuel-live-backend/scripts/import-location-data.ps1` after Flyway has created the schema only for an intentional refresh from the current rolling GeoNames files; it does not reproduce an existing release.
 
 ## Verification
 

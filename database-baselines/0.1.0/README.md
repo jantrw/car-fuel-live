@@ -13,6 +13,10 @@
 
 The dump is stored locally at `backups/database-baseline-0.1.0/` until it is uploaded as a release asset.
 
+## Reproducibility
+
+Released installations reproduce this database by restoring the dump and verifying its SHA-256 checksum. `scripts/import-location-data.ps1` deliberately downloads the current rolling GeoNames files and must not be used to recreate baseline 0.1.0. A future data refresh requires a new reviewed baseline dump, version, and checksum.
+
 ## Data Source And Attribution
 
 This baseline contains data derived from [GeoNames](https://www.geonames.org/), licensed under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
@@ -55,6 +59,7 @@ The archive was restored once into an isolated PostgreSQL 17 instance with `--no
 - Berlin `2950159`, Paris `2988507`, Prague `3067696`, Belgrade `792680`, and Podgorica `3193044` exist as capitals (`PPLC`).
 - German postal codes `01067`, `10115`, and `80331` return the expected places.
 - All 53 `capital_place_geoname_id` values are `NULL`. This existing source state is preserved exactly; the application does not currently read this column.
+- A fresh PostgreSQL 17.9 restore reproduced every row count and Flyway checksum above. The backend validated all four migrations and returned Berlin, Prague, Belgrade, and postal code `10115`; `Tschechoslowakei` returned no results.
 
 ## Content Review
 
