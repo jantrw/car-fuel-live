@@ -11,7 +11,21 @@
 - Source commit: `80299d03f238e26e03063b64d8d85e1ca7697dc2`
 - Source database: `car-fuel-live` from Docker volume `car-fuel-live-backend_postgres_data`
 
-The dump is stored locally at `backups/database-baseline-0.1.0/` until the third-party data review in issue #71 permits publication.
+The dump is stored locally at `backups/database-baseline-0.1.0/` until it is uploaded as a release asset.
+
+## Data Source And Attribution
+
+This baseline contains data derived from [GeoNames](https://www.geonames.org/), licensed under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
+
+Source files:
+
+- [`allCountries.zip`](https://download.geonames.org/export/dump/allCountries.zip)
+- [`countryInfo.txt`](https://download.geonames.org/export/dump/countryInfo.txt)
+- [`DE.zip`](https://download.geonames.org/export/zip/DE.zip)
+
+The files were imported on 2026-05-14 between 15:42:53 and 15:45:31 UTC. The latest `source_modified_on` value retained from the GeoNames place data is 2026-05-13. The database baseline was created on 2026-08-05.
+
+Car Fuel Live transforms the source data. It retains European countries, administrative and populated-place records, and German postal codes; excludes country rows from place results and the obsolete `CS` country data; creates normalized search fields and transliteration variants; deduplicates aliases; and maps the result into the application schema. The resulting database is therefore a filtered and modified derivative of the GeoNames datasets, not an unchanged GeoNames dump.
 
 ## Export
 
@@ -44,4 +58,4 @@ The archive was restored once into an isolated PostgreSQL 17 instance with `--no
 
 ## Content Review
 
-The archive contains only the Flyway history and the four location data tables. No authentication data, API keys, passwords, connection configuration, application-user data, roles, or ACLs are present. Publication remains blocked until issue #71 confirms that the GeoNames-derived country, place, alias, and postal-code data may be redistributed with the required attribution.
+The archive contains only the Flyway history and the four location data tables. No authentication data, API keys, passwords, connection configuration, application-user data, roles, or ACLs are present. The GeoNames attribution and modification notice above must remain with every redistributed copy of the baseline.
