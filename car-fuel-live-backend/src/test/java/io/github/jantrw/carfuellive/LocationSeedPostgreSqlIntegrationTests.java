@@ -61,6 +61,14 @@ class LocationSeedPostgreSqlIntegrationTests {
       assertThat(selectCount(connection, "SELECT COUNT(*) FROM location_place_aliases"))
           .isEqualTo(2);
       assertThat(selectCount(connection, "SELECT COUNT(*) FROM german_postal_codes")).isEqualTo(1);
+      assertThat(
+              selectCount(
+                  connection, "SELECT COUNT(*) FROM location_countries WHERE country_code = 'CS'"))
+          .isZero();
+      assertThat(
+              selectCount(
+                  connection, "SELECT COUNT(*) FROM location_places WHERE country_code = 'CS'"))
+          .isZero();
 
       try (PreparedStatement statement =
           connection.prepareStatement(
@@ -214,6 +222,18 @@ class LocationSeedPostgreSqlIntegrationTests {
           "68000000",
           "EU",
           "3017382");
+      insertCountryStageRow(
+          statement,
+          "CS",
+          "SCG",
+          "891",
+          "Serbia and Montenegro",
+          "serbia and montenegro",
+          "Belgrade",
+          "belgrade",
+          "10829175",
+          "EU",
+          "8505033");
     }
   }
 
@@ -348,6 +368,46 @@ class LocationSeedPostgreSqlIntegrationTests {
           "Europe/Paris",
           "2026-04-10",
           "Paris,Parigi");
+      insertPlaceStageRow(
+          statement,
+          "8505031",
+          "CS",
+          "Czechoslovakia",
+          "Czechoslovakia",
+          "czechoslovakia",
+          "czechoslovakia",
+          "49.75",
+          "15.5",
+          "A",
+          "PCLH",
+          "",
+          "",
+          "",
+          "",
+          "0",
+          "Europe/Prague",
+          "2025-08-02",
+          "Czechoslovakia,Tschechoslowakei");
+      insertPlaceStageRow(
+          statement,
+          "8505033",
+          "CS",
+          "Serbia and Montenegro",
+          "Serbia and Montenegro",
+          "serbia and montenegro",
+          "serbia and montenegro",
+          "44.81892",
+          "20.45998",
+          "A",
+          "PCLH",
+          "",
+          "",
+          "",
+          "",
+          "10829175",
+          "Europe/Belgrade",
+          "2025-08-02",
+          "Serbia and Montenegro,SCG");
     }
   }
 
@@ -405,6 +465,8 @@ class LocationSeedPostgreSqlIntegrationTests {
             """)) {
       insertAliasStageRow(statement, "2950159", "Berlino", "berlino");
       insertAliasStageRow(statement, "2988507", "Parigi", "parigi");
+      insertAliasStageRow(statement, "8505031", "Tschechoslowakei", "tschechoslowakei");
+      insertAliasStageRow(statement, "8505033", "SCG", "scg");
       insertAliasStageRow(statement, "9999999", "Ghost Place", "ghost place");
     }
   }
