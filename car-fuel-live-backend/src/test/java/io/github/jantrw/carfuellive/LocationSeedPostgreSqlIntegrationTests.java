@@ -168,6 +168,35 @@ class LocationSeedPostgreSqlIntegrationTests {
   }
 
   @Test
+  void should_backfillCountryCapitalReferences_when_existingRowsPredateMapping() throws Exception {
+    try (Connection connection = dataSource.getConnection()) {
+      executeSqlScript(connection, "db/seed/location_seed_stage_tables.sql");
+
+      insertCountryStageRows(connection);
+      insertPlaceStageRows(connection);
+      insertAliasStageRows(connection);
+      insertGermanPostalCodeStageRows(connection);
+      executeSqlScript(connection, "db/seed/location_seed_transform.sql");
+
+      try (Statement statement = connection.createStatement()) {
+        statement.executeUpdate("UPDATE location_countries SET capital_place_geoname_id = NULL");
+      }
+      executeSqlScript(connection, "db/migration/V5__backfill_country_capital_place_mapping.sql");
+
+      assertThat(
+              selectCount(
+                  connection,
+                  """
+                  SELECT COUNT(*)
+                  FROM location_countries
+                  WHERE (country_code = 'DE' AND capital_place_geoname_id = 2950159)
+                     OR (country_code = 'FR' AND capital_place_geoname_id = 2988507)
+                  """))
+          .isEqualTo(2);
+    }
+  }
+
+  @Test
   void should_failSeedTransform_whenCapitalPlaceMappingCannotBeResolvedDeterministically()
       throws Exception {
     try (Connection connection = dataSource.getConnection()) {
