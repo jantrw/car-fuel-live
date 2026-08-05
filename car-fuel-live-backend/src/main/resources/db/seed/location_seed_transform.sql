@@ -28,7 +28,8 @@ SELECT
 FROM location_country_stage stage
 JOIN location_place_stage place
     ON place.geoname_id = stage.geoname_id
-   AND place.feature_code = 'PCLI';
+   AND place.feature_code = 'PCLI'
+WHERE stage.country_code <> 'CS';
 
 INSERT INTO location_places (
     geoname_id,
@@ -70,7 +71,8 @@ SELECT
     NULLIF(stage.source_modified_on, '')::DATE,
     NULLIF(stage.alternate_names, '')
 FROM location_place_stage stage
-WHERE stage.feature_code <> 'PCLI';
+WHERE stage.feature_code <> 'PCLI'
+  AND stage.country_code <> 'CS';
 
 INSERT INTO location_place_aliases (
     place_geoname_id,

@@ -5,6 +5,8 @@ Seeds the local PostgreSQL database with the initial location dataset.
 .DESCRIPTION
 Use this script after creating a new or empty database, or when the location dataset
 must be refreshed deliberately. It is not part of the normal application runtime.
+It downloads the current rolling GeoNames files and cannot reproduce a released baseline;
+restore the checksummed baseline dump for that purpose.
 #>
 
 param(

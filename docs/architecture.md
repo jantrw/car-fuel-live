@@ -31,7 +31,7 @@ Search returns typed items: `country`, `place`, or `postalCode`. Only places and
 
 ## Location Data
 
-Flyway owns schema changes. The import script loads GeoNames-based European countries and places, aliases, and German postal codes into PostgreSQL. It also prepares normalized transliteration variants, keeping exact and prefix search index-friendly.
+Flyway owns schema changes. Released datasets come from versioned, checksummed PostgreSQL baseline dumps. The import script is a separate manual refresh path that loads the current rolling GeoNames files, prepares normalized transliteration variants, and produces input for a future reviewed baseline; it is not a release-reproduction path.
 
 Core tables:
 
