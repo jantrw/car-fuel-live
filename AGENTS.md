@@ -17,7 +17,7 @@
 
 ## Security And CI
 - Never commit secrets, `.env`, `secrets/`, or production configs.
-- CI should run frontend high-severity audit and backend dependency checks on every push.
+- CI should run frontend high-severity audit and backend dependency checks for pull requests targeting `dev` or `main` and for pushes to `dev` or `main`; work branches are checked through their pull request.
 - TLS and HSTS belong to infrastructure/deployment. Do not downgrade runtime URLs to HTTP.
 
 ## Code And Docs
