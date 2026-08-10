@@ -83,7 +83,9 @@ async function toGasStationLookupError(
   )
 }
 
-function parseGasStationSearchResponse(value: unknown): GasStationSearchResponse {
+function parseGasStationSearchResponse(
+  value: unknown,
+): GasStationSearchResponse {
   if (!isRecord(value) || !Array.isArray(value.items)) {
     throw new Error('Invalid gas station lookup response.')
   }
