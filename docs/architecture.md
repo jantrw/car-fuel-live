@@ -11,35 +11,39 @@ Spring Boot API
    -> Tankerkoenig (live fuel prices)
 ```
 
-The frontend is a Vite application. Vue components use composables for lookup, selected-country state, and station results; API calls are isolated in `src/api/`.
+The Vite frontend uses Vue composables for search, selected-country state, and station results. All API calls live in `src/api/`.
 
-The backend is a stateless public Spring Boot API. It resolves manual-search results only from PostgreSQL, then calls Tankerkoenig only for a selected concrete coordinate pair. Tankerkoenig responses are validated through their `ok` flag and mapped to internal DTOs.
+The stateless Spring Boot API resolves manual searches from PostgreSQL. It calls Tankerkoenig only after a user selects a result with coordinates. The client checks each response's `ok` flag and maps valid data to internal DTOs.
 
 ## Public Endpoints
 
-| Endpoint | Responsibility |
-| --- | --- |
-| `GET /api/v1/locations/suggestions` | Local country, place, and German postal-code search. `q` is 2 to 80 characters; `countryCode` ranks but never filters. A result is marked for direct resolution only when one clear exact place or postal-code match exists. |
-| `GET /api/v1/gas-stations` | Live nearby prices for validated `lat` and `lng`. Uses fixed MVP defaults: 5 km, all fuel types, distance order. |
+| Endpoint                            | Responsibility                                             |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `GET /api/v1/locations/suggestions` | Searches local countries, places, and German postal codes. |
+| `GET /api/v1/gas-stations`          | Returns live prices near validated coordinates.            |
 
-Search returns typed items: `country`, `place`, or `postalCode`. Only places and postal codes include coordinates. No matches return an empty item list.
+Location queries must contain 2 to 80 characters. The optional `countryCode` affects ranking but never filters results. The API marks a result for direct resolution only for one clear, exact place or postal-code match.
+
+Search items have one of three types: `country`, `place`, or `postalCode`. Only places and postal codes include coordinates. A search without matches returns an empty item list.
+
+Station lookups use fixed MVP defaults: a 5 km radius, all fuel types, and distance sorting.
 
 ## Location Data
 
-Flyway owns schema changes. The import script loads GeoNames-based European countries and places, aliases, and German postal codes into PostgreSQL. It also prepares normalized transliteration variants, keeping exact and prefix search index-friendly.
+Flyway owns schema changes. The import script loads GeoNames-based European countries, places, aliases, and German postal codes into PostgreSQL. It also stores normalized transliterations so indexes can support exact and prefix searches.
 
 Core tables:
 
-- `location_countries`: country metadata and an optional capital-place reference.
-- `location_places`: GeoNames places and administrative rows with coordinates.
-- `location_place_aliases`: searchable place aliases.
-- `german_postal_codes`: German postal-code lookups.
+- `location_countries`: country metadata and an optional reference to the capital.
+- `location_places`: GeoNames places and administrative areas with coordinates.
+- `location_place_aliases`: searchable aliases for places.
+- `german_postal_codes`: German postal codes and their coordinates.
 
 The database is the only manual-search and coordinate-resolution source. There is no live geocoding provider and no long-lived fuel-price cache.
 
 ## Boundaries
 
-- The frontend persists only the selected country; it never persists raw coordinates.
-- The API key exists only in backend environment-backed configuration and is never logged or returned.
-- Controllers validate public input. Responses use structured errors; internal details remain server-side.
-- Public price lookups and location suggestions are rate-limited before upstream or database work.
+- The frontend stores only the selected country, never raw coordinates.
+- Backend environment configuration holds the API key. Logs and responses never expose it.
+- Controllers validate public input. Structured error responses omit internal details.
+- Rate limits run before price lookups call Tankerkoenig or location searches query the database.
