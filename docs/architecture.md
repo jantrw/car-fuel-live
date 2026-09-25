@@ -4,16 +4,11 @@
 
 ```text
 Vue 3 frontend
-  -> local location search and station result UI
   -> typed API clients
 
 Spring Boot API
-  -> local search endpoint
-  -> live station lookup endpoint
-  -> Tankerkoenig client
-
-PostgreSQL 17
-  -> Flyway-managed location dataset
+   -> PostgreSQL 17 (location search)
+   -> Tankerkoenig (live fuel prices)
 ```
 
 The frontend is a Vite application. Vue components use composables for lookup, selected-country state, and station results; API calls are isolated in `src/api/`.

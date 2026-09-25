@@ -1,13 +1,13 @@
 # Car Fuel Live
 
-Public no-auth web app for finding live fuel prices near a selected place.
+Find live fuel prices near a selected place without creating an account.
 
 ## Stack
 
 - Frontend: Vue 3, TypeScript, Vite, Tailwind CSS
 - Backend: Java 21, Spring Boot 4, Spring Security, Spring JDBC, Flyway
 - Data: PostgreSQL 17
-- External API: Tankerkonig, called by the backend only
+- External API: Tankerkoenig (backend only)
 
 ## Repository Structure
 
@@ -20,30 +20,38 @@ Public no-auth web app for finding live fuel prices near a selected place.
 
 ## Getting Started
 
-Create the backend env file once:
+Create the backend environment file:
 
 ```powershell
 Copy-Item .\car-fuel-live-backend\.env.example .\car-fuel-live-backend\.env
 ```
 
-Set `DB_USER`, `DB_PASSWORD`, and `DB_NAME`. Set `TANKERKOENIG_API_KEY` only when verifying live fuel prices.
+Set `DB_USER`, `DB_PASSWORD`, and `DB_NAME`.
 
-Start local services from the repository root:
+Start PostgreSQL from the repository root:
 
 ```powershell
 docker compose --env-file .\car-fuel-live-backend\.env -f .\car-fuel-live-backend\docker-compose.yml up -d
+```
+
+Start the backend in a new PowerShell terminal. Set the API key to retrieve live prices:
+
+```powershell
 $env:TANKERKOENIG_API_KEY = '<your-api-key>'
 .\car-fuel-live-backend\gradlew.bat -p .\car-fuel-live-backend bootRun
+```
+
+Start the frontend in another terminal:
+
+```powershell
 npm --prefix .\car-fuel-live-frontend run dev
 ```
 
-Seed location data for a new or empty database:
+After the backend starts and Flyway creates the schema, seed a new or empty database:
 
 ```powershell
 .\car-fuel-live-backend\scripts\import-location-data.ps1
 ```
-
-Run the backend once before seeding so Flyway creates and records the database schema.
 
 ## Verification
 
