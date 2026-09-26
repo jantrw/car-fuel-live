@@ -2,7 +2,7 @@
 
 Car Fuel Live finds current fuel prices near a manually selected place in Germany and nearby European countries. It is public and requires no account.
 
-## Current Product
+## Current product
 
 Users choose a country context, then search for a country, place, region, or German postal code. One clear, exact place or postal-code match loads nearby prices immediately. Ambiguous searches require the user to select a result.
 
@@ -15,14 +15,14 @@ Users choose a country context, then search for a country, place, region, or Ger
 - Results show up to 10 stations at first. Users can reveal five more from the same response without another price request.
 - The interface supports German and English.
 
-## Privacy And Security
+## Privacy and security
 
 - Browser geolocation is not implemented. Any future use must require explicit user action, request low accuracy, and remain temporary.
 - The frontend never calls Tankerkoenig directly and never exposes its API key.
 - The public backend is stateless and has no authentication or accounts.
 - Public endpoints bound and rate-limit requests. Structured error responses omit implementation details.
 
-## Planned Work
+## Planned work
 
 - Country-based default results for major cities.
 - Opt-in "Use my city" flow.
@@ -30,7 +30,7 @@ Users choose a country context, then search for a country, place, region, or Ger
 - Station detail pages.
 - Rate limiting for the remaining public endpoints.
 
-## Local Development
+## Local development
 
 1. Copy `car-fuel-live-backend/.env.example` to `.env` and set database values.
 2. Start PostgreSQL with the backend `docker-compose.yml`.

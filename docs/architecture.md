@@ -15,7 +15,7 @@ The Vite frontend uses Vue composables for search, selected-country state, and s
 
 The stateless Spring Boot API resolves manual searches from PostgreSQL. It calls Tankerkoenig only after a user selects a result with coordinates. The client checks each response's `ok` flag and maps valid data to internal DTOs.
 
-## Public Endpoints
+## Public endpoints
 
 | Endpoint                            | Responsibility                                             |
 | ----------------------------------- | ---------------------------------------------------------- |
@@ -28,7 +28,7 @@ Search items have one of three types: `country`, `place`, or `postalCode`. Only 
 
 Station lookups use fixed MVP defaults: a 5 km radius, all fuel types, and distance sorting.
 
-## Location Data
+## Location data
 
 Flyway owns schema changes. The import script loads GeoNames-based European countries, places, aliases, and German postal codes into PostgreSQL. It also stores normalized transliterations so indexes can support exact and prefix searches.
 
