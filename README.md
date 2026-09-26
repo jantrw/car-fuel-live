@@ -8,13 +8,6 @@
 
 Car Fuel Live is a public web app for finding current fuel prices near a manually selected place in Germany and nearby European countries. It requires no account. Location search uses the project's PostgreSQL dataset, while the backend retrieves live prices from Tankerkoenig.
 
-## What it does
-
-- Searches countries, places, regions, and German postal codes after an explicit user action.
-- Loads nearby E5, E10, and diesel prices for a selected place or postal code.
-- Supports German and English.
-- Stores only the selected country in the browser, never raw coordinates.
-
 ## Requirements
 
 - Java 21
